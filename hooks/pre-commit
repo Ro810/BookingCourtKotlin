@@ -1,0 +1,25 @@
+#!/bin/sh
+
+echo "🔍 Running Spotless code formatter..."
+
+FILES=$(git diff --cached --name-only --diff-filter=ACMR "*.kt" "*.kts" | sed 's| |\\ |g')
+[ -z "$FILES" ] && exit 0
+
+echo "📝 Formatting Kotlin files..."
+./gradlew spotlessApply --quiet
+
+if [ $? -ne 0 ]; then
+  echo "❌ Spotless formatting failed. Please fix the issues and try again."
+  exit 1
+fi
+
+echo "✅ Code formatted successfully!"
+
+echo "📦 Re-adding formatted files to git..."
+for FILE in $FILES
+do
+  git add "$FILE"
+done
+
+echo "✅ Pre-commit hook completed successfully!"
+exit 0
