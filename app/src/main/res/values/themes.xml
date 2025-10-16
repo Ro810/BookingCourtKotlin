@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.JatpackCompose" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.BookingCourt" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.BookingCourt.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/holo_green_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.BookingCourt</item>
+    </style>
 </resources>
