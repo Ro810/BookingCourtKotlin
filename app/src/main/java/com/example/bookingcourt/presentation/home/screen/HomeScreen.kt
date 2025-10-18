@@ -37,6 +37,7 @@ fun HomeScreen(
     onCourtClick: (Court) -> Unit,
     onSearchClick: () -> Unit,
     onFilterClick: () -> Unit,
+    onProfileClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -78,7 +79,7 @@ fun HomeScreen(
                     },
                     label = { Text("Tài khoản") },
                     selected = false,
-                    onClick = { },
+                    onClick = onProfileClick,
                     colors = NavigationBarItemDefaults.colors(
                         unselectedIconColor = Color.Gray,
                         unselectedTextColor = Color.Gray,
