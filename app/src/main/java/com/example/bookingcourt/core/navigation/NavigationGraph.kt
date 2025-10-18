@@ -1,6 +1,9 @@
 package com.example.bookingcourt.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,13 +17,17 @@ import com.example.bookingcourt.presentation.auth.screen.SplashScreen
 import com.example.bookingcourt.presentation.booking.screen.BookingDetailScreen
 import com.example.bookingcourt.presentation.booking.screen.BookingHistoryScreen
 import com.example.bookingcourt.presentation.booking.screen.BookingScreen
-import com.example.bookingcourt.presentation.court.screen.CourtDetailScreen
+import com.example.bookingcourt.presentation.court.screen.DetailScreen
 import com.example.bookingcourt.presentation.court.screen.CourtListScreen
-import com.example.bookingcourt.presentation.home.screen.OwnerHomeScreen
+import com.example.bookingcourt.presentation.home.screen.HomeScreen
+import com.example.bookingcourt.presentation.filter.SearchScreen
+import com.example.bookingcourt.presentation.filter.FilterScreen
 import com.example.bookingcourt.presentation.payment.screen.PaymentScreen
 import com.example.bookingcourt.presentation.profile.screen.EditProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
 import com.example.bookingcourt.presentation.settings.screen.SettingsScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
 
 @Composable
 fun NavigationGraph(
@@ -31,21 +38,23 @@ fun NavigationGraph(
         navController = navController,
         startDestination = startDestination,
     ) {
+        // SplashScreen - màn hình khởi đầu
         composable(route = Screen.Splash.route) {
             SplashScreen(
                 onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Route.MAIN) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 },
                 onNavigateToLogin = {
-                    navController.navigate(Screen.Login.route) {
+                    navController.navigate(Route.AUTH) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 },
             )
         }
 
+        // AUTH navigation
         navigation(
             route = Route.AUTH,
             startDestination = Screen.Login.route,
@@ -70,7 +79,7 @@ fun NavigationGraph(
                 RegisterScreen(
                     onNavigateBack = { navController.navigateUp() },
                     onRegisterSuccess = {
-                        navController.navigate(Screen.Home.route) {
+                        navController.navigate(Route.MAIN) {
                             popUpTo(Route.AUTH) { inclusive = true }
                         }
                     },
@@ -84,16 +93,50 @@ fun NavigationGraph(
             }
         }
 
+        // MAIN navigation
         navigation(
             route = Route.MAIN,
             startDestination = Screen.Home.route,
         ) {
             composable(route = Screen.Home.route) {
-                OwnerHomeScreen(
-                    onNavigateToCourtDetail = { courtId ->
+                HomeScreen(
+                    onCourtClick = { court ->
                         navController.navigate(
-                            Screen.CourtDetail.createRoute(courtId),
+                            Screen.CourtDetail.createRoute(court.id),
                         )
+                    },
+                    onSearchClick = {
+                        navController.navigate(Screen.Search.route)
+                    },
+                    onFilterClick = {
+                        navController.navigate(Screen.Filter.route)
+                    },
+                    onProfileClick = {
+                        navController.navigate(Screen.Profile.route)
+                    },
+                )
+            }
+
+            composable(route = Screen.Search.route) {
+                SearchScreen(
+                    onBackClick = {
+                        navController.navigateUp()
+                    },
+                    onCourtClick = { court ->
+                        navController.navigate(
+                            Screen.CourtDetail.createRoute(court.id),
+                        )
+                    },
+                )
+            }
+
+            composable(route = Screen.Filter.route) {
+                FilterScreen(
+                    onBackClick = {
+                        navController.navigateUp()
+                    },
+                    onApplyFilter = {
+                        navController.navigateUp()
                     },
                 )
             }
@@ -120,15 +163,35 @@ fun NavigationGraph(
                 ),
             ) { backStackEntry ->
                 val courtId = backStackEntry.arguments?.getString("courtId") ?: ""
-                CourtDetailScreen(
-                    courtId = courtId,
-                    onNavigateBack = { navController.navigateUp() },
-                    onNavigateToBooking = {
-                        navController.navigate(
-                            Screen.Booking.createRoute(courtId),
-                        )
-                    },
-                )
+                val parentEntry = remember(backStackEntry) {
+                    try {
+                        navController.getBackStackEntry(Screen.Search.route)
+                    } catch (e: Exception) {
+                        try {
+                            navController.getBackStackEntry(Screen.Home.route)
+                        } catch (e: Exception) {
+                            backStackEntry
+                        }
+                    }
+                }
+                val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
+                val state by homeViewModel.state.collectAsState()
+                val court = remember(courtId, state) {
+                    state.featuredCourts.find { it.id == courtId }
+                        ?: state.recommendedCourts.find { it.id == courtId }
+                        ?: state.nearbyCourts.find { it.id == courtId }
+                }
+                court?.let {
+                    DetailScreen(
+                        court = it,
+                        onBackClick = { navController.navigateUp() },
+                        onBookClick = { selectedCourt ->
+                            navController.navigate(
+                                Screen.Booking.createRoute(selectedCourt.id),
+                            )
+                        }
+                    )
+                }
             }
 
             composable(
@@ -203,8 +266,13 @@ fun NavigationGraph(
                     onNavigateToEditProfile = {
                         navController.navigate(Screen.EditProfile.route)
                     },
+                    onNavigateToHome = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    },
                     onLogout = {
-                        navController.navigate(Screen.Login.route) {
+                        navController.navigate(Route.AUTH) {
                             popUpTo(Route.MAIN) { inclusive = true }
                         }
                     },
