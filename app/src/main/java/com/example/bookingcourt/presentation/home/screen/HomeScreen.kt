@@ -223,7 +223,7 @@ fun HeaderSection(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 16.dp, end = 18.dp, top = 24.dp, bottom = 16.dp)
+            .padding(start = 16.dp, end = 18.dp, top = 8.dp, bottom = 16.dp)
     ) {
         // Avatar and Name Section
         Row(
