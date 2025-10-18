@@ -30,6 +30,7 @@ import com.example.bookingcourt.presentation.theme.PrimaryLight
 fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
+    onNavigateToHome: () -> Unit = {},
     onLogout: () -> Unit,
 ) {
     // Mock data - sau này sẽ lấy từ ViewModel
@@ -49,6 +50,47 @@ fun ProfileScreen(
                     titleContentColor = Color.White
                 )
             )
+        },
+        bottomBar = {
+            // Bottom Navigation
+            NavigationBar(
+                containerColor = Color.White,
+                tonalElevation = 8.dp,
+            ) {
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Home,
+                            contentDescription = "Trang chủ",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    },
+                    label = { Text("Trang chủ") },
+                    selected = false,
+                    onClick = onNavigateToHome,
+                    colors = NavigationBarItemDefaults.colors(
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                    ),
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Tài khoản",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    },
+                    label = { Text("Tài khoản") },
+                    selected = true,
+                    onClick = { },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF123E62), // DarkBlue
+                        selectedTextColor = Color(0xFF123E62), // DarkBlue
+                        indicatorColor = Color.Transparent,
+                    ),
+                )
+            }
         }
     ) { paddingValues ->
         LazyColumn(
