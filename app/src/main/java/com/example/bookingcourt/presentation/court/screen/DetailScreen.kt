@@ -61,43 +61,6 @@ fun DetailScreen(
                             tint = Color.Black
                         )
                     }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(
-                            onClick = { },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(Color.White, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Directions,
-                                contentDescription = "Directions",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-
-                        IconButton(
-                            onClick = { },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(Color.White, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FavoriteBorder,
-                                contentDescription = "Favorite",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        Button(
-                            onClick = { onBookClick(court) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Text("Đặt lịch", fontSize = 12.sp)
-                        }
-                    }
                 }
             }
         }
