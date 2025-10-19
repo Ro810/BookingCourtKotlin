@@ -99,13 +99,20 @@ fun DetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Info Cards
             InfoCard(
-                title = "Loại sân",
-                value = court.sportType.name
+                title = "Số sân",
+                value = court.courtType.name
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            InfoCard(
+                title = "Sức chứa",
+                value = "${court.maxPlayers} người"
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            
 
             InfoCard(
                 title = "Giá",
