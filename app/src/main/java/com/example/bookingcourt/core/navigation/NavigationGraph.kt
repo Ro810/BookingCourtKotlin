@@ -185,10 +185,10 @@ fun NavigationGraph(
                 val parentEntry = remember(backStackEntry) {
                     try {
                         navController.getBackStackEntry(Screen.Search.route)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         try {
                             navController.getBackStackEntry(Screen.Home.route)
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             backStackEntry
                         }
                     }
@@ -285,11 +285,6 @@ fun NavigationGraph(
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToEditProfile = {
                         navController.navigate(Screen.EditProfile.route)
-                    },
-                    onNavigateToHome = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
                     },
                     onLogout = {
                         navController.navigate(Route.AUTH) {
