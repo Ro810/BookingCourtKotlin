@@ -1010,14 +1010,6 @@ private fun AddEditVenueDialog(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    BookingCourtTheme {
-        HomeScreen()
-    }
-}
-
 @Composable
 private fun CreateCourtButton(
     onClick: () -> Unit,
@@ -1043,6 +1035,14 @@ private fun CreateCourtButton(
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun OwnerHomeScreenPreview() {
+    BookingCourtTheme {
+        HomeScreen()
     }
 }
 
