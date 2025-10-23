@@ -24,9 +24,10 @@ data class LoginResponse(
                 phoneNumber = userResponse.phone,
                 avatar = userResponse.avatar,
                 role = when (userResponse.role.uppercase()) {
-                    "ADMIN" -> UserRole.ADMIN
-                    "COURT_OWNER" -> UserRole.COURT_OWNER
-                    else -> UserRole.CUSTOMER
+                    "ROLE_ADMIN", "ADMIN" -> UserRole.ADMIN
+                    "ROLE_OWNER", "OWNER", "COURT_OWNER" -> UserRole.OWNER
+                    "ROLE_USER", "USER", "CUSTOMER" -> UserRole.USER
+                    else -> UserRole.USER  // Mặc định là USER
                 },
                 isVerified = userResponse.isActive,
                 createdAt = Instant.fromEpochMilliseconds(userResponse.createdAt)

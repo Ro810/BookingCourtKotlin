@@ -16,7 +16,7 @@ import com.example.bookingcourt.presentation.booking.screen.BookingHistoryScreen
 import com.example.bookingcourt.presentation.booking.screen.BookingScreen
 import com.example.bookingcourt.presentation.court.screen.CourtDetailScreen
 import com.example.bookingcourt.presentation.court.screen.CourtListScreen
-import com.example.bookingcourt.presentation.home.screen.OwnerHomeScreen
+import com.example.bookingcourt.presentation.home.screen.HomeScreen
 import com.example.bookingcourt.presentation.payment.screen.PaymentScreen
 import com.example.bookingcourt.presentation.profile.screen.EditProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
@@ -89,11 +89,19 @@ fun NavigationGraph(
             startDestination = Screen.Home.route,
         ) {
             composable(route = Screen.Home.route) {
-                OwnerHomeScreen(
+                HomeScreen(
                     onNavigateToCourtDetail = { courtId ->
                         navController.navigate(
                             Screen.CourtDetail.createRoute(courtId),
                         )
+                    },
+                    onNavigateToEditProfile = {
+                        navController.navigate(Screen.EditProfile.route)
+                    },
+                    onLogout = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Route.MAIN) { inclusive = true }
+                        }
                     },
                 )
             }
@@ -126,6 +134,11 @@ fun NavigationGraph(
                     onNavigateToBooking = {
                         navController.navigate(
                             Screen.Booking.createRoute(courtId),
+                        )
+                    },
+                    onNavigateToBookingDetail = { bookingId ->
+                        navController.navigate(
+                            Screen.BookingDetail.createRoute(bookingId),
                         )
                     },
                 )

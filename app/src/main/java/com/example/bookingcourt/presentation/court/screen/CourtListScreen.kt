@@ -1,10 +1,8 @@
 package com.example.bookingcourt.presentation.court.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,15 +16,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.bookingcourt.domain.model.Amenity
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
-import com.example.bookingcourt.presentation.theme.BookingCourtTheme
+import com.example.bookingcourt.presentation.theme.*
 import kotlinx.datetime.LocalTime
 import java.text.NumberFormat
 import java.util.*
@@ -34,179 +30,141 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CourtListScreen(
-    sportType: String? = null,
-    onNavigateBack: () -> Unit = {},
-    onNavigateToCourtDetail: (String) -> Unit = {},
-    onNavigateToSearch: () -> Unit = {},
+    sportType: String?,
+    onNavigateBack: () -> Unit,
+    onNavigateToCourtDetail: (String) -> Unit,
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedSportType by remember {
-        mutableStateOf(
-            sportType?.let {
-                try {
-                    SportType.valueOf(it.uppercase())
-                } catch (e: Exception) {
-                    null
-                }
-            },
-        )
-    }
-
+    // Mock data - Replace with ViewModel when ready
     val courts = remember {
         listOf(
             Court(
-                id = "1",
+                id = "court_1",
                 name = "Star Club Badminton",
-                description = "Sân cầu lông chuyên nghiệp",
-                address = "181 P. Cầu Cốc, Nam Từ Liêm, Hà Nội",
-                latitude = 21.0159,
-                longitude = 105.7447,
-                images = listOf("https://example.com/court1.jpg"),
+                address = "123 Đường ABC, Quận 1, TP.HCM",
+                latitude = 10.762622,
+                longitude = 106.660172,
                 sportType = SportType.BADMINTON,
                 courtType = CourtType.INDOOR,
                 pricePerHour = 150000,
-                openTime = LocalTime(5, 0),
-                closeTime = LocalTime(23, 0),
-                amenities = emptyList(),
-                rules = "Không hút thuốc",
-                ownerId = "owner1",
+                description = "Sân cầu lông chất lượng cao với hệ thống chiếu sáng hiện đại",
+                images = listOf("https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=400"),
                 rating = 4.5f,
-                totalReviews = 127,
+                totalReviews = 120,
+                openTime = LocalTime(6, 0),
+                closeTime = LocalTime(22, 0),
+                amenities = listOf(
+                    Amenity("1", "Wifi", "wifi"),
+                    Amenity("2", "Parking", "parking"),
+                    Amenity("3", "Shower", "shower"),
+                ),
+                rules = "Không hút thuốc trong sân",
+                ownerId = "owner_1",
                 isActive = true,
                 maxPlayers = 4,
             ),
             Court(
-                id = "2",
-                name = "MVP Fitness Badminton",
-                description = "Sân hiện đại, thoáng mát",
-                address = "Tầng 10, Toà F.Zone 4, Vinsmart Tây Mỗ",
-                latitude = 21.0200,
-                longitude = 105.7500,
-                images = listOf("https://example.com/court2.jpg"),
+                id = "court_2",
+                name = "Victory Badminton Center",
+                address = "456 Đường XYZ, Quận 3, TP.HCM",
+                latitude = 10.776889,
+                longitude = 106.695313,
                 sportType = SportType.BADMINTON,
                 courtType = CourtType.INDOOR,
-                pricePerHour = 120000,
-                openTime = LocalTime(5, 30),
-                closeTime = LocalTime(21, 30),
-                amenities = emptyList(),
-                rules = "Giữ gìn vệ sinh chung",
-                ownerId = "owner2",
-                rating = 4.2f,
-                totalReviews = 85,
+                pricePerHour = 200000,
+                description = "Sân cầu lông hiện đại với không gian rộng rãi",
+                images = listOf("https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400"),
+                rating = 4.8f,
+                totalReviews = 95,
+                openTime = LocalTime(6, 0),
+                closeTime = LocalTime(23, 0),
+                amenities = listOf(
+                    Amenity("1", "Wifi", "wifi"),
+                    Amenity("2", "Parking", "parking"),
+                    Amenity("3", "Shower", "shower"),
+                    Amenity("4", "Cafeteria", "cafeteria"),
+                ),
+                rules = "Vui lòng giữ gìn vệ sinh chung",
+                ownerId = "owner_2",
                 isActive = true,
                 maxPlayers = 4,
             ),
         )
     }
 
-    val filteredCourts = courts.filter { court ->
-        (searchQuery.isEmpty() || court.name.contains(searchQuery, ignoreCase = true)) &&
-            (selectedSportType == null || court.sportType == selectedSportType)
+    val filteredCourts = remember(sportType) {
+        if (sportType != null) {
+            courts.filter { it.sportType.name == sportType }
+        } else {
+            courts
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Danh sách sân") },
+                title = {
+                    Text(
+                        text = when (sportType) {
+                            SportType.BADMINTON.name -> "Sân Cầu Lông"
+                            SportType.TENNIS.name -> "Sân Tennis"
+                            SportType.FOOTBALL.name -> "Sân Bóng Đá"
+                            SportType.BASKETBALL.name -> "Sân Bóng Rổ"
+                            SportType.TABLE_TENNIS.name -> "Sân Bóng Bàn"
+                            SportType.VOLLEYBALL.name -> "Sân Bóng Chuyền"
+                            else -> "Danh Sách Sân"
+                        }
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
                     }
                 },
-                actions = {
-                    IconButton(onClick = onNavigateToSearch) {
-                        Icon(Icons.Default.Search, contentDescription = "Tìm kiếm")
-                    }
-                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Primary,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                ),
             )
         },
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // Search Bar
-            item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Tìm kiếm sân...") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null)
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Xóa")
-                            }
-                        }
-                    },
-                    singleLine = true,
-                )
-            }
-
-            // Sport Type Filter
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+        if (filteredCourts.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    item {
-                        FilterChip(
-                            selected = selectedSportType == null,
-                            onClick = { selectedSportType = null },
-                            label = { Text("Tất cả") },
-                        )
-                    }
-                    items(SportType.values().toList()) { sport ->
-                        FilterChip(
-                            selected = selectedSportType == sport,
-                            onClick = {
-                                selectedSportType = if (selectedSportType == sport) null else sport
-                            },
-                            label = { Text(getSportTypeName(sport)) },
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.SearchOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = TextSecondary,
+                    )
+                    Text(
+                        text = "Không tìm thấy sân nào",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextSecondary,
+                    )
                 }
             }
-
-            // Court List
-            items(filteredCourts) { court ->
-                CourtCard(
-                    court = court,
-                    onClick = { onNavigateToCourtDetail(court.id) },
-                )
-            }
-
-            // Empty state
-            if (filteredCourts.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = Color.Gray,
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Không tìm thấy sân nào",
-                                color = Color.Gray,
-                                fontSize = 16.sp,
-                            )
-                        }
-                    }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                items(filteredCourts) { court ->
+                    CourtListItem(
+                        court = court,
+                        onClick = { onNavigateToCourtDetail(court.id) },
+                    )
                 }
             }
         }
@@ -214,7 +172,7 @@ fun CourtListScreen(
 }
 
 @Composable
-fun CourtCard(
+private fun CourtListItem(
     court: Court,
     onClick: () -> Unit,
 ) {
@@ -223,114 +181,128 @@ fun CourtCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-        ) {
+        Column {
             // Court Image
-            AsyncImage(
-                model = court.images.firstOrNull() ?: "https://via.placeholder.com/100",
-                contentDescription = court.name,
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray),
-                contentScale = ContentScale.Crop,
-            )
+            if (court.images.isNotEmpty()) {
+                AsyncImage(
+                    model = court.images.first(),
+                    contentDescription = court.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = TextSecondary.copy(alpha = 0.3f),
+                    )
+                }
+            }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Court Info
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.SpaceBetween,
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Column {
-                    Text(
-                        text = court.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                Text(
+                    text = court.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(16.dp),
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = court.address,
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        text = "${court.rating}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "(${court.totalReviews} đánh giá)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = Primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = court.address,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = Primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = "${court.openTime} - ${court.closeTime}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
-                        Text(
-                            text = currencyFormat.format(court.pricePerHour) + "/giờ",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = "${court.openTime} - ${court.closeTime}",
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                        )
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Text(
+                        text = "${currencyFormat.format(court.pricePerHour)}/giờ",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary,
+                    )
+                    Button(
+                        onClick = onClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
                     ) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFFFA500),
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Text(
-                            text = "${court.rating}",
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
-                        Text(
-                            text = "(${court.totalReviews})",
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                        )
+                        Text("Đặt sân")
                     }
                 }
             }
         }
-    }
-}
-
-fun getSportTypeName(sport: SportType): String {
-    return when (sport) {
-        SportType.BADMINTON -> "Cầu lông"
-        SportType.TABLE_TENNIS -> "Bóng bàn"
-        SportType.TENNIS -> "Tennis"
-        SportType.FOOTBALL -> "Bóng đá"
-        SportType.BASKETBALL -> "Bóng rổ"
-        SportType.VOLLEYBALL -> "Bóng chuyền"
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun CourtListScreenPreview() {
-    BookingCourtTheme {
-        CourtListScreen()
     }
 }
