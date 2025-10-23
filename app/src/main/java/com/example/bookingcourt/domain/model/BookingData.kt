@@ -1,9 +1,5 @@
 package com.example.bookingcourt.domain.model
 
-/**
- * Data class to hold booking information during the booking flow
- * This is used to pass data between screens before creating the final Booking
- */
 data class BookingData(
     val courtId: String,
     val courtName: String,
@@ -15,6 +11,7 @@ data class BookingData(
     val pricePerHour: Long,
     val totalPrice: Long
 )
+
 data class CourtTimeSlot(
     val courtNumber: Int,
     val timeSlot: String
