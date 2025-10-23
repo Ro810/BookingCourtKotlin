@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.UiEvent
 import com.example.bookingcourt.domain.model.Court
+import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.domain.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
 data class HomeState(
@@ -20,6 +22,7 @@ data class HomeState(
     val user: User? = null,
     val featuredCourts: List<Court> = emptyList(),
     val nearbyCourts: List<Court> = emptyList(),
+    val recommendedCourts: List<Court> = emptyList(),
     val popularSports: List<SportType> = listOf(
         SportType.BADMINTON,
         SportType.TENNIS,
@@ -72,16 +75,124 @@ class HomeViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true)
 
             // TODO: Replace with actual repository calls
-            // val user = authRepository.getCurrentUser()
-            // val featuredCourts = courtRepository.getFeaturedCourts()
-            // val nearbyCourts = courtRepository.getNearbyCourts()
-            // val recentBookings = bookingRepository.getRecentBookings()
+            // Dữ liệu mẫu cho sân nổi bật
+            val sampleFeaturedCourts = listOf(
+                Court(
+                    id = "featured1",
+                    name = "Star Club Badminton",
+                    description = "Sân cầu lông chất lượng cao với thiết bị hiện đại",
+                    address = "Số 181 P. Cầu Cốc, Tây Mỗ, Nam Từ Liêm, Hà Nội",
+                    latitude = 21.0159,
+                    longitude = 105.7447,
+                    images = emptyList(),
+                    sportType = SportType.BADMINTON,
+                    courtType = CourtType.INDOOR,
+                    pricePerHour = 150,
+                    openTime = LocalTime(5, 0),
+                    closeTime = LocalTime(23, 0),
+                    amenities = emptyList(),
+                    rules = "Không hút thuốc trong sân",
+                    ownerId = "owner1",
+                    rating = 4.5f,
+                    totalReviews = 128,
+                    isActive = true,
+                    maxPlayers = 4,
+                ),
+                Court(
+                    id = "featured2",
+                    name = "MVP Fitness Badminton",
+                    description = "Sân cầu lông hiện đại với không gian thoáng mát",
+                    address = "Tầng 10, Toà F.Zone 4, Vinsmart Tây Mỗ",
+                    latitude = 21.0200,
+                    longitude = 105.7500,
+                    images = emptyList(),
+                    sportType = SportType.BADMINTON,
+                    courtType = CourtType.INDOOR,
+                    pricePerHour = 120,
+                    openTime = LocalTime(5, 30),
+                    closeTime = LocalTime(21, 30),
+                    amenities = emptyList(),
+                    rules = "Giữ gìn vệ sinh chung",
+                    ownerId = "owner2",
+                    rating = 4.2f,
+                    totalReviews = 89,
+                    isActive = true,
+                    maxPlayers = 4,
+                ),
+                Court(
+                    id = "featured3",
+                    name = "Tennis Pro Center",
+                    description = "Sân tennis chuyên nghiệp với mặt sân chuẩn quốc tế",
+                    address = "456 Đường ABC, Quận Cầu Giấy, Hà Nội",
+                    latitude = 21.0285,
+                    longitude = 105.8542,
+                    images = emptyList(),
+                    sportType = SportType.TENNIS,
+                    courtType = CourtType.OUTDOOR,
+                    pricePerHour = 200,
+                    openTime = LocalTime(6, 0),
+                    closeTime = LocalTime(22, 0),
+                    amenities = emptyList(),
+                    rules = "Mang giày thể thao chuyên dụng",
+                    ownerId = "owner3",
+                    rating = 4.7f,
+                    totalReviews = 156,
+                    isActive = true,
+                    maxPlayers = 4,
+                )
+            )
+
+            val sampleRecommendedCourts = listOf(
+                Court(
+                    id = "rec1",
+                    name = "Sân cầu lông Thăng Long",
+                    description = "Sân cầu lông giá rẻ, phù hợp sinh viên",
+                    address = "123 Đường Giải Phóng, Hoàng Mai, Hà Nội",
+                    latitude = 20.9735,
+                    longitude = 105.8426,
+                    images = emptyList(),
+                    sportType = SportType.BADMINTON,
+                    courtType = CourtType.INDOOR,
+                    pricePerHour = 80,
+                    openTime = LocalTime(6, 0),
+                    closeTime = LocalTime(22, 0),
+                    amenities = emptyList(),
+                    rules = null,
+                    ownerId = "owner4",
+                    rating = 4.0f,
+                    totalReviews = 67,
+                    isActive = true,
+                    maxPlayers = 4,
+                ),
+                Court(
+                    id = "rec2",
+                    name = "Football Club 5vs5",
+                    description = "Sân bóng đá mini chất lượng cao",
+                    address = "789 Đường XYZ, Quận Đống Đa, Hà Nội",
+                    latitude = 21.0167,
+                    longitude = 105.8262,
+                    images = emptyList(),
+                    sportType = SportType.FOOTBALL,
+                    courtType = CourtType.OUTDOOR,
+                    pricePerHour = 300,
+                    openTime = LocalTime(6, 0),
+                    closeTime = LocalTime(23, 0),
+                    amenities = emptyList(),
+                    rules = "Không được đá bóng quá mạnh",
+                    ownerId = "owner5",
+                    rating = 4.3f,
+                    totalReviews = 94,
+                    isActive = true,
+                    maxPlayers = 10,
+                )
+            )
 
             _state.value = _state.value.copy(
                 isLoading = false,
                 user = null, // Replace with actual user
-                featuredCourts = emptyList(), // Replace with actual data
+                featuredCourts = sampleFeaturedCourts,
                 nearbyCourts = emptyList(), // Replace with actual data
+                recommendedCourts = sampleRecommendedCourts,
                 recentBookings = emptyList(), // Replace with actual data
             )
         }

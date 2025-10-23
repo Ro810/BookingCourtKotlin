@@ -1012,7 +1012,7 @@ private fun AddEditVenueDialog(
 
 @Preview(showBackground = true)
 @Composable
-fun HomeScreenPreview() {
+fun OwnerHomeScreenPreview() {
     BookingCourtTheme {
         HomeScreen()
     }
