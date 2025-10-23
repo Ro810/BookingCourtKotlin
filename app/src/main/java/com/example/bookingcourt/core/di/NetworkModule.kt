@@ -1,6 +1,7 @@
 package com.example.bookingcourt.core.di
 
 import android.content.Context
+import android.util.Log
 import com.example.bookingcourt.BuildConfig
 import com.example.bookingcourt.core.network.AuthInterceptor
 import com.example.bookingcourt.core.network.NetworkMonitor
@@ -24,6 +25,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    private const val TAG = "NetworkModule"
+
     @Provides
     @Singleton
     fun provideGson(): Gson = GsonBuilder()
@@ -34,13 +37,18 @@ object NetworkModule {
     @Singleton
     fun provideAuthInterceptor(
         userPreferencesDataStore: UserPreferencesDataStore,
-    ): AuthInterceptor = AuthInterceptor(userPreferencesDataStore)
+    ): AuthInterceptor {
+        Log.d(TAG, "✓✓✓ Creating AuthInterceptor ✓✓✓")
+        return AuthInterceptor(userPreferencesDataStore)
+    }
 
     @Provides
     @Singleton
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
     ): OkHttpClient {
+        Log.d(TAG, "✓✓✓ Creating OkHttpClient with AuthInterceptor ✓✓✓")
+
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
