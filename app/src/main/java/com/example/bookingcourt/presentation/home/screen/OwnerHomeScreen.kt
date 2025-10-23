@@ -25,6 +25,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.domain.model.UserRole
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import kotlinx.datetime.LocalTime
@@ -36,10 +37,11 @@ enum class HomeTab {
 }
 
 @Composable
-fun HomeScreen(
+fun OwnerHomeScreen(
     ownerName: String = "Trần Đỗ Lan Phương",
     onNavigateToCourtDetail: (String) -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToBecomeCustomer: () -> Unit = {}, // Thêm callback để chuyển về customer
     onLogout: () -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(HomeTab.HOME) }
@@ -104,6 +106,8 @@ fun HomeScreen(
                 ProfileScreen(
                     onNavigateBack = { selectedTab = HomeTab.HOME },
                     onNavigateToEditProfile = onNavigateToEditProfile,
+                    onNavigateToBecomeCustomer = onNavigateToBecomeCustomer, // Truyền callback
+                    currentUserRole = UserRole.OWNER, // Đặt role là OWNER
                     onLogout = onLogout,
                     showBackButton = false,
                     showTopBar = false,
@@ -1014,7 +1018,7 @@ private fun AddEditVenueDialog(
 @Composable
 fun OwnerHomeScreenPreview() {
     BookingCourtTheme {
-        HomeScreen()
+        OwnerHomeScreen()
     }
 }
 

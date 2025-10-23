@@ -19,10 +19,11 @@ import com.example.bookingcourt.presentation.booking.screen.BookingHistoryScreen
 import com.example.bookingcourt.presentation.booking.screen.BookingScreen
 import com.example.bookingcourt.presentation.court.screen.DetailScreen
 import com.example.bookingcourt.presentation.court.screen.CourtListScreen
-import com.example.bookingcourt.presentation.home.screen.HomeScreen // HomeScreen của User (ThuyTien)
+import com.example.bookingcourt.presentation.court.screen.CourtDetailScreen
+import com.example.bookingcourt.presentation.home.screen.HomeScreen // HomeScreen của User (Customer)
+import com.example.bookingcourt.presentation.home.screen.OwnerHomeScreen // OwnerHomeScreen của chủ sân
 import com.example.bookingcourt.presentation.filter.SearchScreen // Của User (ThuyTien)
 import com.example.bookingcourt.presentation.filter.FilterScreen // Của User (ThuyTien)
-// import com.example.bookingcourt.presentation.owner.screen.OwnerHomeScreen // <--- BẠN CẦN THÊM IMPORT NÀY
 import com.example.bookingcourt.presentation.payment.screen.PaymentScreen
 import com.example.bookingcourt.presentation.profile.screen.EditProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
@@ -146,16 +147,58 @@ fun NavigationGraph(
                 )
             }
 
-            /*
-            // 4. OwnerHomeScreen (OWNER - Code của bạn)
-            // BẠN CẦN BỎ COMMENT VÀ ĐẢM BẢO CÓ import OwnerHomeScreen VÀ Screen.OwnerHome.route
+            // 4. OwnerHomeScreen (OWNER - Màn hình quản lý sân của chủ sân)
             composable(route = Screen.OwnerHome.route) {
                 OwnerHomeScreen(
-                    // onNavigateBack = { navController.navigateUp() },
-                    // ... các callbacks khác của Owner ...
+                    onNavigateToCourtDetail = { courtId ->
+                        navController.navigate(
+                            Screen.OwnerCourtDetail.createRoute(courtId),
+                        )
+                    },
+                    onNavigateToEditProfile = {
+                        navController.navigate(Screen.EditProfile.route)
+                    },
+                    onNavigateToBecomeCustomer = {
+                        // Chuyển về HomeScreen (chế độ khách đặt sân)
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Route.MAIN) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onLogout = {
+                        navController.navigate(Route.AUTH) {
+                            popUpTo(Route.MAIN) { inclusive = true }
+                        }
+                    },
                 )
             }
-            */
+
+            // 4.1. OwnerCourtDetail (OWNER - Màn hình chi tiết sân cho chủ sân)
+            composable(
+                route = Screen.OwnerCourtDetail.route,
+                arguments = listOf(
+                    navArgument("courtId") {
+                        type = NavType.StringType
+                    },
+                ),
+            ) { backStackEntry ->
+                val courtId = backStackEntry.arguments?.getString("courtId") ?: ""
+                CourtDetailScreen(
+                    courtId = courtId,
+                    onNavigateBack = { navController.navigateUp() },
+                    onNavigateToBooking = {
+                        // TODO: Navigate to booking management if needed
+                    },
+                    onNavigateToBookingDetail = { bookingId ->
+                        navController.navigate(
+                            Screen.BookingDetail.createRoute(bookingId),
+                        )
+                    },
+                )
+            }
 
             composable(route = Screen.CourtList.route) { backStackEntry ->
                 val sportType = backStackEntry.arguments?.getString("sportType")
@@ -285,6 +328,19 @@ fun NavigationGraph(
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToEditProfile = {
                         navController.navigate(Screen.EditProfile.route)
+                    },
+                    onNavigateToChangePassword = {
+                        // TODO: Navigate to change password screen when implemented
+                    },
+                    onNavigateToBecomeOwner = {
+                        navController.navigate(Screen.OwnerHome.route) {
+                            // Clear back stack to prevent going back to user profile
+                            popUpTo(Route.MAIN) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     },
                     onLogout = {
                         navController.navigate(Route.AUTH) {

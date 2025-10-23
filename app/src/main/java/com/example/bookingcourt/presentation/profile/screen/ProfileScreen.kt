@@ -40,10 +40,13 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToBecomeOwner: () -> Unit = {},
+    onNavigateToBecomeCustomer: () -> Unit = {}, // Thêm callback để chuyển về customer
     onLogout: () -> Unit = {},
     showBackButton: Boolean = true,
     showTopBar: Boolean = true,
     bottomPadding: Dp = 0.dp,
+    currentUserRole: UserRole = UserRole.USER, // Thêm parameter để biết vai trò hiện tại
 ) {
     // Mock user data - trong thực tế sẽ lấy từ ViewModel
     val user = remember {
@@ -53,7 +56,7 @@ fun ProfileScreen(
             fullName = "Nguyễn Văn A",
             phoneNumber = "0123456789",
             avatar = null,
-            role = UserRole.USER, // Đã sửa từ CUSTOMER
+            role = currentUserRole, // Sử dụng role từ parameter
             isVerified = true,
             createdAt = LocalDateTime(2024, 1, 1, 0, 0),
             updatedAt = LocalDateTime(2024, 1, 1, 0, 0),
@@ -97,6 +100,8 @@ fun ProfileScreen(
                     user = user,
                     onNavigateToEditProfile = onNavigateToEditProfile,
                     onNavigateToChangePassword = onNavigateToChangePassword,
+                    onNavigateToBecomeOwner = onNavigateToBecomeOwner,
+                    onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
                     onShowLogoutDialog = { showLogoutDialog = true },
                 )
             }
@@ -129,6 +134,8 @@ fun ProfileScreen(
                     user = user,
                     onNavigateToEditProfile = onNavigateToEditProfile,
                     onNavigateToChangePassword = onNavigateToChangePassword,
+                    onNavigateToBecomeOwner = onNavigateToBecomeOwner,
+                    onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
                     onShowLogoutDialog = { showLogoutDialog = true },
                 )
             }
@@ -168,6 +175,8 @@ private fun LazyListScope.ProfileContent(
     user: User,
     onNavigateToEditProfile: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
+    onNavigateToBecomeOwner: () -> Unit,
+    onNavigateToBecomeCustomer: () -> Unit,
     onShowLogoutDialog: () -> Unit,
 ) {
     // User Profile Header
@@ -185,6 +194,50 @@ private fun LazyListScope.ProfileContent(
             favoritesCount = user.favoriteCourtIds.size,
             reviewsCount = 5,
         )
+    }
+
+    // Become Owner Button - Only show for USER role
+    if (user.role == UserRole.USER) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                ),
+            ) {
+                MenuItemRow(
+                    icon = Icons.Default.Business,
+                    title = "Trở thành chủ sân",
+                    subtitle = "Đăng ký để quản lý sân của bạn",
+                    iconTint = Color(0xFF4CAF50),
+                    titleColor = Color(0xFF4CAF50),
+                    onClick = onNavigateToBecomeOwner,
+                )
+            }
+        }
+    }
+
+    // Become Customer Button - Only show for OWNER role
+    if (user.role == UserRole.OWNER) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF2196F3).copy(alpha = 0.1f),
+                ),
+            ) {
+                MenuItemRow(
+                    icon = Icons.Default.Person,
+                    title = "Trở thành khách đặt sân",
+                    subtitle = "Chuyển sang chế độ đặt sân",
+                    iconTint = Color(0xFF2196F3),
+                    titleColor = Color(0xFF2196F3),
+                    onClick = onNavigateToBecomeCustomer,
+                )
+            }
+        }
     }
 
     // Account Section
