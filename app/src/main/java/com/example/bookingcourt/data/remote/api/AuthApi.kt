@@ -18,6 +18,9 @@ interface AuthApi {
     @POST("auth/forgot-password")
     suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<BaseResponseDto>
 
+    @POST("auth/reset-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): Response<ChangePasswordResponse>
+
     @POST("auth/logout")
     suspend fun logout(): BaseResponseDto
 }

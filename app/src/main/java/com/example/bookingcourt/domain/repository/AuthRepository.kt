@@ -15,6 +15,7 @@ interface AuthRepository {
     ): Flow<Resource<User>>
     suspend fun logout(): Flow<Resource<Unit>>
     suspend fun forgotPassword(email: String): Flow<Resource<Unit>>
+    suspend fun changePassword(currentPassword: String, newPassword: String): Flow<Resource<Unit>>
     suspend fun getCurrentUser(): Flow<Resource<User?>>
     suspend fun updateProfile(user: User): Flow<Resource<User>>
     suspend fun saveUserSession(user: User)

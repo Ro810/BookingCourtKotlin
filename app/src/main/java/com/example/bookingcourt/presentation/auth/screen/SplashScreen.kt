@@ -25,10 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.core.utils.collectAsEffect
 import com.example.bookingcourt.presentation.auth.viewmodel.SplashViewModel
+import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Dimensions
 import kotlinx.coroutines.delay
 
@@ -96,7 +98,6 @@ fun SplashScreen(
 
             Text(
                 text = "Đặt sân thể thao dễ dàng",
-                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                 modifier = Modifier.alpha(alphaAnim),
             )

@@ -56,7 +56,7 @@ class LoginViewModel @Inject constructor(
                 fullName = "Test User",
                 phoneNumber = "0123456789",
                 avatar = null,
-                role = UserRole.CUSTOMER,
+                role = UserRole.USER, // Đã sửa từ CUSTOMER
                 isVerified = true,
                 createdAt = currentTime,
                 updatedAt = currentTime,

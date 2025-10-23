@@ -16,6 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -24,6 +25,7 @@ import com.example.bookingcourt.presentation.auth.viewmodel.RegisterViewModel
 import com.example.bookingcourt.presentation.theme.DarkBlue
 import com.example.bookingcourt.presentation.theme.LightBlue
 import com.example.bookingcourt.presentation.theme.MidBlue
+import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -369,5 +371,241 @@ fun RegisterScreen(
                 }
             },
         )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun RegisterScreenPreview() {
+    BookingCourtTheme {
+        RegisterScreenContent()
+    }
+}
+
+@Composable
+private fun RegisterScreenContent() {
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+
+    val blueGradient = Brush.verticalGradient(
+        colors = listOf(
+            Color.White,
+            LightBlue,
+            MidBlue,
+        ),
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(brush = blueGradient)
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.logo1),
+            contentDescription = "Hình ảnh quả cầu lông",
+            modifier = Modifier
+                .size(200.dp)
+                .padding(bottom = 8.dp),
+        )
+
+        Text(
+            text = "Đăng ký",
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 36.sp,
+            ),
+            color = DarkBlue,
+            modifier = Modifier.padding(bottom = 24.dp),
+        )
+
+        // Full name field
+        OutlinedTextField(
+            value = fullName,
+            onValueChange = { fullName = it },
+            label = {
+                Text(
+                    text = "Họ và tên",
+                    color = DarkBlue,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = MidBlue,
+                unfocusedIndicatorColor = DarkBlue,
+                cursorColor = MidBlue,
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedLabelColor = MidBlue,
+                unfocusedLabelColor = DarkBlue,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Email field
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = {
+                Text(
+                    text = "Email",
+                    color = DarkBlue,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = MidBlue,
+                unfocusedIndicatorColor = DarkBlue,
+                cursorColor = MidBlue,
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedLabelColor = MidBlue,
+                unfocusedLabelColor = DarkBlue,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Phone number field
+        OutlinedTextField(
+            value = phoneNumber,
+            onValueChange = {
+                if (it.length <= 10) phoneNumber = it
+            },
+            label = {
+                Text(
+                    text = "Số điện thoại",
+                    color = DarkBlue,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            prefix = { Text("+84 ", color = DarkBlue) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = MidBlue,
+                unfocusedIndicatorColor = DarkBlue,
+                cursorColor = MidBlue,
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedLabelColor = MidBlue,
+                unfocusedLabelColor = DarkBlue,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Password field
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = {
+                Text(
+                    text = "Mật khẩu",
+                    color = DarkBlue,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = MidBlue,
+                unfocusedIndicatorColor = DarkBlue,
+                cursorColor = MidBlue,
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedLabelColor = MidBlue,
+                unfocusedLabelColor = DarkBlue,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Confirm password field
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = {
+                Text(
+                    text = "Xác nhận mật khẩu",
+                    color = DarkBlue,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = MidBlue,
+                unfocusedIndicatorColor = DarkBlue,
+                cursorColor = MidBlue,
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedLabelColor = MidBlue,
+                unfocusedLabelColor = DarkBlue,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = { },
+            modifier = Modifier
+                .width(200.dp)
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = DarkBlue,
+                contentColor = Color.White,
+            ),
+            enabled = fullName.isNotBlank() && email.isNotBlank() &&
+                phoneNumber.isNotBlank() &&
+                password.isNotBlank() && confirmPassword.isNotBlank() &&
+                password == confirmPassword,
+        ) {
+            Text(
+                text = "Đăng ký",
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Đã có tài khoản? ",
+                color = DarkBlue,
+            )
+            TextButton(onClick = { }) {
+                Text(
+                    text = "Đăng nhập",
+                    color = DarkBlue,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }

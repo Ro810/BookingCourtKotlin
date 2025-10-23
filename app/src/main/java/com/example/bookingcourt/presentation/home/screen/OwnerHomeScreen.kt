@@ -1,5 +1,6 @@
 package com.example.bookingcourt.presentation.home.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,15 +25,101 @@ import androidx.compose.ui.window.Dialog
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import kotlinx.datetime.LocalTime
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+enum class HomeTab {
+    HOME,
+    PROFILE
+}
+
 @Composable
-fun OwnerHomeScreen(
+fun HomeScreen(
     ownerName: String = "Trần Đỗ Lan Phương",
     onNavigateToCourtDetail: (String) -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {},
+    onLogout: () -> Unit = {},
+) {
+    var selectedTab by remember { mutableStateOf(HomeTab.HOME) }
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        bottomBar = {
+            NavigationBar(
+                containerColor = Color.White,
+                tonalElevation = 8.dp,
+            ) {
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Home,
+                            contentDescription = "Trang chủ",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    },
+                    label = { Text("Trang chủ") },
+                    selected = selectedTab == HomeTab.HOME,
+                    onClick = { selectedTab = HomeTab.HOME },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF123E62),
+                        selectedTextColor = Color(0xFF123E62),
+                        indicatorColor = Color.Transparent,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                    ),
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Tài khoản",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    },
+                    label = { Text("Tài khoản") },
+                    selected = selectedTab == HomeTab.PROFILE,
+                    onClick = { selectedTab = HomeTab.PROFILE },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF123E62),
+                        selectedTextColor = Color(0xFF123E62),
+                        indicatorColor = Color.Transparent,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                    ),
+                )
+            }
+        },
+    ) { paddingValues ->
+        when (selectedTab) {
+            HomeTab.HOME -> {
+                OwnerHomeContent(
+                    ownerName = ownerName,
+                    onNavigateToCourtDetail = onNavigateToCourtDetail,
+                    bottomPadding = paddingValues.calculateBottomPadding(),
+                )
+            }
+            HomeTab.PROFILE -> {
+                ProfileScreen(
+                    onNavigateBack = { selectedTab = HomeTab.HOME },
+                    onNavigateToEditProfile = onNavigateToEditProfile,
+                    onLogout = onLogout,
+                    showBackButton = false,
+                    showTopBar = false,
+                    bottomPadding = paddingValues.calculateBottomPadding(),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OwnerHomeContent(
+    ownerName: String,
+    onNavigateToCourtDetail: (String) -> Unit,
+    bottomPadding: androidx.compose.ui.unit.Dp,
 ) {
     var venues by remember {
         mutableStateOf(
@@ -96,320 +183,257 @@ fun OwnerHomeScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        bottomBar = {
-            // Bottom Navigation
-            NavigationBar(
-                containerColor = Color.White,
-                tonalElevation = 8.dp,
-            ) {
-                NavigationBarItem(
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = "Trang chủ",
-                            modifier = Modifier.size(32.dp),
-                        )
-                    },
-                    label = { Text("Trang chủ") },
-                    selected = true,
-                    onClick = { },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color(0xFF123E62), // Đổi sang DarkBlue
-                        selectedTextColor = Color(0xFF123E62), // Đổi sang DarkBlue
-                        indicatorColor = Color.Transparent,
-                    ),
-                )
-                NavigationBarItem(
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Tài khoản",
-                            modifier = Modifier.size(32.dp),
-                        )
-                    },
-                    label = { Text("Tài khoản") },
-                    selected = false,
-                    onClick = { },
-                    colors = NavigationBarItemDefaults.colors(
-                        unselectedIconColor = Color.Gray,
-                        unselectedTextColor = Color.Gray,
-                    ),
-                )
-            }
-        },
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF8BB1F6), // Mid Blue
-                            Color.White,
-                        ),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF8BB1F6), // Mid Blue
+                        Color.White,
                     ),
                 ),
+            ),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = bottomPadding),
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-            ) {
-                item {
-                    // Header content
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            // Avatar và thông tin chủ sân
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                // Avatar chủ sân
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .background(
-                                            brush = Brush.linearGradient(
-                                                colors = listOf(
-                                                    Color(0xFF123E62),
-                                                    Color(0xFF4A90E2),
-                                                ),
-                                            ),
-                                            shape = CircleShape,
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = ownerName.split(" ").takeLast(2).joinToString("") { it.first().toString() },
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                    )
-                                }
-
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text(
-                                        text = "$greeting,",
-                                        fontSize = 14.sp,
-                                        color = Color(0xFF123E62), // Dark Blue
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = ownerName,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF123E62), // Dark Blue
-                                    )
-                                }
-                            }
-
-                            // Icon thông báo với badge
-                            Box {
-                                IconButton(
-                                    onClick = { },
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(
-                                            color = Color(0xFF123E62).copy(alpha = 0.2f),
-                                            shape = CircleShape,
-                                        ),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Notifications,
-                                        contentDescription = "Thông báo",
-                                        tint = Color(0xFF123E62), // Dark Blue
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-                                Badge(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(top = 4.dp, end = 4.dp),
-                                    containerColor = Color(0xFFB71C1C),
-                                    contentColor = Color.White,
-                                ) {
-                                    Text(
-                                        text = "29",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    // Tiêu đề "Sân của bạn" với nút Tạo sân
+            item {
+                // Header content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.Top,
                     ) {
-                        Text(
-                            text = "Sân của bạn",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                        )
-
-                        Button(
-                            onClick = {
-                                selectedVenue = null
-                                showAddEditDialog = true
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF123E62), // Màu DarkBlue
-                            ),
-                            shape = RoundedCornerShape(24.dp),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+                        // Avatar và thông tin chủ sân
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Tạo sân",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    // Box tìm kiếm
-                    var searchQuery by remember { mutableStateOf("") }
-
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        placeholder = { Text("Tìm kiếm sân...") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Tìm kiếm",
-                                tint = Color.Gray,
-                            )
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Xóa",
-                                        tint = Color.Gray,
-                                    )
-                                }
+                            // Avatar chủ sân
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFF123E62),
+                                                Color(0xFF4A90E2),
+                                            ),
+                                        ),
+                                        shape = CircleShape,
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = ownerName.split(" ").takeLast(2).joinToString("") { it.first().toString() },
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                )
                             }
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF123E62),
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                        ),
-                    )
-                }
 
-                // Danh sách sân
-                if (venues.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(40.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
                             Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    text = "$greeting,",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF123E62), // Dark Blue
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = ownerName,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF123E62), // Dark Blue
+                                )
+                            }
+                        }
+
+                        // Icon thông báo với badge
+                        Box {
+                            IconButton(
+                                onClick = { },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(
+                                        color = Color(0xFF123E62).copy(alpha = 0.2f),
+                                        shape = CircleShape,
+                                    ),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(80.dp),
-                                    tint = Color.Gray,
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Thông báo",
+                                    tint = Color(0xFF123E62), // Dark Blue
+                                    modifier = Modifier.size(24.dp),
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                            Badge(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 4.dp, end = 4.dp),
+                                containerColor = Color(0xFFB71C1C),
+                                contentColor = Color.White,
+                            ) {
                                 Text(
-                                    text = "Chưa có sân nào",
-                                    fontSize = 18.sp,
-                                    color = Color.Gray,
-                                    fontWeight = FontWeight.Medium,
+                                    text = "29",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
                     }
-                } else {
-                    items(venues) { venue ->
-                        VenueCardNew(
-                            venue = venue,
-                            onClick = { onNavigateToCourtDetail(venue.id) },
-                            onEditClick = {
-                                selectedVenue = venue
-                                showAddEditDialog = true
-                            },
-                            onDeleteClick = {
-                                venues = venues.filter { it.id != venue.id }
-                            },
-                        )
-                    }
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
-        }
 
-        // Dialog thêm/sửa sân
-        if (showAddEditDialog) {
-            AddEditVenueDialog(
-                venue = selectedVenue,
-                onDismiss = {
-                    showAddEditDialog = false
-                    selectedVenue = null
-                },
-                onSave = { venue ->
-                    if (selectedVenue == null) {
-                        venues = venues + venue
-                    } else {
-                        venues = venues.map {
-                            if (it.id == venue.id) venue else it
+            item {
+                // Tiêu đề "Sân của bạn" với nút Tạo sân
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Sân của bạn",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                    )
+
+                    CreateCourtButton(
+                        onClick = {
+                            selectedVenue = null
+                            showAddEditDialog = true
+                        },
+                    )
+                }
+            }
+
+            item {
+                // Box tìm kiếm
+                var searchQuery by remember { mutableStateOf("") }
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Tìm kiếm sân...") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Tìm kiếm",
+                            tint = Color.Gray,
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Xóa",
+                                    tint = Color.Gray,
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF123E62),
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                    ),
+                )
+            }
+
+            // Danh sách sân
+            if (venues.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(40.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(80.dp),
+                                tint = Color.Gray,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Chưa có sân nào",
+                                fontSize = 18.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium,
+                            )
                         }
                     }
-                    showAddEditDialog = false
-                    selectedVenue = null
-                },
-            )
+                }
+            } else {
+                items(venues) { venue ->
+                    VenueCard(
+                        venue = venue,
+                        onClick = { onNavigateToCourtDetail(venue.id) },
+                        onEditClick = {
+                            selectedVenue = venue
+                            showAddEditDialog = true
+                        },
+                        onDeleteClick = {
+                            venues = venues.filter { it.id != venue.id }
+                        },
+                    )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
         }
+    }
+
+    // Dialog thêm/sửa sân
+    if (showAddEditDialog) {
+        AddEditVenueDialog(
+            venue = selectedVenue,
+            onDismiss = {
+                showAddEditDialog = false
+                selectedVenue = null
+            },
+            onSave = { venue: Court ->
+                if (selectedVenue == null) {
+                    venues = venues + venue
+                } else {
+                    venues = venues.map { existingVenue ->
+                        if (existingVenue.id == venue.id) venue else existingVenue
+                    }
+                }
+                showAddEditDialog = false
+                selectedVenue = null
+            },
+        )
     }
 }
 
 @Composable
-fun VenueCardNew(
+private fun VenueCard(
     venue: Court,
     onClick: () -> Unit = {},
     onEditClick: () -> Unit,
@@ -445,7 +469,7 @@ fun VenueCardNew(
         Column(
             modifier = Modifier.fillMaxWidth(),
         ) {
-            // 1/3 trên - Hình ảnh minh họa (sẽ thêm sau)
+            // 1/3 trên - Hình ảnh minh họa
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -659,7 +683,7 @@ fun VenueCardNew(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEditVenueDialog(
+private fun AddEditVenueDialog(
     venue: Court?,
     onDismiss: () -> Unit,
     onSave: (Court) -> Unit,
@@ -670,170 +694,66 @@ fun AddEditVenueDialog(
     var venueDescription by remember { mutableStateOf(venue?.description ?: "") }
     var openTime by remember { mutableStateOf(venue?.openTime?.toString() ?: "05:00") }
     var closeTime by remember { mutableStateOf(venue?.closeTime?.toString() ?: "23:00") }
-    var maxPlayers by remember { mutableStateOf(venue?.maxPlayers?.toString() ?: "4") }
+    var subCourtCount by remember { mutableStateOf(venue?.maxPlayers?.toString() ?: "1") }
+    var imageUrl by remember { mutableStateOf(venue?.images?.firstOrNull() ?: "") }
     var pricePerHour by remember { mutableStateOf(venue?.pricePerHour?.toString() ?: "0") }
 
-    val primaryColor = Color(0xFF123E62) // Đổi màu DarkBlue
+    val primaryColor = Color(0xFF123E62)
     val isEditMode = venue != null
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(20.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White,
             ),
         ) {
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .heightIn(max = 600.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text = if (isEditMode) "Chỉnh Sửa Sân" else "Thêm Sân Mới",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = primaryColor,
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // ID Sân
-                OutlinedTextField(
-                    value = venueId,
-                    onValueChange = { venueId = it },
-                    label = { Text("ID Sân") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isEditMode,
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                    ),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = primaryColor,
+                item {
+                    // Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (isEditMode) "Chỉnh Sửa Sân" else "Thêm Sân Mới",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryColor,
                         )
-                    },
-                )
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Đóng",
+                                tint = Color.Gray,
+                            )
+                        }
+                    }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Tên sân
-                OutlinedTextField(
-                    value = venueName,
-                    onValueChange = { venueName = it },
-                    label = { Text("Tên Sân") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                    ),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = null,
-                            tint = primaryColor,
-                        )
-                    },
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Địa chỉ
-                OutlinedTextField(
-                    value = venueAddress,
-                    onValueChange = { venueAddress = it },
-                    label = { Text("Địa Chỉ") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                    ),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = primaryColor,
-                        )
-                    },
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Mô tả
-                OutlinedTextField(
-                    value = venueDescription,
-                    onValueChange = { venueDescription = it },
-                    label = { Text("Mô tả") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = false,
-                    maxLines = 3,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                    ),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = primaryColor,
-                        )
-                    },
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Giờ mở cửa và đóng cửa
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    OutlinedTextField(
-                        value = openTime,
-                        onValueChange = { openTime = it },
-                        label = { Text("Giờ Mở") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        placeholder = { Text("HH:MM") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            focusedLabelColor = primaryColor,
-                        ),
-                    )
-
-                    OutlinedTextField(
-                        value = closeTime,
-                        onValueChange = { closeTime = it },
-                        label = { Text("Giờ Đóng") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        placeholder = { Text("HH:MM") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            focusedLabelColor = primaryColor,
-                        ),
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Sức chứa và giá
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+                item {
+                    // ID Sân
                     OutlinedTextField(
-                        value = maxPlayers,
-                        onValueChange = { maxPlayers = it },
-                        label = { Text("Sức chứa") },
-                        modifier = Modifier.weight(1f),
+                        value = venueId,
+                        onValueChange = { venueId = it },
+                        label = { Text("ID Sân", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isEditMode,
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryColor,
@@ -841,91 +761,248 @@ fun AddEditVenueDialog(
                         ),
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Person,
+                                imageVector = Icons.Default.Info,
                                 contentDescription = null,
                                 tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
                             )
                         },
                     )
+                }
 
+                item {
+                    // Tên sân
                     OutlinedTextField(
-                        value = pricePerHour,
-                        onValueChange = { pricePerHour = it },
-                        label = { Text("Giá/giờ") },
-                        modifier = Modifier.weight(1f),
+                        value = venueName,
+                        onValueChange = { venueName = it },
+                        label = { Text("Tên Sân", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryColor,
                             focusedLabelColor = primaryColor,
                         ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Action buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                    ) {
-                        Text("Hủy", color = Color.Gray)
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = {
-                            if (venueId.isNotBlank() && venueName.isNotBlank() &&
-                                venueAddress.isNotBlank() && venueDescription.isNotBlank() &&
-                                openTime.isNotBlank() && closeTime.isNotBlank()
-                            ) {
-                                val openTimeParts = openTime.split(":")
-                                val closeTimeParts = closeTime.split(":")
-
-                                onSave(
-                                    Court(
-                                        id = venueId,
-                                        name = venueName,
-                                        description = venueDescription,
-                                        address = venueAddress,
-                                        latitude = 21.0, // Default coordinates
-                                        longitude = 105.0,
-                                        images = emptyList(),
-                                        sportType = SportType.BADMINTON, // Default sport
-                                        courtType = CourtType.INDOOR, // Default type
-                                        pricePerHour = pricePerHour.toLongOrNull() ?: 0,
-                                        openTime = LocalTime(
-                                            openTimeParts.getOrNull(0)?.toIntOrNull() ?: 5,
-                                            openTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
-                                        ),
-                                        closeTime = LocalTime(
-                                            closeTimeParts.getOrNull(0)?.toIntOrNull() ?: 23,
-                                            closeTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
-                                        ),
-                                        amenities = emptyList(),
-                                        rules = null,
-                                        ownerId = "owner1",
-                                        rating = 0f,
-                                        totalReviews = 0,
-                                        isActive = true,
-                                        maxPlayers = maxPlayers.toIntOrNull() ?: 4,
-                                    ),
-                                )
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = primaryColor,
+                item {
+                    // Địa chỉ
+                    OutlinedTextField(
+                        value = venueAddress,
+                        onValueChange = { venueAddress = it },
+                        label = { Text("Địa Chỉ", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 2,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
                         ),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = venueId.isNotBlank() && venueName.isNotBlank() &&
-                            venueAddress.isNotBlank() && venueDescription.isNotBlank() &&
-                            openTime.isNotBlank() && closeTime.isNotBlank(),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+                }
+
+                item {
+                    // Mô tả
+                    OutlinedTextField(
+                        value = venueDescription,
+                        onValueChange = { venueDescription = it },
+                        label = { Text("Mô tả", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 2,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+                }
+
+                item {
+                    // Giờ mở cửa, đóng cửa và Số sân con (3 cột)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(if (isEditMode) "Cập Nhật" else "Thêm Sân")
+                        OutlinedTextField(
+                            value = openTime,
+                            onValueChange = { openTime = it },
+                            label = { Text("Giờ Mở", fontSize = 12.sp) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            placeholder = { Text("HH:MM", fontSize = 12.sp) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                focusedLabelColor = primaryColor,
+                            ),
+                        )
+
+                        OutlinedTextField(
+                            value = closeTime,
+                            onValueChange = { closeTime = it },
+                            label = { Text("Giờ Đóng", fontSize = 12.sp) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            placeholder = { Text("HH:MM", fontSize = 12.sp) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                focusedLabelColor = primaryColor,
+                            ),
+                        )
+
+                        OutlinedTextField(
+                            value = subCourtCount,
+                            onValueChange = { subCourtCount = it },
+                            label = { Text("Số Sân", fontSize = 12.sp) },
+                            modifier = Modifier.weight(0.8f),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                focusedLabelColor = primaryColor,
+                            ),
+                        )
+                    }
+                }
+
+                item {
+                    // Giá
+                    OutlinedTextField(
+                        value = pricePerHour,
+                        onValueChange = { pricePerHour = it },
+                        label = { Text("Giá/giờ (VNĐ)", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+                }
+
+                item {
+                    // Hình ảnh sân
+                    OutlinedTextField(
+                        value = imageUrl,
+                        onValueChange = { imageUrl = it },
+                        label = { Text("Hình Ảnh Sân (URL)", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.AccountBox,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Action buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color.Gray),
+                        ) {
+                            Text("Hủy", color = Color.Gray, fontSize = 14.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                if (venueId.isNotBlank() && venueName.isNotBlank() &&
+                                    venueAddress.isNotBlank() && venueDescription.isNotBlank() &&
+                                    openTime.isNotBlank() && closeTime.isNotBlank()
+                                ) {
+                                    val openTimeParts = openTime.split(":")
+                                    val closeTimeParts = closeTime.split(":")
+
+                                    onSave(
+                                        Court(
+                                            id = venueId,
+                                            name = venueName,
+                                            description = venueDescription,
+                                            address = venueAddress,
+                                            latitude = 21.0,
+                                            longitude = 105.0,
+                                            images = if (imageUrl.isNotBlank()) listOf(imageUrl) else emptyList(),
+                                            sportType = SportType.BADMINTON,
+                                            courtType = CourtType.INDOOR,
+                                            pricePerHour = pricePerHour.toLongOrNull() ?: 0,
+                                            openTime = LocalTime(
+                                                openTimeParts.getOrNull(0)?.toIntOrNull() ?: 5,
+                                                openTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
+                                            ),
+                                            closeTime = LocalTime(
+                                                closeTimeParts.getOrNull(0)?.toIntOrNull() ?: 23,
+                                                closeTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
+                                            ),
+                                            amenities = emptyList(),
+                                            rules = null,
+                                            ownerId = "owner1",
+                                            rating = 0f,
+                                            totalReviews = 0,
+                                            isActive = true,
+                                            maxPlayers = subCourtCount.toIntOrNull() ?: 1,
+                                        ),
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = primaryColor,
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            enabled = venueId.isNotBlank() && venueName.isNotBlank() &&
+                                venueAddress.isNotBlank() && venueDescription.isNotBlank() &&
+                                openTime.isNotBlank() && closeTime.isNotBlank(),
+                        ) {
+                            Text(
+                                if (isEditMode) "Cập Nhật" else "Thêm Sân",
+                                fontSize = 14.sp,
+                            )
+                        }
                     }
                 }
             }
@@ -935,8 +1012,80 @@ fun AddEditVenueDialog(
 
 @Preview(showBackground = true)
 @Composable
-fun OwnerHomeScreenPreview() {
+fun HomeScreenPreview() {
     BookingCourtTheme {
-        OwnerHomeScreen()
+        HomeScreen()
+    }
+}
+
+@Composable
+private fun CreateCourtButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF123E62), // Màu DarkBlue
+        ),
+        shape = RoundedCornerShape(24.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+        modifier = modifier,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "Tạo sân",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun AddEditVenueDialogPreview() {
+    BookingCourtTheme {
+        AddEditVenueDialog(
+            venue = null,
+            onDismiss = { },
+            onSave = { },
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun EditVenueDialogPreview() {
+    BookingCourtTheme {
+        AddEditVenueDialog(
+            venue = Court(
+                id = "VN001",
+                name = "Star Club Badminton",
+                description = "Sân cầu lông chất lượng cao",
+                address = "Số 181 P. Cầu Cốc, Tây Mỗ, Nam Từ Liêm, Hà Nội",
+                latitude = 21.0159,
+                longitude = 105.7447,
+                images = emptyList(),
+                sportType = SportType.BADMINTON,
+                courtType = CourtType.INDOOR,
+                pricePerHour = 150000,
+                openTime = LocalTime(5, 0),
+                closeTime = LocalTime(23, 0),
+                amenities = emptyList(),
+                rules = "Không hút thuốc trong sân",
+                ownerId = "owner1",
+                rating = 4.5f,
+                totalReviews = 25,
+                isActive = true,
+                maxPlayers = 4,
+            ),
+            onDismiss = { },
+            onSave = { },
+        )
     }
 }

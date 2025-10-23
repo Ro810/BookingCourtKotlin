@@ -4,23 +4,23 @@
 
 ## Công nghệ sử dụng
 
-- **Language**: Kotlin 2.1.0
-- **UI Framework**: Jetpack Compose (BOM 2024.10.01)
-- **Architecture**: Clean Architecture (Data / Domain / Presentation)
-- **State Management**: MVI Pattern (Model-View-Intent)
-- **Dependency Injection**: Hilt 2.51.1
-- **Database**: Room 2.6.1
-- **Network**: Retrofit 2.11.0 + OkHttp 4.12.0
-- **Navigation**: Navigation Compose 2.8.3
-- **Image Loading**: Coil 2.7.0
-- **Code Formatting**: Spotless + ktlint 1.0.1
+-   **Language**: Kotlin 2.1.0
+-   **UI Framework**: Jetpack Compose (BOM 2024.10.01)
+-   **Architecture**: Clean Architecture (Data / Domain / Presentation)
+-   **State Management**: MVI Pattern (Model-View-Intent)
+-   **Dependency Injection**: Hilt 2.51.1
+-   **Database**: Room 2.6.1
+-   **Network**: Retrofit 2.11.0 + OkHttp 4.12.0
+-   **Navigation**: Navigation Compose 2.8.3
+-   **Image Loading**: Coil 2.7.0
+-   **Code Formatting**: Spotless + ktlint 1.0.1
 
 ## Yêu cầu
 
-- Android Studio Ladybug | 2024.2.1 hoặc mới hơn
-- JDK 17
-- Android SDK 35
-- Minimum SDK 26 (Android 8.0)
+-   Android Studio Ladybug | 2024.2.1 hoặc mới hơn
+-   JDK 17
+-   Android SDK 35
+-   Minimum SDK 26 (Android 8.0)
 
 ## Cài đặt
 
@@ -85,19 +85,21 @@ app/src/main/java/com/example/bookingcourt/
 
 ## Tài liệu
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Hướng dẫn chi tiết về kiến trúc, pattern, và best practices
-- **[CODE_FORMATTING.md](CODE_FORMATTING.md)** - Hướng dẫn về code formatting và Git hooks
+-   **[ARCHITECTURE.md](ARCHITECTURE.md)** - Hướng dẫn chi tiết về kiến trúc, pattern, và best practices
+-   **[CODE_FORMATTING.md](CODE_FORMATTING.md)** - Hướng dẫn về code formatting và Git hooks
 
 ## Code Formatting
 
 Dự án sử dụng Spotless + ktlint để đảm bảo code consistency.
 
 ### Format toàn bộ code:
+
 ```bash
 ./gradlew spotlessApply
 ```
 
 ### Kiểm tra format:
+
 ```bash
 ./gradlew spotlessCheck
 ```
@@ -107,17 +109,20 @@ Dự án sử dụng Spotless + ktlint để đảm bảo code consistency.
 ## Git Workflow
 
 1. Tạo branch mới từ `main`:
+
 ```bash
 git checkout -b feature/ten-tinh-nang
 ```
 
 2. Code và commit (code sẽ tự động được format):
+
 ```bash
 git add .
 git commit -m "feat: thêm tính năng xyz"
 ```
 
 3. Push và tạo Pull Request:
+
 ```bash
 git push origin feature/ten-tinh-nang
 ```
@@ -126,15 +131,16 @@ git push origin feature/ten-tinh-nang
 
 Sử dụng conventional commits:
 
-- `feat:` - Tính năng mới
-- `fix:` - Sửa bug
-- `refactor:` - Refactor code
-- `style:` - Format code, styling
-- `docs:` - Cập nhật documentation
-- `test:` - Thêm hoặc sửa tests
-- `chore:` - Cập nhật dependencies, config
+-   `feat:` - Tính năng mới
+-   `fix:` - Sửa bug
+-   `refactor:` - Refactor code
+-   `style:` - Format code, styling
+-   `docs:` - Cập nhật documentation
+-   `test:` - Thêm hoặc sửa tests
+-   `chore:` - Cập nhật dependencies, config
 
 Ví dụ:
+
 ```
 feat: thêm màn hình đặt sân
 fix: sửa lỗi hiển thị giá sân
@@ -165,12 +171,3 @@ object Constants {
     const val BASE_URL = "https://your-api.com/api/v1/"
 }
 ```
-
-## Liên hệ
-
-- **Developer**: Quang Anh
-- **Email**: nquanganh478@gmail.com
-
-## License
-
-[Thêm license của bạn ở đây]

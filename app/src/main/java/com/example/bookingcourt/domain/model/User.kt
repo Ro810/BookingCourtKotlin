@@ -18,9 +18,9 @@ data class User(
 )
 
 enum class UserRole {
-    CUSTOMER,
-    COURT_OWNER,
-    ADMIN,
+    USER,        // ROLE_USER từ backend
+    OWNER,       // ROLE_OWNER từ backend
+    ADMIN,       // ROLE_ADMIN từ backend
 }
 
 enum class PlayingLevel {

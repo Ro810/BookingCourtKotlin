@@ -7,9 +7,13 @@ import com.example.bookingcourt.data.remote.dto.ForgotPasswordRequest
 import com.example.bookingcourt.data.remote.dto.LoginRequest
 import com.example.bookingcourt.data.remote.dto.RegisterRequest
 import com.example.bookingcourt.domain.model.User
+import com.example.bookingcourt.domain.model.UserRole
 import com.example.bookingcourt.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,6 +32,11 @@ class AuthRepositoryImpl @Inject constructor(
                 if (loginResponse != null && loginResponse.success) {
                     val user = loginResponse.toUser()
                     if (user != null) {
+                        // Lưu token từ backend
+                        val token = loginResponse.data?.token
+                        if (!token.isNullOrEmpty()) {
+                            userPreferencesDataStore.saveAuthTokens(token, "")
+                        }
                         saveUserSession(user)
                         emit(Resource.Success(user))
                     } else {
@@ -37,7 +46,8 @@ class AuthRepositoryImpl @Inject constructor(
                     emit(Resource.Error(loginResponse?.message ?: "Đăng nhập thất bại"))
                 }
             } else {
-                emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
+                val errorBody = response.errorBody()?.string()
+                emit(Resource.Error("Lỗi kết nối: ${response.code()} - $errorBody"))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
@@ -54,23 +64,41 @@ class AuthRepositoryImpl @Inject constructor(
         try {
             emit(Resource.Loading())
             val response = authApi.register(
-                RegisterRequest(username, email, password, fullName, phone),
+                RegisterRequest(
+                    fullname = fullName,
+                    email = email,
+                    phone = phone,
+                    password = password,
+                    confirmPassword = password // Thêm confirmPassword
+                )
             )
             if (response.isSuccessful) {
                 val registerResponse = response.body()
                 if (registerResponse != null && registerResponse.success) {
-                    val user = registerResponse.toUser()
-                    if (user != null) {
-                        saveUserSession(user)
-                        emit(Resource.Success(user))
-                    } else {
-                        emit(Resource.Error("Failed to parse user data"))
-                    }
+                    // Backend không trả user info, tạo mock user để UI hiển thị
+                    // User thực sẽ login sau để lấy thông tin đầy đủ
+                    val mockUser = User(
+                        id = "",
+                        email = email,
+                        fullName = fullName,
+                        phoneNumber = phone,
+                        avatar = null,
+                        role = UserRole.USER,  // Mặc định là USER (ROLE_USER từ backend)
+                        isVerified = false,
+                        createdAt = Clock.System.now()
+                            .toLocalDateTime(TimeZone.currentSystemDefault()),
+                        updatedAt = Clock.System.now()
+                            .toLocalDateTime(TimeZone.currentSystemDefault()),
+                    )
+                    // Không saveUserSession vì chưa có token
+                    // User cần login sau khi đăng ký
+                    emit(Resource.Success(mockUser))
                 } else {
                     emit(Resource.Error(registerResponse?.message ?: "Đăng ký thất bại"))
                 }
             } else {
-                emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
+                val errorBody = response.errorBody()?.string()
+                emit(Resource.Error("Lỗi kết nối: ${response.code()} - $errorBody"))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
@@ -93,6 +121,30 @@ class AuthRepositoryImpl @Inject constructor(
             val response = authApi.forgotPassword(ForgotPasswordRequest(email))
             if (response.isSuccessful) {
                 emit(Resource.Success(Unit))
+            } else {
+                emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String): Flow<Resource<Unit>> = flow {
+        try {
+            emit(Resource.Loading())
+            val response = authApi.changePassword(
+                com.example.bookingcourt.data.remote.dto.ChangePasswordRequest(
+                    currentPassword = currentPassword,
+                    newPassword = newPassword
+                )
+            )
+            if (response.isSuccessful) {
+                val changePasswordResponse = response.body()
+                if (changePasswordResponse != null && changePasswordResponse.success) {
+                    emit(Resource.Success(Unit))
+                } else {
+                    emit(Resource.Error(changePasswordResponse?.message ?: "Đổi mật khẩu thất bại"))
+                }
             } else {
                 emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
             }
