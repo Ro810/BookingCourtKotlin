@@ -171,11 +171,13 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Phone number field
+        // Phone number field (digits only). The "+84 " prefix is visual only.
         OutlinedTextField(
             value = phoneNumber,
-            onValueChange = {
-                if (it.length <= 10) phoneNumber = it
+            onValueChange = { input ->
+                val digitsOnly = input.filter { it.isDigit() }
+                // Allow up to 15 digits to match backend constraint (8-15)
+                if (digitsOnly.length <= 15) phoneNumber = digitsOnly
             },
             label = {
                 Text(
@@ -200,6 +202,9 @@ fun RegisterScreen(
                 unfocusedContainerColor = Color.Transparent,
             ),
             enabled = registerState !is RegisterViewModel.RegisterState.Loading,
+            supportingText = {
+                Text("Chỉ nhập chữ số, dài 8-15 số")
+            }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -268,7 +273,8 @@ fun RegisterScreen(
             onClick = {
                 if (password == confirmPassword) {
                     scope.launch {
-                        viewModel.register(fullName, email, "+84$phoneNumber", password)
+                        // Submit digits-only phone number; ViewModel will validate 8-15 digits
+                        viewModel.register(fullName, email, phoneNumber, password)
                     }
                 }
             },
@@ -482,11 +488,13 @@ private fun RegisterScreenContent() {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Phone number field
+        // Phone number field (digits only). The "+84 " prefix is visual only.
         OutlinedTextField(
             value = phoneNumber,
-            onValueChange = {
-                if (it.length <= 10) phoneNumber = it
+            onValueChange = { input ->
+                val digitsOnly = input.filter { it.isDigit() }
+                // Allow up to 15 digits to match backend constraint (8-15)
+                if (digitsOnly.length <= 15) phoneNumber = digitsOnly
             },
             label = {
                 Text(
@@ -510,6 +518,9 @@ private fun RegisterScreenContent() {
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
             ),
+            supportingText = {
+                Text("Chỉ nhập chữ số, dài 8-15 số")
+            }
         )
 
         Spacer(modifier = Modifier.height(12.dp))

@@ -28,17 +28,29 @@ class RegisterViewModel @Inject constructor(
     private val _registerState = MutableStateFlow<RegisterState>(RegisterState.Idle)
     val registerState: StateFlow<RegisterState> = _registerState.asStateFlow()
 
+    private fun normalizePhone(raw: String): String {
+        // Keep digits only; drop +, spaces, hyphens, etc.
+        return raw.filter { it.isDigit() }
+    }
+
     fun register(fullName: String, email: String, phoneNumber: String, password: String) {
         viewModelScope.launch {
             _registerState.value = RegisterState.Loading
 
+            val normalizedPhone = normalizePhone(phoneNumber)
+            // Validate 8-15 digits as backend requires
+            if (normalizedPhone.length !in 8..15) {
+                _registerState.value = RegisterState.Error("Số điện thoại phải gồm 8-15 chữ số")
+                return@launch
+            }
+
             // Match the repository interface order: username, email, password, fullName, phone
             authRepository.register(
-                username = phoneNumber, // Using phone as username
+                username = normalizedPhone, // Using phone (digits only) as username
                 email = email,
                 password = password,
                 fullName = fullName,
-                phone = phoneNumber,
+                phone = normalizedPhone,
             ).collect { result ->
                 when (result) {
                     is Resource.Success -> {

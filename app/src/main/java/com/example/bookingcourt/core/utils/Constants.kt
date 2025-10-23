@@ -2,7 +2,7 @@ package com.example.bookingcourt.core.utils
 
 object Constants {
     // DevTunnel URL - thay đổi URL này khi tạo tunnel mới
-    const val BASE_URL = "https://tnp23pw1-8080.asse.devtunnels.ms/"
+    const val BASE_URL = "https://0p1107w7-8080.asse.devtunnels.ms/api/"
 
 
     const val CONNECT_TIMEOUT = 30L
