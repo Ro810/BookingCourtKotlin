@@ -9,7 +9,10 @@ data class Venue(
     val name: String,
     val numberOfCourt: Int,
     val address: Address,
-    val courtsCount: Int
+    val courtsCount: Int,
+    val phoneNumber: String? = null,
+    val email: String? = null,
+    val ownerPhone: String? = null // Số điện thoại chủ sân từ owner.phone
 )
 
 /**
@@ -28,4 +31,3 @@ data class Address(
         return "$detailAddress, $district, $provinceOrCity"
     }
 }
-

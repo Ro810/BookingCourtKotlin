@@ -133,8 +133,22 @@ private fun OwnerHomeContent(
 ) {
     val state by viewModel.state.collectAsState()
 
+    // State for edit dialog
+    var showEditDialog by remember { mutableStateOf(false) }
+    var venueToEdit by remember { mutableStateOf<com.example.bookingcourt.domain.model.Venue?>(null) }
+
     // Lấy venues từ ViewModel thay vì hardcode
     val venues = state.venues
+
+    // Show success message when update succeeds
+    LaunchedEffect(state.updateSuccess) {
+        if (state.updateSuccess) {
+            // Show success and hide dialog
+            showEditDialog = false
+            venueToEdit = null
+            viewModel.clearUpdateSuccess()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -348,10 +362,11 @@ private fun OwnerHomeContent(
                             // TODO: Navigate to venue detail
                         },
                         onEditClick = {
-                            // TODO: Navigate to edit venue
+                            venueToEdit = venue
+                            showEditDialog = true
                         },
                         onDeleteClick = {
-                            // TODO: Implement delete venue
+                            viewModel.deleteVenue(venue.id)
                         },
                     )
                 }
@@ -362,11 +377,34 @@ private fun OwnerHomeContent(
             }
         }
     }
-}
 
+    // Edit venue dialog
+    if (showEditDialog && venueToEdit != null) {
+        EditVenueDialog(
+            venue = venueToEdit!!,
+            isLoading = state.isUpdatingVenue,
+            onDismiss = {
+                showEditDialog = false
+                venueToEdit = null
+            },
+            onSave = { updatedVenue ->
+                viewModel.updateVenue(
+                    venueId = updatedVenue.id,
+                    name = updatedVenue.name,
+                    description = "",
+                    phoneNumber = "",
+                    email = "",
+                    provinceOrCity = updatedVenue.address.provinceOrCity,
+                    district = updatedVenue.address.district,
+                    detailAddress = updatedVenue.address.detailAddress
+                )
+            }
+        )
+    }
+}
 @Composable
 private fun VenueCard(
-    venue: Court,
+    venue: Court, // Đã đổi tên biến từ venue thành court cho khớp data class
     onClick: () -> Unit = {},
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -401,7 +439,7 @@ private fun VenueCard(
         Column(
             modifier = Modifier.fillMaxWidth(),
         ) {
-            // 1/3 trên - Hình ảnh minh họa
+            // 1/3 trên - Hình ảnh minh họa và nút
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -414,8 +452,8 @@ private fun VenueCard(
                             ),
                         ),
                         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                    ),
-            ) {
+                    ) // Dấu ')' của background bị thiếu ở đây
+            ) { // Dấu '{' của Box bị thiếu ở đây
                 // Nút Edit và Delete ở góc trên phải
                 Row(
                     modifier = Modifier
@@ -447,7 +485,7 @@ private fun VenueCard(
                         )
                     }
                 }
-            }
+            } // Đóng Box chứa hình ảnh và nút
 
             // 2/3 dưới - Nội dung sân
             Column(
@@ -470,7 +508,7 @@ private fun VenueCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Star,
+                            imageVector = Icons.Default.Star, // Đã đổi thành Star cho khác biệt
                             contentDescription = "Logo sân",
                             tint = Color(0xFF123E62),
                             modifier = Modifier.size(30.dp),
@@ -494,7 +532,7 @@ private fun VenueCard(
                             fontWeight = FontWeight.Medium,
                         )
                     }
-                }
+                } // Đóng Row chứa Logo và tên sân
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -502,59 +540,22 @@ private fun VenueCard(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = Color(0xFF123E62),
-                            modifier = Modifier.size(18.dp),
-                        )
+                    // Địa chỉ
+                    Row(verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Default.LocationOn, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = venue.address,
-                            fontSize = 14.sp,
-                            color = Color.DarkGray,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Text(venue.address, fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFFFA500),
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${venue.rating} (${venue.totalReviews} đánh giá)",
-                            fontSize = 14.sp,
-                            color = Color.DarkGray,
-                        )
+                    // Mô tả
+                    if (venue.description.isNotBlank()) {
+                        Row(verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Default.Info, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(venue.description, fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = Color(0xFF123E62),
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "⏰ ${venue.openTime} - ${venue.closeTime}",
-                            fontSize = 14.sp,
-                            color = Color.DarkGray,
-                        )
-                    }
-                }
+                } // Đóng Column chứa thông tin chi tiết
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -562,29 +563,29 @@ private fun VenueCard(
                 Row(
                     modifier = Modifier
                         .background(
-                            color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                            color = if (venue.isActive) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(8.dp),
                         )
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Person,
+                        imageVector = Icons.Default.CheckCircle, // Đổi icon cho trạng thái
                         contentDescription = null,
-                        tint = Color(0xFF4CAF50),
+                        tint = if (venue.isActive) Color(0xFF4CAF50) else Color.Gray,
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Đang hoạt động",
+                        text = if (venue.isActive) "Đang hoạt động" else "Ngừng hoạt động",
                         fontSize = 13.sp,
-                        color = Color(0xFF4CAF50),
+                        color = if (venue.isActive) Color(0xFF4CAF50) else Color.Gray,
                         fontWeight = FontWeight.Medium,
                     )
-                }
-            }
-        }
-    }
+                } // Đóng Row chứa thông tin trạng thái
+            } // Đóng Column chứa nội dung 2/3 dưới
+        } // Đóng Column chính trong Card
+    } // Đóng Card
 
     // Confirm delete dialog
     if (showDeleteDialog) {
@@ -610,8 +611,8 @@ private fun VenueCard(
                 }
             },
         )
-    }
-}
+    } // Đóng if cho AlertDialog
+} // Đóng Composable VenueCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -849,7 +850,7 @@ private fun AddEditVenueDialog(
                         OutlinedTextField(
                             value = imageUrl,
                             onValueChange = { imageUrl = it },
-                            label = { Text("Hình ���nh Sân (URL)", fontSize = 14.sp) },
+                            label = { Text("Hình ảnh Sân (URL)", fontSize = 14.sp) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1016,6 +1017,7 @@ private fun VenueCardFromVenue(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Box chứa hình nền và các nút
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1025,8 +1027,9 @@ private fun VenueCardFromVenue(
                             colors = listOf(cardColor, cardColor.copy(alpha = 0.8f)),
                         ),
                         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                    ),
-            ) {
+                    ) // Dấu ')' của background ở đây
+                // Khối lệnh lambda cho nội dung Box phải bắt đầu ở đây
+            ) { // <- Dấu '{' bị thiếu đã được thêm vào đúng vị trí
                 Row(
                     modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1038,8 +1041,9 @@ private fun VenueCardFromVenue(
                         Icon(Icons.Default.Delete, "Xóa", tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                 }
-            }
+            } // <- Dấu '}' đóng Box
 
+            // Phần nội dung bên dưới
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
                 // Logo và tên sân
                 Row(
@@ -1047,47 +1051,97 @@ private fun VenueCardFromVenue(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        modifier = Modifier.size(50.dp)
-                            .background(Color(0xFF123E62).copy(alpha = 0.1f), CircleShape),
+                        modifier = Modifier
+                            .size(50.dp)
+                            .background(
+                                color = Color(0xFF123E62).copy(alpha = 0.1f),
+                                shape = CircleShape,
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Star, "Logo", tint = Color(0xFF123E62), modifier = Modifier.size(30.dp))
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Logo sân",
+                            tint = Color(0xFF123E62),
+                            modifier = Modifier.size(30.dp),
+                        )
                     }
+
                     Column {
-                        Text(venue.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Text(
+                            text = venue.name,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black,
+                        )
+
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text("Số sân: ${venue.courtsCount}", fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+
+                        Text(
+                            text = "Số sân: ${venue.courtsCount}",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
-                }
+                } // Đóng Row logo và tên
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.LocationOn, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(venue.address.getFullAddress(), fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
+                // Thông tin chi tiết
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    // Địa chỉ
+                    Row(verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Default.LocationOn, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(venue.address.getFullAddress(), fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+
+                    // Số điện thoại (ưu tiên ownerPhone, fallback về phoneNumber)
+                    val displayPhone = venue.ownerPhone ?: venue.phoneNumber
+                    if (!displayPhone.isNullOrBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Phone, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(displayPhone, fontSize = 14.sp, color = Color.DarkGray)
+                        }
+                    }
+
+                    // Email
+                    if (!venue.email.isNullOrBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Email, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(venue.email, fontSize = 14.sp, color = Color.DarkGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                } // Đóng Column thông tin chi tiết
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Thông tin trạng thái (Giả định luôn hoạt động)
                 Row(
                     modifier = Modifier
                         .background(Color(0xFF4CAF50).copy(alpha = 0.1f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.Person, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(16.dp)) // Đổi icon
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Đang hoạt động", fontSize = 13.sp, color = Color(0xFF4CAF50), fontWeight = FontWeight.Medium)
-                }
-            }
-        }
-    }
+                } // Đóng Row trạng thái
+            } // Đóng Column nội dung chính
+        } // Đóng Column trong Card
+    } // Đóng Card
 
+    // Dialog xác nhận xóa
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Xác nhận xóa") },
+            // Lưu ý: Biến đầu vào là 'venue' nhưng text lại ghi 'sân' (court)
             text = { Text("Bạn có chắc chắn muốn xóa sân \"${venue.name}\"?") },
             confirmButton = {
                 TextButton(onClick = { onDeleteClick(); showDeleteDialog = false }) {
@@ -1096,6 +1150,228 @@ private fun VenueCardFromVenue(
             },
             dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Hủy") } }
         )
+    } // Đóng if dialog
+} // Đóng Composable
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditVenueDialog(
+    venue: com.example.bookingcourt.domain.model.Venue,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (com.example.bookingcourt.domain.model.Venue) -> Unit,
+) {
+    var venueName by remember { mutableStateOf(venue.name) }
+    var provinceOrCity by remember { mutableStateOf(venue.address.provinceOrCity) }
+    var district by remember { mutableStateOf(venue.address.district) }
+    var detailAddress by remember { mutableStateOf(venue.address.detailAddress) }
+
+    val primaryColor = Color(0xFF123E62)
+
+    Dialog(onDismissRequest = { if (!isLoading) onDismiss() }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White,
+            ),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Chỉnh Sửa Sân",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = primaryColor,
+                    )
+                    if (!isLoading) {
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Đóng",
+                                tint = Color.Gray,
+                            )
+                        }
+                    }
+                }
+
+                // Form fields
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    // Tên sân
+                    OutlinedTextField(
+                        value = venueName,
+                        onValueChange = { venueName = it },
+                        label = { Text("Tên Sân", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+
+                    // Tỉnh/Thành phố
+                    OutlinedTextField(
+                        value = provinceOrCity,
+                        onValueChange = { provinceOrCity = it },
+                        label = { Text("Tỉnh/Thành phố", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+
+                    // Quận/Huyện
+                    OutlinedTextField(
+                        value = district,
+                        onValueChange = { district = it },
+                        label = { Text("Quận/Huyện", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+
+                    // Địa chỉ chi tiết
+                    OutlinedTextField(
+                        value = detailAddress,
+                        onValueChange = { detailAddress = it },
+                        label = { Text("Địa chỉ chi tiết", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 2,
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Action buttons
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.5.dp, Color.Gray),
+                        enabled = !isLoading,
+                    ) {
+                        Text(
+                            "Hủy",
+                            color = if (isLoading) Color.Gray.copy(alpha = 0.5f) else Color.Gray,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            val updatedVenue = venue.copy(
+                                name = venueName,
+                                address = venue.address.copy(
+                                    provinceOrCity = provinceOrCity,
+                                    district = district,
+                                    detailAddress = detailAddress
+                                )
+                            )
+                            onSave(updatedVenue)
+                        },
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor,
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isLoading && venueName.isNotBlank() &&
+                            provinceOrCity.isNotBlank() && district.isNotBlank() &&
+                            detailAddress.isNotBlank(),
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Lưu",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

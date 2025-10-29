@@ -25,4 +25,17 @@ interface VenueRepository {
         district: String,
         detailAddress: String
     ): Flow<Resource<Venue>>
+
+    suspend fun updateVenue(
+        venueId: Long,
+        name: String,
+        description: String?,
+        phoneNumber: String,
+        email: String,
+        provinceOrCity: String,
+        district: String,
+        detailAddress: String
+    ): Flow<Resource<Venue>>
+
+    suspend fun deleteVenue(venueId: Long): Flow<Resource<Unit>>
 }

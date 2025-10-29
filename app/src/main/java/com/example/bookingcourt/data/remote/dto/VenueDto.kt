@@ -102,6 +102,27 @@ data class CreateVenueRequest(
 )
 
 /**
+ * Request DTO for updating a venue
+ * PUT /venues/{id}
+ */
+data class UpdateVenueRequest(
+    @SerializedName("name")
+    val name: String,
+
+    @SerializedName("description")
+    val description: String? = null,
+
+    @SerializedName("phoneNumber")
+    val phoneNumber: String,
+
+    @SerializedName("email")
+    val email: String,
+
+    @SerializedName("address")
+    val address: CreateAddressRequest
+)
+
+/**
  * Address request for creating venue
  */
 data class CreateAddressRequest(

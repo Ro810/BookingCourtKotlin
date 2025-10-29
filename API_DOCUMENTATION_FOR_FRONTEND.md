@@ -190,7 +190,7 @@ Authorization: Bearer {your_jwt_token}
 ```json
 {
   "success": true,
-  "data": "Đã nâng cấp thành chủ sân thành công! Vui lòng đăng nhập lại để cập nhật quyền.",
+  "data": "Đã nâng cấp thành chủ sân thành công! Vui lòng đăng nhập l��i để cập nhật quyền.",
   "message": "Success",
   "timestamp": "2025-10-28T15:30:00Z"
 }
@@ -205,7 +205,7 @@ Authorization: Bearer {your_jwt_token}
 ### 6. Get All Venues
 **GET** `/venues`
 
-**Authentication Required:** ❌ No (Public)
+**Authentication Required:** ✅ Yes (Any authenticated user)
 
 **Response Success (200):**
 ```json
@@ -235,7 +235,7 @@ Authorization: Bearer {your_jwt_token}
 ### 7. Search Venues
 **GET** `/venues/search`
 
-**Authentication Required:** ❌ No (Public)
+**Authentication Required:** ✅ Yes (Any authenticated user)
 
 **Query Parameters:**
 - `name` (optional): Tên venue
@@ -276,7 +276,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 ### 8. Get Venue by ID
 **GET** `/venues/{id}`
 
-**Authentication Required:** ❌ No (Public)
+**Authentication Required:** ✅ Yes (Any authenticated user)
 
 **Response Success (200):**
 ```json
@@ -355,7 +355,75 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 **Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
 
-**Request Body:** (Giống Create Venue)
+**Request Body:**
+
+**Cách 1: Cập nhật chỉ thông tin cơ bản (GIỮ NGUYÊN GIÁ CŨ)**
+```json
+{
+  "name": "Sân bóng XYZ Updated",
+  "description": "Sân bóng chất lượng cao - đã nâng cấp",
+  "phoneNumber": "0987654321",
+  "email": "contact_new@xyz.com",
+  "address": {
+    "provinceOrCity": "Hà Nội",
+    "district": "Đống Đa",
+    "detailAddress": "456 Đường XYZ - Tầng 2"
+  }
+}
+```
+
+**Cách 2: Cập nhật cả thông tin và giá tiền (XÓA GIÁ CŨ, TẠO GIÁ MỚI)**
+```json
+{
+  "name": "Sân bóng XYZ Premium",
+  "description": "Sân bóng cao cấp với cỏ nhân tạo",
+  "phoneNumber": "0987654321",
+  "email": "premium@xyz.com",
+  "address": {
+    "provinceOrCity": "TP Hồ Chí Minh",
+    "district": "Quận 1",
+    "detailAddress": "789 Nguyễn Huệ"
+  },
+  "priceRules": [
+    {
+      "name": "Giờ sáng",
+      "startTime": "06:00:00",
+      "endTime": "10:00:00",
+      "pricePerHour": 150000
+    },
+    {
+      "name": "Giờ trưa",
+      "startTime": "10:00:00",
+      "endTime": "17:00:00",
+      "pricePerHour": 200000
+    },
+    {
+      "name": "Giờ tối cao điểm",
+      "startTime": "17:00:00",
+      "endTime": "22:00:00",
+      "pricePerHour": 300000
+    },
+    {
+      "name": "Giờ đêm",
+      "startTime": "22:00:00",
+      "endTime": "23:59:59",
+      "pricePerHour": 250000
+    }
+  ]
+}
+```
+
+**⚠️ LƯU Ý QUAN TRỌNG VỀ PRICE RULES:**
+- Field `priceRules` là **OPTIONAL** (không bắt buộc)
+- **KHÔNG gửi** `priceRules` hoặc `priceRules: null` → Giá cũ được **GIỮ NGUYÊN**
+- **GỬI** `priceRules` với array → **TẤT CẢ** giá cũ sẽ bị **XÓA** và thay thế bằng giá mới
+- Không thể cập nhật một phần price rules. Nếu muốn sửa, phải gửi lại toàn bộ danh sách
+
+**Validation Rules cho PriceRules:**
+- `name`: Tên khung giờ (VD: "Giờ cao điểm buổi sáng")
+- `startTime`: Format "HH:mm:ss" (VD: "06:00:00")
+- `endTime`: Format "HH:mm:ss" (VD: "10:00:00")
+- `pricePerHour`: Số tiền dương (VD: 150000)
 
 **Response Success (200):**
 ```json
@@ -363,13 +431,105 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
   "success": true,
   "data": {
     "id": 2,
-    "name": "Sân bóng XYZ Updated",
-    "numberOfCourt": 0,
-    "address": {...},
-    "courtsCount": 0
+    "name": "Sân bóng XYZ Premium",
+    "numberOfCourt": 3,
+    "address": {
+      "id": 2,
+      "provinceOrCity": "TP Hồ Chí Minh",
+      "district": "Quận 1",
+      "detailAddress": "789 Nguyễn Huệ"
+    },
+    "courtsCount": 3,
+    "averageRating": 4.5,
+    "totalReviews": 10
   },
   "message": "Updated",
-  "timestamp": "2025-10-28T15:30:00Z"
+  "timestamp": "2025-10-29T15:30:00Z"
+}
+```
+
+**💡 UI/UX Flow đề xuất cho Frontend:**
+
+**Khi hiển thị form Update Venue:**
+
+1. **Load thông tin venue hiện tại:**
+```javascript
+const response = await fetch(`/api/venues/${venueId}`);
+const venue = await response.json();
+```
+
+2. **Load price rules hiện tại:**
+```javascript
+const pricesResponse = await fetch(`/api/pricerules/venue/${venueId}`);
+const currentPriceRules = await pricesResponse.json();
+```
+
+3. **Hiển thị form với 2 options:**
+   - ☑️ Checkbox: "Cập nhật giá tiền"
+   - Nếu KHÔNG check: Không gửi field `priceRules` → Giữ nguyên giá cũ
+   - Nếu CHECK: Hiển thị form nhập price rules → Gửi `priceRules` → Thay thế toàn bộ
+
+4. **Khi user check "Cập nhật giá tiền":**
+```javascript
+const updatePricesCheckbox = document.getElementById('update-prices');
+
+updatePricesCheckbox.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    // Hiển thị form price rules
+    // Pre-fill với giá cũ để user có thể chỉnh sửa
+    priceRulesForm.style.display = 'block';
+    priceRulesInput.value = JSON.stringify(currentPriceRules, null, 2);
+  } else {
+    // Ẩn form price rules
+    priceRulesForm.style.display = 'none';
+  }
+});
+```
+
+5. **Khi submit form:**
+```javascript
+const formData = {
+  name: nameInput.value,
+  description: descInput.value,
+  phoneNumber: phoneInput.value,
+  email: emailInput.value,
+  address: {
+    provinceOrCity: provinceInput.value,
+    district: districtInput.value,
+    detailAddress: detailInput.value
+  }
+};
+
+// Chỉ thêm priceRules nếu user check "Cập nhật giá tiền"
+if (updatePricesCheckbox.checked) {
+  formData.priceRules = priceRulesArray; // Array của price rules mới
+}
+
+const response = await fetch(`/api/venues/${venueId}`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(formData)
+});
+```
+
+**Response Error (403):**
+```json
+{
+  "success": false,
+  "message": "Bạn không có quyền cập nhật venue này",
+  "timestamp": "2025-10-29T15:30:00Z"
+}
+```
+
+**Response Error (404):**
+```json
+{
+  "success": false,
+  "message": "Venues not found with id=2",
+  "timestamp": "2025-10-29T15:30:00Z"
 }
 ```
 
@@ -397,7 +557,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 ### 12. Get All Courts
 **GET** `/courts`
 
-**Authentication Required:** ❌ No (Public)
+**Authentication Required:** ✅ Yes (Any authenticated user)
 
 **Response Success (200):**
 ```json
@@ -420,7 +580,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 ### 13. Get Court by ID
 **GET** `/courts/{id}`
 
-**Authentication Required:** ❌ No (Public)
+**Authentication Required:** ✅ Yes (Any authenticated user)
 
 **Response Success (200):**
 ```json
@@ -436,10 +596,10 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 ---
 
-### 14. Check Court Availability
+### 14. Check Court Availability (QUAN TRỌNG - Dùng trước khi đặt sân)
 **GET** `/courts/{id}/availability`
 
-**Authentication Required:** ❌ No (Public)
+**Authentication Required:** ✅ Yes (Any authenticated user)
 
 **Query Parameters:**
 - `startTime` (required): ISO DateTime (VD: `2025-10-28T14:00:00`)
@@ -465,47 +625,120 @@ GET /courts/1/availability?startTime=2025-10-28T14:00:00&endTime=2025-10-28T16:0
 }
 ```
 
+**Response khi sân trống:**
+```json
+{
+  "courtId": 1,
+  "available": true,
+  "bookedSlots": []
+}
+```
+
+**🎯 Use Case cho Frontend:**
+
+**Bước 1 - Người dùng chọn thời gian:**
+```javascript
+// User chọn sân, ngày giờ bắt đầu và kết thúc
+const courtId = 1;
+const startTime = "2025-10-28T14:00:00";
+const endTime = "2025-10-28T16:00:00";
+```
+
+**Bước 2 - Gọi API kiểm tra trước khi cho đặt:**
+```javascript
+const response = await fetch(
+  `/api/courts/${courtId}/availability?startTime=${startTime}&endTime=${endTime}`,
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const data = await response.json();
+
+if (data.available) {
+  // ✅ Sân trống - Cho phép người dùng đặt sân
+  // Hiện nút "Đặt sân" hoặc chuyển sang bước tiếp theo
+  enableBookingButton();
+} else {
+  // ❌ Sân đã có người đặt
+  // Hiển thị thông báo lỗi và danh sách các slot đã được đặt
+  showError("Sân đã được đặt trong khung giờ này!");
+  
+  // Có thể hiển thị chi tiết các slot đã đặt
+  data.bookedSlots.forEach(slot => {
+    console.log(`Đã đặt từ ${slot.startTime} đến ${slot.endTime}`);
+  });
+  
+  // Gợi ý user chọn thời gian khác
+  suggestOtherTimeSlots();
+}
+```
+
+**Bước 3 - Nếu available = true, gọi API Create Booking:**
+```javascript
+// Chỉ gọi API này sau khi đã check availability
+const bookingResponse = await fetch('/api/bookings', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    venueId: 1,
+    courtId: courtId,
+    startTime: startTime,
+    endTime: endTime
+  })
+});
+```
+
+**💡 Lưu ý quan trọng:**
+- ⚠️ **BẮT BUỘC** phải gọi API này trước khi cho phép user đặt sân
+- ⚠️ Nếu `available = false`, KHÔNG được gọi API Create Booking
+- ⚠️ Nên disable nút "Đặt sân" cho đến khi check availability thành công
+- ⚠️ Có thể xảy ra race condition: Giữa lúc check và lúc đặt có người khác đặt trước. Backend sẽ validate lại và trả lỗi nếu sân đã được đặt.
+- 💡 Khuyến nghị: Hiển thị loading spinner khi đang check availability
+- 💡 Có thể cache kết quả trong 10-30 giây để tránh gọi API quá nhiều lần
+
+**UI/UX Flow đề xuất:**
+
+```
+1. User chọn venue → Hiển thị danh sách courts
+2. User chọn court → Hiển thị calendar/time picker
+3. User chọn startTime và endTime
+4. Frontend: Disable nút "Đặt sân", hiển thị loading
+5. Frontend: Gọi GET /courts/{id}/availability
+6. Nếu available = true:
+   → Enable nút "Đặt sân"
+   → Hiển thị "Sân đang trống, bạn có thể đặt"
+7. Nếu available = false:
+   → Hiển thị "Sân đã được đặt"
+   → Hiển thị danh sách các slot đã đặt (từ bookedSlots)
+   → Gợi ý chọn thời gian khác
+8. User nhấn "Đặt sân" → Gọi POST /bookings
+```
+
+**Response Error (404):**
+```json
+{
+  "success": false,
+  "message": "Court not found"
+}
+```
+
 ---
 
 ### 15. Create Court
 **POST** `/courts`
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu venue)
+**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
 
 **Request Body:**
 ```json
 {
-  "venueId": 1,
-  "description": "Sân số 2"
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "id": 2,
   "description": "Sân số 2",
-  "venues": {
-    "id": 1,
-    "name": "Sân bóng ABC",
-    "numberOfCourt": 2
-  }
-}
-```
-
-**Note:** `numberOfCourt` của venue sẽ tự động tăng lên 1.
-
----
-
-### 16. Update Court
-**PUT** `/courts/{id}`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER)
-
-**Request Body:**
-```json
-{
-  "description": "Sân số 2 - Updated",
   "venues": {
     "id": 1
   }
@@ -515,9 +748,48 @@ GET /courts/1/availability?startTime=2025-10-28T14:00:00&endTime=2025-10-28T16:0
 **Response Success (200):**
 ```json
 {
-  "id": 2,
-  "description": "Sân số 2 - Updated",
-  "venues": {...}
+  "success": true,
+  "data": {
+    "id": 2,
+    "description": "Sân số 2",
+    "venues": {
+      "id": 1,
+      "name": "Sân bóng ABC"
+    }
+  },
+  "message": "Created",
+  "timestamp": "2025-10-28T15:30:00Z"
+}
+```
+
+---
+
+### 16. Update Court
+**PUT** `/courts/{id}`
+
+**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu sân)
+
+**Request Body:**
+```json
+{
+  "description": "Sân số 2 - Đã nâng cấp"
+}
+```
+
+**Response Success (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 2,
+    "description": "Sân số 2 - Đã nâng cấp",
+    "venues": {
+      "id": 1,
+      "name": "Sân bóng ABC"
+    }
+  },
+  "message": "Updated",
+  "timestamp": "2025-10-28T15:30:00Z"
 }
 ```
 
@@ -526,48 +798,53 @@ GET /courts/1/availability?startTime=2025-10-28T14:00:00&endTime=2025-10-28T16:0
 ### 17. Delete Court
 **DELETE** `/courts/{id}`
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER)
+**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu sân)
 
-**Response Success (204 No Content):**
+**Response Success (200):**
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Deleted",
+  "timestamp": "2025-10-28T15:30:00Z"
+}
 ```
-(Empty response)
-```
-
-**Note:** `numberOfCourt` của venue sẽ tự động giảm đi 1.
 
 ---
 
 ## Price Rules APIs
 
-### 18. Create Price Rule
-**POST** `/pricerules`
+### 18. Get All Price Rules
+**GET** `/pricerules`
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu venue)
-
-**Request Body:**
-```json
-{
-  "venueId": 1,
-  "name": "Giờ cao điểm buổi sáng",
-  "startTime": "06:00:00",
-  "endTime": "09:00:00",
-  "pricePerHour": 200000
-}
-```
+**Authentication Required:** ✅ Yes (Any authenticated user)
 
 **Response Success (200):**
 ```json
 {
-  "id": 1,
-  "name": "Giờ cao điểm buổi sáng",
-  "startTime": "06:00:00",
-  "endTime": "09:00:00",
-  "pricePerHour": 200000,
-  "active": true,
-  "venues": {
-    "id": 1,
-    "name": "Sân bóng ABC"
-  }
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Giờ cao điểm buổi sáng",
+      "startTime": "06:00:00",
+      "endTime": "09:00:00",
+      "pricePerHour": 200000,
+      "active": true,
+      "venues": {...}
+    },
+    {
+      "id": 2,
+      "name": "Giờ thường",
+      "startTime": "09:00:00",
+      "endTime": "17:00:00",
+      "pricePerHour": 150000,
+      "active": true,
+      "venues": {...}
+    }
+  ],
+  "message": "List price rules",
+  "timestamp": "2025-10-28T15:30:00Z"
 }
 ```
 
@@ -801,7 +1078,7 @@ GET /courts/1/availability?startTime=2025-10-28T14:00:00&endTime=2025-10-28T16:0
 ### 25. Accept Booking (Chủ sân chấp nhận)
 **PUT** `/bookings/{id}/accept`
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu venue)
+**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
 
 **Request Body:** None
 
@@ -841,7 +1118,7 @@ GET /courts/1/availability?startTime=2025-10-28T14:00:00&endTime=2025-10-28T16:0
 ### 26. Reject Booking (Chủ sân từ chối)
 **PUT** `/bookings/{id}/reject`
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu venue)
+**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
 
 **Request Body:**
 ```json
@@ -1592,4 +1869,3 @@ http://localhost:8080/swagger-ui/index.html
 **Last Updated:** October 28, 2025
 **Version:** 1.0
 **Backend Developer:** CodeWithVy Team
-

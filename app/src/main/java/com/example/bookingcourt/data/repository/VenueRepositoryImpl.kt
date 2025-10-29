@@ -6,6 +6,7 @@ import com.example.bookingcourt.data.remote.api.VenueApi
 import com.example.bookingcourt.data.remote.dto.AddressDto
 import com.example.bookingcourt.data.remote.dto.CreateAddressRequest
 import com.example.bookingcourt.data.remote.dto.CreateVenueRequest
+import com.example.bookingcourt.data.remote.dto.UpdateVenueRequest
 import com.example.bookingcourt.data.remote.dto.VenueDetailDto
 import com.example.bookingcourt.domain.model.Address
 import com.example.bookingcourt.domain.model.Venue
@@ -207,16 +208,139 @@ class VenueRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateVenue(
+        venueId: Long,
+        name: String,
+        description: String?,
+        phoneNumber: String,
+        email: String,
+        provinceOrCity: String,
+        district: String,
+        detailAddress: String
+    ): Flow<Resource<Venue>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "========== UPDATING VENUE ==========")
+            Log.d(TAG, "Venue ID: $venueId")
+            Log.d(TAG, "Venue name: $name")
+            Log.d(TAG, "Phone: $phoneNumber, Email: $email")
+            Log.d(TAG, "Address: $detailAddress, $district, $provinceOrCity")
+
+            val request = UpdateVenueRequest(
+                name = name,
+                description = description,
+                phoneNumber = phoneNumber,
+                email = email,
+                address = CreateAddressRequest(
+                    provinceOrCity = provinceOrCity,
+                    district = district,
+                    detailAddress = detailAddress
+                )
+            )
+
+            val response = venueApi.updateVenue(venueId, request)
+
+            Log.d(TAG, "Response Code: ${response.code()}")
+            Log.d(TAG, "Response isSuccessful: ${response.isSuccessful}")
+
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+
+                Log.d(TAG, "Response body is null: ${apiResponse == null}")
+                Log.d(TAG, "Response success: ${apiResponse?.success}")
+                Log.d(TAG, "Response message: ${apiResponse?.message}")
+
+                if (apiResponse != null && apiResponse.success && apiResponse.data != null) {
+                    val venue = apiResponse.data.toDomain()
+
+                    Log.d(TAG, "✓ Successfully updated venue: ${venue.name} (ID: ${venue.id})")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Success(venue))
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể cập nhật sân"
+                    Log.e(TAG, "⚠ API returned success=false: $errorMsg")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "⚠ API error: ${response.code()}")
+                Log.e(TAG, "Error body: $errorBody")
+                Log.d(TAG, "======================================")
+                emit(Resource.Error("Lỗi cập nhật sân: ${response.code()}"))
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠ Exception updating venue: ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
+    override suspend fun deleteVenue(venueId: Long): Flow<Resource<Unit>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "========== DELETING VENUE ==========")
+            Log.d(TAG, "Venue ID: $venueId")
+
+            val response = venueApi.deleteVenue(venueId)
+
+            Log.d(TAG, "Response Code: ${response.code()}")
+            Log.d(TAG, "Response isSuccessful: ${response.isSuccessful}")
+
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+                Log.d(TAG, "Response body is null: ${apiResponse == null}")
+                Log.d(TAG, "Response success: ${apiResponse?.success}")
+                Log.d(TAG, "Response message: ${apiResponse?.message}")
+
+                if (apiResponse != null && apiResponse.success) {
+                    Log.d(TAG, "✓ Successfully deleted venue: $venueId")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Success(Unit))
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể xóa sân"
+                    Log.e(TAG, "⚠ API returned success=false: $errorMsg")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "⚠ API error: ${response.code()}")
+                Log.e(TAG, "Error body: $errorBody")
+                Log.d(TAG, "======================================")
+                emit(Resource.Error("Lỗi xóa sân: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠ Exception deleting venue: ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
     /**
      * Convert VenueDetailDto to Domain Model
      */
     private fun VenueDetailDto.toDomain(): Venue {
+        // Log để debug
+        Log.d(TAG, "Converting VenueDetailDto to Domain:")
+        Log.d(TAG, "  - Venue name: $name")
+        Log.d(TAG, "  - phoneNumber: $phoneNumber")
+        Log.d(TAG, "  - email: $email")
+        Log.d(TAG, "  - owner: $owner")
+        Log.d(TAG, "  - owner?.phone: ${owner?.phone}")
+
         return Venue(
             id = id,
             name = name,
             numberOfCourt = numberOfCourt,
             address = address.toDomain(),
-            courtsCount = numberOfCourt
+            courtsCount = numberOfCourt,
+            phoneNumber = phoneNumber,
+            email = email,
+            ownerPhone = owner?.phone // Lấy số điện thoại từ owner
         )
     }
 

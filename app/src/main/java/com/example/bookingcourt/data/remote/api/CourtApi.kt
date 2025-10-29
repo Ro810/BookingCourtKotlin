@@ -26,3 +26,4 @@ interface CourtApi {
         @Path("id") courtId: Long
     ): Response<CourtDetailDto>
 }
+
