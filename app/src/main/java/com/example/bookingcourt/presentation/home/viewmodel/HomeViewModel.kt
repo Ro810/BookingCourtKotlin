@@ -2,11 +2,15 @@ package com.example.bookingcourt.presentation.home.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.core.common.UiEvent
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.domain.model.User
+import com.example.bookingcourt.domain.model.Venue
+import com.example.bookingcourt.domain.repository.AuthRepository
+import com.example.bookingcourt.domain.repository.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,7 +49,8 @@ sealed interface HomeIntent {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    // TODO: Inject repositories when ready
+    private val venueRepository: VenueRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState())
@@ -72,130 +77,161 @@ class HomeViewModel @Inject constructor(
 
     private fun loadHomeData() {
         viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true, error = null)
+
+            try {
+                // Lấy thông tin user hiện tại
+                var userData: User? = null
+                authRepository.getCurrentUser().collect { resource ->
+                    when (resource) {
+                        is Resource.Success -> {
+                            userData = resource.data
+                        }
+                        is Resource.Error -> {
+                            // Nếu lỗi khi lấy user, có thể token hết hạn
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                error = resource.message,
+                                user = null
+                            )
+                            return@collect
+                        }
+                        is Resource.Loading -> {
+                            // Đang tải
+                        }
+                    }
+                    return@collect // Take only the first emission
+                }
+
+                // Cập nhật user vào state ngay lập tức
+                _state.value = _state.value.copy(user = userData)
+
+                if (userData == null) {
+                    // Chưa có user - yêu cầu đăng nhập
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        error = null,
+                        featuredCourts = emptyList(),
+                        recommendedCourts = emptyList()
+                    )
+                    return@launch
+                }
+
+                // Đã đăng nhập - lấy tất cả venues từ backend /api/venues
+                venueRepository.getVenues().collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            val allVenues = result.data ?: emptyList()
+
+                            // Convert Venues to Courts for UI compatibility
+                            val courts = allVenues.mapIndexed { index, venue ->
+                                venue.toCourt(index)
+                            }
+
+                            // Featured courts: Venues có nhiều sân nhất
+                            val featuredCourts = courts
+                                .sortedByDescending { it.description.contains("sân") }
+                                .take(5)
+
+                            // Recommended courts: Các venues còn lại
+                            val recommendedCourts = courts
+                                .drop(5)
+                                .take(5)
+
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                featuredCourts = featuredCourts,
+                                recommendedCourts = recommendedCourts,
+                                nearbyCourts = emptyList(),
+                                error = null
+                            )
+                        }
+                        is Resource.Error -> {
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                error = result.message ?: "Không thể tải danh sách sân"
+                            )
+                        }
+                        is Resource.Loading -> {
+                            _state.value = _state.value.copy(isLoading = true)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Đã xảy ra lỗi"
+                )
+            }
+        }
+    }
+
+    /**
+     * Search venues by name or location
+     */
+    fun searchVenues(
+        name: String? = null,
+        province: String? = null,
+        district: String? = null,
+    ) {
+        viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
 
-            // TODO: Replace with actual repository calls
-            // Dữ liệu mẫu cho sân nổi bật
-            val sampleFeaturedCourts = listOf(
-                Court(
-                    id = "featured1",
-                    name = "Star Club Badminton",
-                    description = "Sân cầu lông chất lượng cao với thiết bị hiện đại",
-                    address = "Số 181 P. Cầu Cốc, Tây Mỗ, Nam Từ Liêm, Hà Nội",
-                    latitude = 21.0159,
-                    longitude = 105.7447,
-                    images = emptyList(),
-                    sportType = SportType.BADMINTON,
-                    courtType = CourtType.INDOOR,
-                    pricePerHour = 150,
-                    openTime = LocalTime(5, 0),
-                    closeTime = LocalTime(23, 0),
-                    amenities = emptyList(),
-                    rules = "Không hút thuốc trong sân",
-                    ownerId = "owner1",
-                    rating = 4.5f,
-                    totalReviews = 128,
-                    isActive = true,
-                    maxPlayers = 4,
-                ),
-                Court(
-                    id = "featured2",
-                    name = "MVP Fitness Badminton",
-                    description = "Sân cầu lông hiện đại với không gian thoáng mát",
-                    address = "Tầng 10, Toà F.Zone 4, Vinsmart Tây Mỗ",
-                    latitude = 21.0200,
-                    longitude = 105.7500,
-                    images = emptyList(),
-                    sportType = SportType.BADMINTON,
-                    courtType = CourtType.INDOOR,
-                    pricePerHour = 120,
-                    openTime = LocalTime(5, 30),
-                    closeTime = LocalTime(21, 30),
-                    amenities = emptyList(),
-                    rules = "Giữ gìn vệ sinh chung",
-                    ownerId = "owner2",
-                    rating = 4.2f,
-                    totalReviews = 89,
-                    isActive = true,
-                    maxPlayers = 4,
-                ),
-                Court(
-                    id = "featured3",
-                    name = "Tennis Pro Center",
-                    description = "Sân tennis chuyên nghiệp với mặt sân chuẩn quốc tế",
-                    address = "456 Đường ABC, Quận Cầu Giấy, Hà Nội",
-                    latitude = 21.0285,
-                    longitude = 105.8542,
-                    images = emptyList(),
-                    sportType = SportType.TENNIS,
-                    courtType = CourtType.OUTDOOR,
-                    pricePerHour = 200,
-                    openTime = LocalTime(6, 0),
-                    closeTime = LocalTime(22, 0),
-                    amenities = emptyList(),
-                    rules = "Mang giày thể thao chuyên dụng",
-                    ownerId = "owner3",
-                    rating = 4.7f,
-                    totalReviews = 156,
-                    isActive = true,
-                    maxPlayers = 4,
-                )
-            )
+            venueRepository.searchVenues(name, province, district).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        val venues = result.data ?: emptyList()
+                        val courts = venues.mapIndexed { index, venue -> venue.toCourt(index) }
 
-            val sampleRecommendedCourts = listOf(
-                Court(
-                    id = "rec1",
-                    name = "Sân cầu lông Thăng Long",
-                    description = "Sân cầu lông giá rẻ, phù hợp sinh viên",
-                    address = "123 Đường Giải Phóng, Hoàng Mai, Hà Nội",
-                    latitude = 20.9735,
-                    longitude = 105.8426,
-                    images = emptyList(),
-                    sportType = SportType.BADMINTON,
-                    courtType = CourtType.INDOOR,
-                    pricePerHour = 80,
-                    openTime = LocalTime(6, 0),
-                    closeTime = LocalTime(22, 0),
-                    amenities = emptyList(),
-                    rules = null,
-                    ownerId = "owner4",
-                    rating = 4.0f,
-                    totalReviews = 67,
-                    isActive = true,
-                    maxPlayers = 4,
-                ),
-                Court(
-                    id = "rec2",
-                    name = "Football Club 5vs5",
-                    description = "Sân bóng đá mini chất lượng cao",
-                    address = "789 Đường XYZ, Quận Đống Đa, Hà Nội",
-                    latitude = 21.0167,
-                    longitude = 105.8262,
-                    images = emptyList(),
-                    sportType = SportType.FOOTBALL,
-                    courtType = CourtType.OUTDOOR,
-                    pricePerHour = 300,
-                    openTime = LocalTime(6, 0),
-                    closeTime = LocalTime(23, 0),
-                    amenities = emptyList(),
-                    rules = "Không được đá bóng quá mạnh",
-                    ownerId = "owner5",
-                    rating = 4.3f,
-                    totalReviews = 94,
-                    isActive = true,
-                    maxPlayers = 10,
-                )
-            )
-
-            _state.value = _state.value.copy(
-                isLoading = false,
-                user = null, // Replace with actual user
-                featuredCourts = sampleFeaturedCourts,
-                nearbyCourts = emptyList(), // Replace with actual data
-                recommendedCourts = sampleRecommendedCourts,
-                recentBookings = emptyList(), // Replace with actual data
-            )
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            featuredCourts = courts,
+                            error = null
+                        )
+                    }
+                    is Resource.Error -> {
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            error = result.message ?: "Không tìm thấy kết quả"
+                        )
+                    }
+                    is Resource.Loading -> {
+                        _state.value = _state.value.copy(isLoading = true)
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * Convert Venue to Court for UI compatibility
+     *
+     * VENUE (Địa điểm sân): Sân bóng ABC - có 5 sân
+     *   → Hiển thị như 1 Court card trên UI
+     *   → Khi click vào sẽ mở danh sách các Courts bên trong
+     */
+    private fun Venue.toCourt(index: Int): Court {
+        return Court(
+            id = id.toString(),
+            name = name, // Tên venue: "Sân bóng ABC"
+            description = "Có $numberOfCourt sân - $courtsCount sân đang hoạt động", // Mô tả số lượng sân
+            address = address.getFullAddress(), // Địa chỉ đầy đủ
+            latitude = 21.0 + (index * 0.01), // Mock coordinates - TODO: thêm vào backend
+            longitude = 105.8 + (index * 0.01),
+            images = emptyList(), // TODO: thêm images vào backend
+            sportType = SportType.BADMINTON, // Default
+            courtType = CourtType.INDOOR, // Default
+            pricePerHour = 100000, // Default - sẽ lấy từ PriceRules sau
+            openTime = LocalTime(6, 0),
+            closeTime = LocalTime(22, 0),
+            amenities = emptyList(),
+            rules = null,
+            ownerId = id.toString(),
+            rating = 4.0f + (index % 5) * 0.2f, // Mock rating
+            totalReviews = numberOfCourt * 10, // Mock: nhiều sân = nhiều reviews
+            isActive = numberOfCourt > 0, // Active nếu có ít nhất 1 sân
+            maxPlayers = 4,
+        )
     }
 
     private fun navigateToSport(sportType: SportType) {
@@ -206,7 +242,9 @@ class HomeViewModel @Inject constructor(
 
     private fun navigateToCourt(courtId: String) {
         viewModelScope.launch {
-            _uiEvent.emit(UiEvent.NavigateTo("court_detail/$courtId"))
+            // courtId ở đây là venueId
+            // Navigate đến màn hình chi tiết venue, hiển thị danh sách courts bên trong
+            _uiEvent.emit(UiEvent.NavigateTo("venue_detail/$courtId"))
         }
     }
 

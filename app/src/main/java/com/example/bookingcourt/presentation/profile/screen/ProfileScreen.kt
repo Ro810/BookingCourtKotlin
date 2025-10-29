@@ -27,10 +27,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.bookingcourt.domain.model.PlayingLevel
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.UserRole
+import com.example.bookingcourt.presentation.profile.viewmodel.ProfileViewModel
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import kotlinx.datetime.LocalDateTime
 
@@ -41,32 +43,23 @@ fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToBecomeOwner: () -> Unit = {},
-    onNavigateToBecomeCustomer: () -> Unit = {}, // Thêm callback để chuyển về customer
+    onNavigateToBecomeCustomer: () -> Unit = {},
     onLogout: () -> Unit = {},
     showBackButton: Boolean = true,
     showTopBar: Boolean = true,
     bottomPadding: Dp = 0.dp,
-    currentUserRole: UserRole = UserRole.USER, // Thêm parameter để biết vai trò hiện tại
+    isOwnerMode: Boolean = false, // THÊM: Parameter để biết đang ở chế độ nào
+    viewModel: ProfileViewModel = hiltViewModel(),
 ) {
-    // Mock user data - trong thực tế sẽ lấy từ ViewModel
-    val user = remember {
-        User(
-            id = "user_1",
-            email = "nguyen.van.a@example.com",
-            fullName = "Nguyễn Văn A",
-            phoneNumber = "0123456789",
-            avatar = null,
-            role = currentUserRole, // Sử dụng role từ parameter
-            isVerified = true,
-            createdAt = LocalDateTime(2024, 1, 1, 0, 0),
-            updatedAt = LocalDateTime(2024, 1, 1, 0, 0),
-            favoriteCourtIds = listOf("1", "2", "3"),
-            playingLevel = PlayingLevel.INTERMEDIATE,
-            preferredSports = emptyList(),
-        )
-    }
-
+    val state by viewModel.state.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // Lấy user từ state - không dùng fallback nữa
+    val user = state.currentUser
+
+    // QUAN TRỌNG: Dùng isOwnerMode từ parameter thay vì từ state
+    // Vì state bị reset khi navigate
+    val effectiveRole = if (isOwnerMode) UserRole.OWNER else UserRole.USER
 
     if (showTopBar) {
         Scaffold(
@@ -88,22 +81,49 @@ fun ProfileScreen(
                 )
             },
         ) { paddingValues ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(Color(0xFFF5F5F5)),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                ProfileContent(
-                    user = user,
-                    onNavigateToEditProfile = onNavigateToEditProfile,
-                    onNavigateToChangePassword = onNavigateToChangePassword,
-                    onNavigateToBecomeOwner = onNavigateToBecomeOwner,
-                    onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
-                    onShowLogoutDialog = { showLogoutDialog = true },
-                )
+            when {
+                state.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                user != null -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .background(Color(0xFFF5F5F5)),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        ProfileContent(
+                            user = user,
+                            currentUserRole = effectiveRole, // Dùng effectiveRole từ state
+                            onNavigateToEditProfile = onNavigateToEditProfile,
+                            onNavigateToChangePassword = onNavigateToChangePassword,
+                            onNavigateToBecomeOwner = onNavigateToBecomeOwner,
+                            onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
+                            onShowLogoutDialog = { showLogoutDialog = true },
+                        )
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Không thể tải thông tin người dùng")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { viewModel.refresh() }) {
+                                Text("Thử lại")
+                            }
+                        }
+                    }
+                }
             }
         }
     } else {
@@ -120,24 +140,58 @@ fun ProfileScreen(
                     ),
                 ),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 48.dp, // Extra padding for status bar/notch
-                    bottom = bottomPadding + 16.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                ProfileContent(
-                    user = user,
-                    onNavigateToEditProfile = onNavigateToEditProfile,
-                    onNavigateToChangePassword = onNavigateToChangePassword,
-                    onNavigateToBecomeOwner = onNavigateToBecomeOwner,
-                    onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
-                    onShowLogoutDialog = { showLogoutDialog = true },
-                )
+            when {
+                state.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color.White)
+                    }
+                }
+                user != null -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 48.dp, // Extra padding for status bar/notch
+                            bottom = bottomPadding + 16.dp,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        ProfileContent(
+                            user = user,
+                            currentUserRole = effectiveRole, // Dùng effectiveRole từ state
+                            onNavigateToEditProfile = onNavigateToEditProfile,
+                            onNavigateToChangePassword = onNavigateToChangePassword,
+                            onNavigateToBecomeOwner = onNavigateToBecomeOwner,
+                            onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
+                            onShowLogoutDialog = { showLogoutDialog = true },
+                        )
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                "Không thể tải thông tin người dùng",
+                                color = Color.White,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { viewModel.refresh() }) {
+                                Text("Thử lại")
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -173,6 +227,7 @@ fun ProfileScreen(
 
 private fun LazyListScope.ProfileContent(
     user: User,
+    currentUserRole: UserRole = UserRole.USER, // Thêm parameter currentUserRole
     onNavigateToEditProfile: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToBecomeOwner: () -> Unit,
@@ -196,8 +251,17 @@ private fun LazyListScope.ProfileContent(
         )
     }
 
-    // Become Owner Button - Only show for USER role
-    if (user.role == UserRole.USER) {
+    // Become Owner Button - Show based on role and bank info
+    // Sử dụng currentUserRole thay vì user.role để kiểm tra role hiện tại
+    val hasBankInfo = user.bankName != null && user.bankAccountNumber != null && user.bankAccountName != null
+
+    // Logic hiển thị nút:
+    // 1. Nếu là USER và CHƯA CÓ bank info -> Hiển thị "Đăng ký trở thành chủ sân"
+    // 2. Nếu là USER và ĐÃ CÓ bank info -> Hiển thị "Chuyển sang chế độ chủ sân"
+    // 3. Nếu là OWNER -> Hiển thị "Chuyển sang chế độ khách đặt sân"
+
+    if (currentUserRole == UserRole.USER && !hasBankInfo) {
+        // USER chưa đăng ký làm chủ sân bao giờ
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -208,7 +272,7 @@ private fun LazyListScope.ProfileContent(
             ) {
                 MenuItemRow(
                     icon = Icons.Default.Business,
-                    title = "Trở thành chủ sân",
+                    title = "Đăng ký trở thành chủ sân",
                     subtitle = "Đăng ký để quản lý sân của bạn",
                     iconTint = Color(0xFF4CAF50),
                     titleColor = Color(0xFF4CAF50),
@@ -218,8 +282,31 @@ private fun LazyListScope.ProfileContent(
         }
     }
 
+    if (currentUserRole == UserRole.USER && hasBankInfo) {
+        // USER đã từng là chủ sân (có bank info)
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                ),
+            ) {
+                MenuItemRow(
+                    icon = Icons.Default.Business,
+                    title = "Chuyển sang chế độ chủ sân",
+                    subtitle = "Quản lý sân của bạn",
+                    iconTint = Color(0xFF4CAF50),
+                    titleColor = Color(0xFF4CAF50),
+                    onClick = onNavigateToBecomeOwner, // FIX: Đổi thành onNavigateToBecomeOwner
+                )
+            }
+        }
+    }
+
     // Become Customer Button - Only show for OWNER role
-    if (user.role == UserRole.OWNER) {
+    // Sử dụng currentUserRole thay vì user.role
+    if (currentUserRole == UserRole.OWNER) {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -230,8 +317,8 @@ private fun LazyListScope.ProfileContent(
             ) {
                 MenuItemRow(
                     icon = Icons.Default.Person,
-                    title = "Trở thành khách đặt sân",
-                    subtitle = "Chuyển sang chế độ đặt sân",
+                    title = "Chuyển sang chế độ khách đặt sân",
+                    subtitle = "Xem và đặt sân như khách hàng",
                     iconTint = Color(0xFF2196F3),
                     titleColor = Color(0xFF2196F3),
                     onClick = onNavigateToBecomeCustomer,

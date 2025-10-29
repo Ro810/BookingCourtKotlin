@@ -41,6 +41,7 @@ fun LoginScreen(
     var rememberMe by remember { mutableStateOf(false) }
 
     val loginState by viewModel.loginState.collectAsState()
+    val validationErrors by viewModel.validationErrors.collectAsState()
     val scope = rememberCoroutineScope()
 
     // Show loading dialog
@@ -109,7 +110,10 @@ fun LoginScreen(
             // Username field (supports text, email or phone)
             OutlinedTextField(
                 value = username,
-                onValueChange = { username = it },
+                onValueChange = {
+                    username = it
+                    viewModel.validateField("username", it)
+                },
                 label = {
                     Text(
                         text = "Tên đăng nhập",
@@ -136,8 +140,19 @@ fun LoginScreen(
                     unfocusedLabelColor = DarkBlue,
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
+                    errorIndicatorColor = MaterialTheme.colorScheme.error,
+                    errorLabelColor = MaterialTheme.colorScheme.error,
                 ),
                 enabled = loginState !is LoginViewModel.LoginState.Loading,
+                isError = validationErrors.usernameError != null,
+                supportingText = {
+                    validationErrors.usernameError?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -145,7 +160,10 @@ fun LoginScreen(
             // Password field
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    viewModel.validateField("password", it)
+                },
                 label = {
                     Text(
                         text = "Mật khẩu",
@@ -166,8 +184,19 @@ fun LoginScreen(
                     unfocusedLabelColor = DarkBlue,
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
+                    errorIndicatorColor = MaterialTheme.colorScheme.error,
+                    errorLabelColor = MaterialTheme.colorScheme.error,
                 ),
                 enabled = loginState !is LoginViewModel.LoginState.Loading,
+                isError = validationErrors.passwordError != null,
+                supportingText = {
+                    validationErrors.passwordError?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -208,10 +237,8 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    if (username.isNotBlank() && password.isNotBlank()) {
-                        scope.launch {
-                            viewModel.login(username, password, rememberMe)
-                        }
+                    scope.launch {
+                        viewModel.login(username, password, rememberMe)
                     }
                 },
                 modifier = Modifier

@@ -1,5 +1,6 @@
 package com.example.bookingcourt.data.local.datastore
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -29,7 +30,13 @@ class UserPreferencesDataStore @Inject constructor(
     private val languageKey = stringPreferencesKey(Constants.PrefsKeys.LANGUAGE)
 
     val accessToken: Flow<String?> = dataStore.data.map { preferences ->
-        preferences[accessTokenKey]
+        val token = preferences[accessTokenKey]
+        Log.d("UserPreferences", "========== GETTING TOKEN ==========")
+        Log.d("UserPreferences", "Token exists: ${!token.isNullOrEmpty()}")
+        Log.d("UserPreferences", "Token length: ${token?.length ?: 0}")
+        Log.d("UserPreferences", "Token preview: ${token?.take(50)}...")
+        Log.d("UserPreferences", "======================================")
+        token
     }
 
     val refreshToken: Flow<String?> = dataStore.data.map { preferences ->
@@ -57,11 +64,19 @@ class UserPreferencesDataStore @Inject constructor(
     }
 
     suspend fun saveAuthTokens(accessToken: String, refreshToken: String) {
+        Log.d("UserPreferences", "========== SAVING TOKEN ==========")
+        Log.d("UserPreferences", "Access Token received: ${accessToken.take(50)}...")
+        Log.d("UserPreferences", "Access Token length: ${accessToken.length}")
+        Log.d("UserPreferences", "Refresh Token length: ${refreshToken.length}")
+
         dataStore.edit { preferences ->
             preferences[accessTokenKey] = accessToken
             preferences[refreshTokenKey] = refreshToken
             preferences[isLoggedInKey] = true
         }
+
+        Log.d("UserPreferences", "✓ Tokens saved successfully")
+        Log.d("UserPreferences", "======================================")
     }
 
     suspend fun saveUserId(userId: String) {

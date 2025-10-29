@@ -22,12 +22,21 @@ class SplashViewModel @Inject constructor(
 
     fun checkAuthStatus() {
         viewModelScope.launch {
+            // Kiểm tra cả isLoggedIn và accessToken
             val isLoggedIn = userPreferencesDataStore.isLoggedIn.first()
+            val accessToken = userPreferencesDataStore.accessToken.first()
+
             delay(500)
 
-            if (isLoggedIn) {
+            // Chỉ cho vào Home nếu CẢ isLoggedIn = true VÀ có token hợp lệ
+            if (isLoggedIn && !accessToken.isNullOrEmpty()) {
                 _navigationEvent.emit(NavigationEvent.NavigateToHome)
             } else {
+                // Nếu không có token hoặc chưa đăng nhập → Clear data và yêu cầu login
+                if (isLoggedIn && accessToken.isNullOrEmpty()) {
+                    // Trường hợp token bị mất nhưng flag còn → Clear hết
+                    userPreferencesDataStore.clearAuthData()
+                }
                 _navigationEvent.emit(NavigationEvent.NavigateToLogin)
             }
         }

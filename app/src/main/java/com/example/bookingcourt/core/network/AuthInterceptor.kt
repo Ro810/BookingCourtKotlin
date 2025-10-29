@@ -47,11 +47,15 @@ class AuthInterceptor @Inject constructor(
             originalRequest
         } else {
             // Endpoint cần authentication - thêm token nếu có
+            // Using .first() here is safe in runBlocking context
             val token = runBlocking {
                 userPreferencesDataStore.accessToken.first()
             }
 
+            Log.d(TAG, "========== TOKEN CHECK ==========")
             Log.d(TAG, "Token exists: ${!token.isNullOrEmpty()}")
+            Log.d(TAG, "Token length: ${token?.length ?: 0}")
+            Log.d(TAG, "Token preview: ${token?.take(20)}...")
 
             if (!token.isNullOrEmpty()) {
                 Log.d(TAG, "✓ Adding Bearer token to request")
@@ -59,7 +63,7 @@ class AuthInterceptor @Inject constructor(
                     .header("Authorization", "Bearer $token")
                     .build()
             } else {
-                Log.d(TAG, "⚠ No token available")
+                Log.d(TAG, "⚠ No token available - Request will fail with 401")
                 originalRequest
             }
         }

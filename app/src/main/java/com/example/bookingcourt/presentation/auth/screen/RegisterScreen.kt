@@ -43,6 +43,7 @@ fun RegisterScreen(
     var confirmPassword by remember { mutableStateOf("") }
 
     val registerState by viewModel.registerState.collectAsState()
+    val validationErrors by viewModel.validationErrors.collectAsState()
     val scope = rememberCoroutineScope()
 
     var showLoadingDialog by remember { mutableStateOf(false) }
@@ -115,7 +116,10 @@ fun RegisterScreen(
         // Full name field
         OutlinedTextField(
             value = fullName,
-            onValueChange = { fullName = it },
+            onValueChange = {
+                fullName = it
+                viewModel.validateField("fullName", it)
+            },
             label = {
                 Text(
                     text = "Họ và tên",
@@ -135,8 +139,19 @@ fun RegisterScreen(
                 unfocusedLabelColor = DarkBlue,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error,
             ),
             enabled = registerState !is RegisterViewModel.RegisterState.Loading,
+            isError = validationErrors.fullNameError != null,
+            supportingText = {
+                validationErrors.fullNameError?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -144,7 +159,10 @@ fun RegisterScreen(
         // Email field
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                viewModel.validateField("email", it)
+            },
             label = {
                 Text(
                     text = "Email",
@@ -165,8 +183,19 @@ fun RegisterScreen(
                 unfocusedLabelColor = DarkBlue,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error,
             ),
             enabled = registerState !is RegisterViewModel.RegisterState.Loading,
+            isError = validationErrors.emailError != null,
+            supportingText = {
+                validationErrors.emailError?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -177,7 +206,10 @@ fun RegisterScreen(
             onValueChange = { input ->
                 val digitsOnly = input.filter { it.isDigit() }
                 // Allow up to 15 digits to match backend constraint (8-15)
-                if (digitsOnly.length <= 15) phoneNumber = digitsOnly
+                if (digitsOnly.length <= 15) {
+                    phoneNumber = digitsOnly
+                    viewModel.validateField("phone", digitsOnly)
+                }
             },
             label = {
                 Text(
@@ -200,10 +232,20 @@ fun RegisterScreen(
                 unfocusedLabelColor = DarkBlue,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error,
             ),
             enabled = registerState !is RegisterViewModel.RegisterState.Loading,
+            isError = validationErrors.phoneError != null,
             supportingText = {
-                Text("Chỉ nhập chữ số, dài 8-15 số")
+                if (validationErrors.phoneError != null) {
+                    Text(
+                        text = validationErrors.phoneError!!,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    Text("Chỉ nhập chữ số, dài 8-15 số")
+                }
             }
         )
 
@@ -212,7 +254,14 @@ fun RegisterScreen(
         // Password field
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                viewModel.validateField("password", it)
+                // Revalidate confirm password if it has value
+                if (confirmPassword.isNotEmpty()) {
+                    viewModel.validateField("confirmPassword", confirmPassword, it)
+                }
+            },
             label = {
                 Text(
                     text = "Mật khẩu",
@@ -233,8 +282,19 @@ fun RegisterScreen(
                 unfocusedLabelColor = DarkBlue,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error,
             ),
             enabled = registerState !is RegisterViewModel.RegisterState.Loading,
+            isError = validationErrors.passwordError != null,
+            supportingText = {
+                validationErrors.passwordError?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -242,7 +302,10 @@ fun RegisterScreen(
         // Confirm password field
         OutlinedTextField(
             value = confirmPassword,
-            onValueChange = { confirmPassword = it },
+            onValueChange = {
+                confirmPassword = it
+                viewModel.validateField("confirmPassword", it, password)
+            },
             label = {
                 Text(
                     text = "Xác nhận mật khẩu",
@@ -263,19 +326,28 @@ fun RegisterScreen(
                 unfocusedLabelColor = DarkBlue,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error,
             ),
             enabled = registerState !is RegisterViewModel.RegisterState.Loading,
+            isError = validationErrors.confirmPasswordError != null,
+            supportingText = {
+                validationErrors.confirmPasswordError?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = {
-                if (password == confirmPassword) {
-                    scope.launch {
-                        // Submit digits-only phone number; ViewModel will validate 8-15 digits
-                        viewModel.register(fullName, email, phoneNumber, password)
-                    }
+                scope.launch {
+                    // Submit digits-only phone number; ViewModel will validate 8-15 digits
+                    viewModel.register(fullName, email, phoneNumber, password, confirmPassword)
                 }
             },
             modifier = Modifier
@@ -288,8 +360,7 @@ fun RegisterScreen(
             enabled = registerState !is RegisterViewModel.RegisterState.Loading &&
                 fullName.isNotBlank() && email.isNotBlank() &&
                 phoneNumber.isNotBlank() &&
-                password.isNotBlank() && confirmPassword.isNotBlank() &&
-                password == confirmPassword,
+                password.isNotBlank() && confirmPassword.isNotBlank(),
         ) {
             if (registerState is RegisterViewModel.RegisterState.Loading) {
                 CircularProgressIndicator(

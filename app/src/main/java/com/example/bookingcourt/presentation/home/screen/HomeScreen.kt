@@ -23,13 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.CourtType
-import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.presentation.theme.*
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
-import kotlinx.datetime.LocalTime
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +38,9 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
+
+    // Lấy tên user từ state, nếu null thì dùng tên mặc định
+    val userName = state.user?.fullName ?: "Người dùng"
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -107,6 +105,7 @@ fun HomeScreen(
                 // Header Section
                 item {
                     HeaderSection(
+                        userName = userName,
                         searchQuery = searchQuery,
                         onSearchQueryChange = { searchQuery = it },
                         onSearchClick = onSearchClick
@@ -215,6 +214,7 @@ fun HomeScreen(
 
 @Composable
 fun HeaderSection(
+    userName: String,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onSearchClick: () -> Unit
@@ -243,14 +243,8 @@ fun HeaderSection(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column {
-                    val currentDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                     Text(
-                        text = currentDate,
-                        color = Color.Black,
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        text = "Xin chào!",
+                        text = "Xin chào, $userName",
                         color = Color.Black,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold

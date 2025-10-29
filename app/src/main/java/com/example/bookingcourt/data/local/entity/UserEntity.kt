@@ -31,4 +31,10 @@ data class UserEntity(
     val playingLevel: String?,
     @ColumnInfo(name = "preferred_sports")
     val preferredSports: List<String>,
+    @ColumnInfo(name = "bank_name")
+    val bankName: String? = null,
+    @ColumnInfo(name = "bank_account_number")
+    val bankAccountNumber: String? = null,
+    @ColumnInfo(name = "bank_account_name")
+    val bankAccountName: String? = null,
 )

@@ -3,7 +3,7 @@ package com.example.bookingcourt.data.remote.dto
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.UserRole
 import com.google.gson.annotations.SerializedName
-import kotlinx.datetime.Instant
+import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -16,53 +16,41 @@ data class LoginResponse(
     val data: LoginData? = null,
 ) {
     fun toUser(): User? {
-        return data?.user?.let { userResponse ->
+        return data?.let { loginData ->
             User(
-                id = userResponse.id,
-                email = userResponse.email,
-                fullName = userResponse.fullName,
-                phoneNumber = userResponse.phone,
-                avatar = userResponse.avatar,
-                role = when (userResponse.role.uppercase()) {
-                    "ROLE_ADMIN", "ADMIN" -> UserRole.ADMIN
-                    "ROLE_OWNER", "OWNER", "COURT_OWNER" -> UserRole.OWNER
-                    "ROLE_USER", "USER", "CUSTOMER" -> UserRole.USER
-                    else -> UserRole.USER  // Mặc định là USER
-                },
-                isVerified = userResponse.isActive,
-                createdAt = Instant.fromEpochMilliseconds(userResponse.createdAt)
-                    .toLocalDateTime(TimeZone.currentSystemDefault()),
-                updatedAt = Instant.fromEpochMilliseconds(userResponse.createdAt)
-                    .toLocalDateTime(TimeZone.currentSystemDefault()),
+                id = loginData.id.toString(),
+                email = "",  // Backend không trả email trong login response
+                fullName = loginData.phone,  // Sử dụng phone làm tên hiển thị tạm thời
+                phoneNumber = loginData.phone,
+                avatar = null,
+                role = parseRole(loginData.roles),
+                isVerified = true,
+                createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+                updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+                bankName = null,
+                bankAccountNumber = null,
+                bankAccountName = null,
             )
+        }
+    }
+
+    private fun parseRole(roles: List<String>): UserRole {
+        val role = roles.firstOrNull()?.uppercase() ?: "ROLE_USER"
+        return when {
+            role.contains("ADMIN") -> UserRole.ADMIN
+            role.contains("OWNER") -> UserRole.OWNER
+            else -> UserRole.USER
         }
     }
 }
 
 data class LoginData(
-    @SerializedName("user")
-    val user: UserResponse,
-    @SerializedName("token")
-    val token: String,
-)
-
-data class UserResponse(
+    @SerializedName("jwtToken")
+    val token: String,  // Map jwtToken to token for compatibility
     @SerializedName("id")
-    val id: String,
-    @SerializedName("username")
-    val username: String,
-    @SerializedName("email")
-    val email: String,
-    @SerializedName("fullName")
-    val fullName: String,
+    val id: Long,
     @SerializedName("phone")
     val phone: String,
-    @SerializedName("avatar")
-    val avatar: String? = null,
-    @SerializedName("role")
-    val role: String,
-    @SerializedName("createdAt")
-    val createdAt: Long,
-    @SerializedName("isActive")
-    val isActive: Boolean,
+    @SerializedName("roles")
+    val roles: List<String>,
 )

@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -27,9 +29,23 @@ import com.example.bookingcourt.presentation.filter.FilterScreen // Của User (
 import com.example.bookingcourt.presentation.payment.screen.PaymentScreen
 import com.example.bookingcourt.presentation.profile.screen.EditProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
+import com.example.bookingcourt.presentation.owner.screen.BecomeOwnerScreen
+import com.example.bookingcourt.presentation.owner.screen.CreateVenueScreen
 import com.example.bookingcourt.presentation.settings.screen.SettingsScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
+import com.example.bookingcourt.presentation.profile.viewmodel.ProfileViewModel
+import com.example.bookingcourt.presentation.owner.viewmodel.BecomeOwnerViewModel
+import com.example.bookingcourt.domain.model.UserRole
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun NavigationGraph(
@@ -158,14 +174,18 @@ fun NavigationGraph(
                     onNavigateToEditProfile = {
                         navController.navigate(Screen.EditProfile.route)
                     },
+                    onNavigateToCreateVenue = {
+                        navController.navigate(Screen.CreateVenue.route)
+                    },
                     onNavigateToBecomeCustomer = {
                         // Chuyển về HomeScreen (chế độ khách đặt sân)
                         navController.navigate(Screen.Home.route) {
-                            popUpTo(Route.MAIN) {
-                                saveState = true
+                            // Clear back stack up to OwnerHome and remove it
+                            popUpTo(Screen.OwnerHome.route) {
+                                inclusive = true
                             }
+                            // Prevent multiple copies of Home screen
                             launchSingleTop = true
-                            restoreState = true
                         }
                     },
                     onLogout = {
@@ -197,6 +217,19 @@ fun NavigationGraph(
                             Screen.BookingDetail.createRoute(bookingId),
                         )
                     },
+                )
+            }
+
+            // 4.2. CreateVenue (OWNER - Màn hình tạo sân mới)
+            composable(route = Screen.CreateVenue.route) {
+                CreateVenueScreen(
+                    onNavigateBack = { navController.navigateUp() },
+                    onVenueCreated = { venueId ->
+                        // Navigate back to OwnerHome after successful creation
+                        navController.navigate(Screen.OwnerHome.route) {
+                            popUpTo(Screen.CreateVenue.route) { inclusive = true }
+                        }
+                    }
                 )
             }
 
@@ -324,6 +357,42 @@ fun NavigationGraph(
 
             // ...
             composable(route = Screen.Profile.route) {
+                val profileViewModel: ProfileViewModel = hiltViewModel()
+                val profileState by profileViewModel.state.collectAsState()
+
+                var showMessage by remember { mutableStateOf<String?>(null) }
+
+                // Lắng nghe events từ ViewModel
+                LaunchedEffect(Unit) {
+                    profileViewModel.event.collect { event ->
+                        when (event) {
+                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.NavigateToLogin -> {
+                                // Navigate to login and clear all back stack
+                                navController.navigate(Route.AUTH) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.NavigateToHomeScreen -> {
+                                // Chuyển sang màn hình HomeScreen (khách đặt sân)
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.Profile.route) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.NavigateToOwnerHomeScreen -> {
+                                // Chuyển sang màn hình OwnerHomeScreen (quản lý sân)
+                                navController.navigate(Screen.OwnerHome.route) {
+                                    popUpTo(Screen.Profile.route) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.ShowMessage -> {
+                                showMessage = event.message
+                            }
+                        }
+                    }
+                }
+
                 ProfileScreen(
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToEditProfile = {
@@ -333,23 +402,97 @@ fun NavigationGraph(
                         // TODO: Navigate to change password screen when implemented
                     },
                     onNavigateToBecomeOwner = {
-                        navController.navigate(Screen.OwnerHome.route) {
-                            // Clear back stack to prevent going back to user profile
-                            popUpTo(Route.MAIN) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
+                        // Kiểm tra xem user đã có bank info chưa
+                        val user = profileState.currentUser
+                        val hasBankInfo = user?.bankName != null &&
+                                         user?.bankAccountNumber != null &&
+                                         user?.bankAccountName != null
+
+                        if (hasBankInfo) {
+                            // Đã có bank info -> chỉ cần switch mode
+                            profileViewModel.switchToOwnerMode()
+                        } else {
+                            // Chưa có bank info -> navigate đến form đăng ký
+                            navController.navigate(Screen.BecomeOwner.route)
                         }
+                    },
+                    onNavigateToBecomeCustomer = {
+                        // Chuyển từ OWNER về USER mode
+                        profileViewModel.switchToUserMode()
                     },
                     onLogout = {
                         navController.navigate(Route.AUTH) {
                             popUpTo(Route.MAIN) { inclusive = true }
                         }
                     },
+                    viewModel = profileViewModel,
                 )
+
+                // Hiển thị message nếu có
+                showMessage?.let { message ->
+                    AlertDialog(
+                        onDismissRequest = { showMessage = null },
+                        title = { Text("Thông báo") },
+                        text = { Text(message) },
+                        confirmButton = {
+                            TextButton(onClick = { showMessage = null }) {
+                                Text("OK")
+                            }
+                        }
+                    )
+                }
             }
-// ...
+            // Become Owner Screen - Form to fill bank information
+            composable(route = Screen.BecomeOwner.route) {
+                // Get BecomeOwnerViewModel at composable level
+                val becomeOwnerViewModel: BecomeOwnerViewModel = hiltViewModel()
+                val state by becomeOwnerViewModel.state.collectAsState()
+
+                // Check if we're still determining bank info status
+                when (state.hasBankInfo) {
+                    null -> {
+                        // Still checking, show loading
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    true -> {
+                        // User already has bank info, directly request owner role
+                        LaunchedEffect(Unit) {
+                            becomeOwnerViewModel.requestOwnerRoleDirectly()
+                        }
+
+                        // Show loading while requesting
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                CircularProgressIndicator()
+                                Text("Đang yêu cầu nâng cấp lên chủ sân...")
+                            }
+                        }
+                    }
+                    false -> {
+                        // User doesn't have bank info, show the form
+                        BecomeOwnerScreen(
+                            onNavigateBack = { navController.navigateUp() },
+                            onNavigateToLogin = {
+                                // Navigate to login screen and clear all back stack
+                                navController.navigate(Route.AUTH) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                }
+            }
 
             composable(route = Screen.EditProfile.route) {
                 EditProfileScreen(
