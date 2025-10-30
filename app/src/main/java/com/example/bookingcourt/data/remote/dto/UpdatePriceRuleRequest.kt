@@ -3,16 +3,10 @@ package com.example.bookingcourt.data.remote.dto
 import com.google.gson.annotations.SerializedName
 
 /**
- * DTO representing a price rule returned by the backend.
- * Fields chosen to be minimal and match likely API shape; can be extended if backend differs.
+ * Request DTO for updating a price rule (PUT /api/pricerules/{id})
+ * Fields are minimal and can be extended to match backend contract.
  */
-data class PriceRuleDto(
-    @SerializedName("id")
-    val id: Long,
-
-    @SerializedName("venueId")
-    val venueId: Long,
-
+data class UpdatePriceRuleRequest(
     @SerializedName("name")
     val name: String,
 
@@ -28,3 +22,4 @@ data class PriceRuleDto(
     @SerializedName("isActive")
     val isActive: Boolean = true
 )
+

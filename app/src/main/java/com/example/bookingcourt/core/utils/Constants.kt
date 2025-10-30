@@ -5,9 +5,10 @@ object Constants {
     const val BASE_URL = "https://0p1107w7-8080.asse.devtunnels.ms/api/"
 
 
-    const val CONNECT_TIMEOUT = 30L
-    const val READ_TIMEOUT = 30L
-    const val WRITE_TIMEOUT = 30L
+    // Increased timeouts from 30s to 60s to be more tolerant with slow dev tunnels / network
+    const val CONNECT_TIMEOUT = 60L
+    const val READ_TIMEOUT = 60L
+    const val WRITE_TIMEOUT = 60L
 
     const val DATABASE_NAME = "booking_court_database"
     const val DATASTORE_NAME = "booking_court_preferences"

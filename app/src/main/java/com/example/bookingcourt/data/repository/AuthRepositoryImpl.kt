@@ -21,6 +21,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.net.SocketTimeoutException
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
@@ -193,6 +194,10 @@ class AuthRepositoryImpl @Inject constructor(
                 Log.d(TAG, "======================================")
                 emit(Resource.Error(errorMessage))
             }
+        } catch (e: SocketTimeoutException) {
+            Log.e(TAG, "✗ Login timeout (SocketTimeoutException): ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error("Kết nối tới máy chủ quá chậm (timeout). Vui lòng thử lại."))
         } catch (e: Exception) {
             Log.e(TAG, "✗ Login exception: ${e.message}", e)
             Log.d(TAG, "======================================")
@@ -281,13 +286,29 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun forgotPassword(email: String): Flow<Resource<Unit>> = flow {
         try {
             emit(Resource.Loading())
+            Log.d(TAG, "ForgotPassword - sending request for email: $email")
             val response = authApi.forgotPassword(ForgotPasswordRequest(email))
+            Log.d(TAG, "ForgotPassword - response code: ${response.code()}")
+            Log.d(TAG, "ForgotPassword - response successful: ${response.isSuccessful}")
             if (response.isSuccessful) {
+                // Optionally log response body if available
+                try {
+                    val body = response.body()
+                    Log.d(TAG, "ForgotPassword - response body: $body")
+                } catch (e: Exception) {
+                    Log.w(TAG, "ForgotPassword - couldn't read response body: ${e.message}")
+                }
                 emit(Resource.Success(Unit))
             } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "ForgotPassword - failed with code ${response.code()}, body: $errorBody")
                 emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
             }
+        } catch (e: SocketTimeoutException) {
+            Log.e(TAG, "ForgotPassword timeout: ${e.message}", e)
+            emit(Resource.Error("Kết nối tới máy chủ quá chậm (timeout). Vui lòng thử lại."))
         } catch (e: Exception) {
+            Log.e(TAG, "ForgotPassword exception: ${e.message}", e)
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
         }
     }

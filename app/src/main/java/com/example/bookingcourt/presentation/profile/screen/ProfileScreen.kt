@@ -34,7 +34,6 @@ import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.UserRole
 import com.example.bookingcourt.presentation.profile.viewmodel.ProfileViewModel
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
-import kotlinx.datetime.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,9 +56,10 @@ fun ProfileScreen(
     // Lấy user từ state - không dùng fallback nữa
     val user = state.currentUser
 
-    // QUAN TRỌNG: Dùng isOwnerMode từ parameter thay vì từ state
-    // Vì state bị reset khi navigate
-    val effectiveRole = if (isOwnerMode) UserRole.OWNER else UserRole.USER
+    // QUAN TRỌNG: Dùng isOwnerMode từ parameter để xác định role hiện tại
+    // Nếu isOwnerMode = true -> đang ở chế độ OWNER
+    // Nếu isOwnerMode = false -> đang ở chế độ USER
+    val currentUserRole = if (isOwnerMode) UserRole.OWNER else UserRole.USER
 
     if (showTopBar) {
         Scaffold(
@@ -101,7 +101,7 @@ fun ProfileScreen(
                     ) {
                         ProfileContent(
                             user = user,
-                            currentUserRole = effectiveRole, // Dùng effectiveRole từ state
+                            currentUserRole = currentUserRole, // Dùng effectiveRole từ state
                             onNavigateToEditProfile = onNavigateToEditProfile,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
@@ -162,7 +162,7 @@ fun ProfileScreen(
                     ) {
                         ProfileContent(
                             user = user,
-                            currentUserRole = effectiveRole, // Dùng effectiveRole từ state
+                            currentUserRole = currentUserRole, // Dùng effectiveRole từ state
                             onNavigateToEditProfile = onNavigateToEditProfile,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
@@ -251,17 +251,11 @@ private fun LazyListScope.ProfileContent(
         )
     }
 
-    // Become Owner Button - Show based on role and bank info
-    // Sử dụng currentUserRole thay vì user.role để kiểm tra role hiện tại
+    // Logic hiển thị nút dựa trên currentUserRole và bank info
     val hasBankInfo = user.bankName != null && user.bankAccountNumber != null && user.bankAccountName != null
 
-    // Logic hiển thị nút:
-    // 1. Nếu là USER và CHƯA CÓ bank info -> Hiển thị "Đăng ký trở thành chủ sân"
-    // 2. Nếu là USER và ĐÃ CÓ bank info -> Hiển thị "Chuyển sang chế độ chủ sân"
-    // 3. Nếu là OWNER -> Hiển thị "Chuyển sang chế độ khách đặt sân"
-
+    // 1. Nếu là USER và CHƯA CÓ bank info -> "Đăng ký trở thành chủ sân"
     if (currentUserRole == UserRole.USER && !hasBankInfo) {
-        // USER chưa đăng ký làm chủ sân bao giờ
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -282,8 +276,8 @@ private fun LazyListScope.ProfileContent(
         }
     }
 
+    // 2. Nếu là USER và ĐÃ CÓ bank info -> "Chuyển sang chế độ chủ sân"
     if (currentUserRole == UserRole.USER && hasBankInfo) {
-        // USER đã từng là chủ sân (có bank info)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -298,14 +292,13 @@ private fun LazyListScope.ProfileContent(
                     subtitle = "Quản lý sân của bạn",
                     iconTint = Color(0xFF4CAF50),
                     titleColor = Color(0xFF4CAF50),
-                    onClick = onNavigateToBecomeOwner, // FIX: Đổi thành onNavigateToBecomeOwner
+                    onClick = onNavigateToBecomeOwner,
                 )
             }
         }
     }
 
-    // Become Customer Button - Only show for OWNER role
-    // Sử dụng currentUserRole thay vì user.role
+    // 3. Nếu là OWNER -> "Chuyển sang chế độ khách đặt sân"
     if (currentUserRole == UserRole.OWNER) {
         item {
             Card(
@@ -317,7 +310,7 @@ private fun LazyListScope.ProfileContent(
             ) {
                 MenuItemRow(
                     icon = Icons.Default.Person,
-                    title = "Chuyển sang chế độ khách đặt sân",
+                    title = "Trở thành khách đặt sân",
                     subtitle = "Xem và đặt sân như khách hàng",
                     iconTint = Color(0xFF2196F3),
                     titleColor = Color(0xFF2196F3),

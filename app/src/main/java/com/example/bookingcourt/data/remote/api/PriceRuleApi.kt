@@ -1,8 +1,6 @@
 package com.example.bookingcourt.data.remote.api
 
-import com.example.bookingcourt.data.remote.dto.ApiResponse
-import com.example.bookingcourt.data.remote.dto.PriceRuleDto
-import com.example.bookingcourt.data.remote.dto.UpdatePriceRuleRequest
+import com.example.bookingcourt.data.remote.dto.*
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -12,7 +10,7 @@ interface PriceRuleApi {
      * Response: ApiResponse<List<PriceRuleDto>>
      */
     @GET("pricerules")
-    suspend fun getAllPriceRules(): Response<ApiResponse<List<PriceRuleDto>>>>
+    suspend fun getAllPriceRules(): Response<ApiResponse<List<PriceRuleDto>>>
 
     /**
      * GET /api/pricerules/venue/{venueId}
@@ -42,4 +40,3 @@ interface PriceRuleApi {
         @Path("id") priceRuleId: Long
     ): Response<PriceRuleDto>
 }
-
