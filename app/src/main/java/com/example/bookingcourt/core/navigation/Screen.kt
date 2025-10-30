@@ -7,6 +7,9 @@ sealed class Screen(val route: String) {
     data object Login : Screen("login")
     data object Register : Screen("register")
     data object ForgotPassword : Screen("forgot_password")
+    data object ResetPassword : Screen("reset_password/{email}") {
+        fun createRoute(email: String) = "reset_password/$email"
+    }
 
     // Main Screens
     data object Home : Screen("home")

@@ -14,7 +14,7 @@ import javax.inject.Inject
 sealed class ForgotPasswordUiState {
     object Idle : ForgotPasswordUiState()
     object Loading : ForgotPasswordUiState()
-    object Success : ForgotPasswordUiState()
+    data class Success(val message: String) : ForgotPasswordUiState()
     data class Error(val message: String) : ForgotPasswordUiState()
 }
 
@@ -33,7 +33,7 @@ class ForgotPasswordViewModel @Inject constructor(
                 authRepository.forgotPassword(email).collect { res ->
                     when (res) {
                         is Resource.Loading -> _uiState.value = ForgotPasswordUiState.Loading
-                        is Resource.Success -> _uiState.value = ForgotPasswordUiState.Success
+                        is Resource.Success -> _uiState.value = ForgotPasswordUiState.Success(res.data ?: "Email đặt lại mật khẩu đã được gửi")
                         is Resource.Error -> _uiState.value = ForgotPasswordUiState.Error(res.message ?: "Đã xảy ra lỗi")
                     }
                 }

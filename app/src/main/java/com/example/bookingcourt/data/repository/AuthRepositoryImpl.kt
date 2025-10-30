@@ -283,7 +283,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun forgotPassword(email: String): Flow<Resource<Unit>> = flow {
+    override suspend fun forgotPassword(email: String): Flow<Resource<String>> = flow {
         try {
             emit(Resource.Loading())
             Log.d(TAG, "ForgotPassword - sending request for email: $email")
@@ -291,24 +291,61 @@ class AuthRepositoryImpl @Inject constructor(
             Log.d(TAG, "ForgotPassword - response code: ${response.code()}")
             Log.d(TAG, "ForgotPassword - response successful: ${response.isSuccessful}")
             if (response.isSuccessful) {
-                // Optionally log response body if available
-                try {
-                    val body = response.body()
-                    Log.d(TAG, "ForgotPassword - response body: $body")
-                } catch (e: Exception) {
-                    Log.w(TAG, "ForgotPassword - couldn't read response body: ${e.message}")
-                }
-                emit(Resource.Success(Unit))
+                val body = response.body()
+                Log.d(TAG, "ForgotPassword - response body: $body")
+
+                // Lấy message từ data hoặc message field
+                val message = body?.data ?: body?.message ?: "Email đặt lại mật khẩu đã được gửi"
+                Log.d(TAG, "ForgotPassword - message to display: $message")
+
+                emit(Resource.Success(message))
             } else {
                 val errorBody = response.errorBody()?.string()
                 Log.e(TAG, "ForgotPassword - failed with code ${response.code()}, body: $errorBody")
-                emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
+                val errorMessage = parseErrorResponse(errorBody)
+                emit(Resource.Error(errorMessage))
             }
         } catch (e: SocketTimeoutException) {
             Log.e(TAG, "ForgotPassword timeout: ${e.message}", e)
             emit(Resource.Error("Kết nối tới máy chủ quá chậm (timeout). Vui lòng thử lại."))
         } catch (e: Exception) {
             Log.e(TAG, "ForgotPassword exception: ${e.message}", e)
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
+    override suspend fun resetPassword(token: String, newPassword: String): Flow<Resource<String>> = flow {
+        try {
+            emit(Resource.Loading())
+            Log.d(TAG, "ResetPassword - sending request with token")
+            val response = authApi.resetPassword(
+                com.example.bookingcourt.data.remote.dto.ResetPasswordRequest(
+                    token = token,
+                    newPassword = newPassword
+                )
+            )
+            Log.d(TAG, "ResetPassword - response code: ${response.code()}")
+            Log.d(TAG, "ResetPassword - response successful: ${response.isSuccessful}")
+            if (response.isSuccessful) {
+                val body = response.body()
+                Log.d(TAG, "ResetPassword - response body: $body")
+
+                // Lấy message từ data hoặc message field
+                val message = body?.data ?: body?.message ?: "Mật khẩu đã được đặt lại thành công"
+                Log.d(TAG, "ResetPassword - message to display: $message")
+
+                emit(Resource.Success(message))
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "ResetPassword - failed with code ${response.code()}, body: $errorBody")
+                val errorMessage = parseErrorResponse(errorBody)
+                emit(Resource.Error(errorMessage))
+            }
+        } catch (e: SocketTimeoutException) {
+            Log.e(TAG, "ResetPassword timeout: ${e.message}", e)
+            emit(Resource.Error("Kết nối tới máy chủ quá chậm (timeout). Vui lòng thử lại."))
+        } catch (e: Exception) {
+            Log.e(TAG, "ResetPassword exception: ${e.message}", e)
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
         }
     }

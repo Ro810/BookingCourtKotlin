@@ -16,7 +16,7 @@ object Constants {
     const val PAGE_SIZE = 20
     const val PREFETCH_DISTANCE = 3
 
-    const val MIN_PASSWORD_LENGTH = 8
+    const val MIN_PASSWORD_LENGTH = 6
     const val MAX_PASSWORD_LENGTH = 32
 
     const val SESSION_TIMEOUT_MINUTES = 30

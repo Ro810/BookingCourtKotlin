@@ -15,6 +15,7 @@ import androidx.navigation.navigation
 import com.example.bookingcourt.presentation.auth.screen.ForgotPasswordScreen
 import com.example.bookingcourt.presentation.auth.screen.LoginScreen
 import com.example.bookingcourt.presentation.auth.screen.RegisterScreen
+import com.example.bookingcourt.presentation.auth.screen.ResetPasswordScreen
 import com.example.bookingcourt.presentation.auth.screen.SplashScreen
 import com.example.bookingcourt.presentation.booking.screen.BookingDetailScreen
 import com.example.bookingcourt.presentation.booking.screen.BookingHistoryScreen
@@ -107,6 +108,29 @@ fun NavigationGraph(
             composable(route = Screen.ForgotPassword.route) {
                 ForgotPasswordScreen(
                     onNavigateBack = { navController.navigateUp() },
+                    onNavigateToResetPassword = { email ->
+                        navController.navigate(Screen.ResetPassword.createRoute(email))
+                    },
+                )
+            }
+
+            composable(
+                route = Screen.ResetPassword.route,
+                arguments = listOf(
+                    navArgument("email") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email") ?: ""
+                ResetPasswordScreen(
+                    email = email,
+                    onNavigateBack = { navController.navigateUp() },
+                    onResetSuccess = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Route.AUTH) { inclusive = false }
+                        }
+                    },
                 )
             }
         }

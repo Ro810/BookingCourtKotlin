@@ -58,6 +58,10 @@ data class ForgotPasswordRequestDto(
 data class BaseResponseDto(
     @SerializedName("success")
     val success: Boolean,
+    @SerializedName("data")
+    val data: String? = null,
     @SerializedName("message")
-    val message: String,
+    val message: String? = null,
+    @SerializedName("timestamp")
+    val timestamp: String? = null,
 )

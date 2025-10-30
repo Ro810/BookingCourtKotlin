@@ -26,6 +26,7 @@ import com.example.bookingcourt.presentation.theme.DarkBlue
 @Composable
 fun ForgotPasswordScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToResetPassword: (String) -> Unit,
     viewModel: ForgotPasswordViewModel = hiltViewModel(),
 ) {
     var email by remember { mutableStateOf("") }
@@ -40,14 +41,15 @@ fun ForgotPasswordScreen(
         ),
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(brush = blueGradient)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(brush = blueGradient)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
         Image(
             painter = painterResource(id = R.drawable.logo1),
             contentDescription = "Hình ảnh quả cầu lông",
@@ -66,8 +68,9 @@ fun ForgotPasswordScreen(
             modifier = Modifier.padding(bottom = 16.dp),
         )
 
-        when (uiState) {
-            is ForgotPasswordUiState.Idle, is ForgotPasswordUiState.Error, is ForgotPasswordUiState.Loading -> {
+            // Main form - always visible
+            when (uiState) {
+                is ForgotPasswordUiState.Idle, is ForgotPasswordUiState.Error, is ForgotPasswordUiState.Loading, is ForgotPasswordUiState.Success -> {
                 Text(
                     text = "Nhập email của bạn để đặt lại mật khẩu",
                     style = MaterialTheme.typography.bodyLarge,
@@ -150,71 +153,25 @@ fun ForgotPasswordScreen(
                     )
                 }
             }
+        }
+        }
 
-            is ForgotPasswordUiState.Success -> {
-                // Success message
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = "✓",
-                            fontSize = 48.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                        Text(
-                            text = "Email đã được gửi!",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                        Text(
-                            text = "Vui lòng kiểm tra email của bạn và làm theo hướng dẫn để đặt lại mật khẩu.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            textAlign = TextAlign.Center,
-                        )
+        // Success Dialog
+        if (uiState is ForgotPasswordUiState.Success) {
+            val successMessage = (uiState as ForgotPasswordUiState.Success).message
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("Thành công") },
+                text = { Text(successMessage) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.resetState()
+                        onNavigateToResetPassword(email)
+                    }) {
+                        Text("OK")
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = { viewModel.forgotPassword(email) },
-                    modifier = Modifier
-                        .width(200.dp)
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary,
-                    ),
-                ) {
-                    Text(
-                        text = "Gửi Lại",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                TextButton(onClick = onNavigateBack) {
-                    Text(
-                        text = "Quay lại đăng nhập",
-                        color = MaterialTheme.colorScheme.outline,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
+            )
         }
     }
 }
