@@ -322,8 +322,35 @@ fun NavigationGraph(
                 ),
             ) { backStackEntry ->
                 val courtId = backStackEntry.arguments?.getString("courtId") ?: ""
+
+                // Try to resolve court object from HomeViewModel state (reuse existing logic from CourtDetail)
+                val parentEntry = remember(backStackEntry) {
+                    try {
+                        navController.getBackStackEntry(Screen.Search.route)
+                    } catch (_: Exception) {
+                        try {
+                            navController.getBackStackEntry(Screen.Home.route)
+                        } catch (_: Exception) {
+                            backStackEntry
+                        }
+                    }
+                }
+                val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
+                val homeState by homeViewModel.state.collectAsState()
+                val resolvedCourt = remember(courtId, homeState) {
+                    homeState.featuredCourts.find { it.id == courtId }
+                        ?: homeState.recommendedCourts.find { it.id == courtId }
+                        ?: homeState.nearbyCourts.find { it.id == courtId }
+                }
+
+                // Get current user from ProfileViewModel so BookingScreen can prefill name/phone
+                val profileViewModel: ProfileViewModel = hiltViewModel()
+                val profileState by profileViewModel.state.collectAsState()
+
                 BookingScreen(
                     courtId = courtId,
+                    court = resolvedCourt,
+                    currentUser = profileState.currentUser,
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToPayment = { bookingId ->
                         navController.navigate(

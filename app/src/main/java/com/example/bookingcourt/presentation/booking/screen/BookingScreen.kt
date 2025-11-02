@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
 import kotlinx.datetime.LocalTime
@@ -39,12 +40,14 @@ data class CourtTimeSlot(val courtNumber: Int, val timeSlot: String)
 fun BookingScreen(
     courtId: String,
     numberOfCourts: Int = 1,
+    // Optional: prefer providing full court object and current user from caller
+    court: Court? = null,
+    currentUser: User? = null,
     onNavigateBack: () -> Unit,
     onNavigateToPayment: (String) -> Unit
 ) {
-    // TODO: Load court data from repository using courtId
-    // For now, using a placeholder court object
-    val court = Court(
+    // Use provided court if available; otherwise, fallback to a placeholder court object
+    val court = court ?: Court(
         id = courtId,
         name = "Sân Cầu Lông ABC",
         description = "Sân cầu lông chất lượng cao",
@@ -68,8 +71,9 @@ fun BookingScreen(
 
     var selectedDate by remember { mutableStateOf("") }
     var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) } // Lưu các ô đã chọn
-    var playerName by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
+    // Initialize player info from provided currentUser when available
+    var playerName by remember(currentUser) { mutableStateOf(currentUser?.fullName ?: "") }
+    var phoneNumber by remember(currentUser) { mutableStateOf(currentUser?.phoneNumber ?: "") }
     var showDatePicker by remember { mutableStateOf(false) }
 
     val datePickerState = rememberDatePickerState(

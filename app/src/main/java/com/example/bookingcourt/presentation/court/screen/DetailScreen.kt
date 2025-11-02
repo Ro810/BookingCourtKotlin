@@ -107,14 +107,6 @@ fun DetailScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             InfoCard(
-                title = "Sức chứa",
-                value = "${court.maxPlayers} người"
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            
-
-            InfoCard(
                 title = "Giá",
                 value = "${court.pricePerHour / 1000}.000 VNĐ/giờ"
             )
