@@ -26,14 +26,16 @@ import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.domain.model.User
+import com.example.bookingcourt.domain.model.BookingData
+import com.example.bookingcourt.domain.model.CourtTimeSlot
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
 import kotlinx.datetime.LocalTime
 import java.text.SimpleDateFormat
 import java.util.*
-
-// Data class để lưu thông tin ô được chọn (sân + giờ)
-data class CourtTimeSlot(val courtNumber: Int, val timeSlot: String)
+import com.google.gson.Gson
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,16 +82,14 @@ fun BookingScreen(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
 
-    // Danh sách khung giờ
+    // Danh sách khung giờ - mỗi 30 phút
     val timeSlots = listOf(
-        "00:00", "00:30", "01:00", "01:30", "02:00", "02:30",
-        "03:00", "03:30", "04:00", "04:30", "05:00", "05:30",
-        "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
-        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-        "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-        "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
-        "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
-        "21:00", "21:30", "22:00", "22:30", "23:00", "23:30"
+        "00:00", "00:30", "01:00", "01:30", "02:00", "02:30", "03:00", "03:30",
+        "04:00", "04:30", "05:00", "05:30", "06:00", "06:30", "07:00", "07:30",
+        "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+        "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+        "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
+        "20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00", "23:30"
     )
 
     // DatePickerDialog
@@ -397,7 +397,7 @@ fun BookingScreen(
                     ) {
                         Text("Giá sân/giờ:", color = Color.Black)
                         Text(
-                            text = "${court.pricePerHour},000 VNĐ",
+                            text = "${court.pricePerHour / 1000}.000 VNĐ",
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
                         )
@@ -412,9 +412,9 @@ fun BookingScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Tổng số ô đã chọn:", color = Color.Black)
+                            Text("Tổng số giờ đã chọn:", color = Color.Black)
                             Text(
-                                text = "${selectedSlots.size} ô",
+                                text = "${selectedSlots.size * 0.5} giờ",
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
@@ -433,7 +433,7 @@ fun BookingScreen(
                                 color = Color.Black
                             )
                             Text(
-                                text = "${court.pricePerHour * selectedSlots.size},000 VNĐ",
+                                text = "${(court.pricePerHour * selectedSlots.size * 0.5).toLong() / 1000}.000 VNĐ",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
@@ -448,8 +448,26 @@ fun BookingScreen(
             // Confirm Button
             Button(
                 onClick = {
-                    // Navigate to payment screen with selected slots info
-                    onNavigateToPayment(selectedSlots.joinToString(", ") { "${it.courtNumber}:${it.timeSlot}" })
+                    // Create BookingData object with all booking information
+                    val bookingData = BookingData(
+                        courtId = court.id,
+                        courtName = court.name,
+                        courtAddress = court.address,
+                        selectedDate = selectedDate.ifEmpty {
+                            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                        },
+                        selectedSlots = selectedSlots,
+                        playerName = playerName,
+                        phoneNumber = phoneNumber,
+                        pricePerHour = court.pricePerHour,
+                        totalPrice = (court.pricePerHour * selectedSlots.size * 0.5).toLong()
+                    )
+                    // Serialize to JSON for navigation
+                    val gson = Gson()
+                    val bookingDataJson = gson.toJson(bookingData)
+                    // URL encode to prevent navigation errors
+                    val encodedJson = URLEncoder.encode(bookingDataJson, StandardCharsets.UTF_8.toString())
+                    onNavigateToPayment(encodedJson)
                 },
                 modifier = Modifier
                     .fillMaxWidth()

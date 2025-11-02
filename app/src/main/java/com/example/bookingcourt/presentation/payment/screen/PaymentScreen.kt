@@ -21,6 +21,9 @@ import com.example.bookingcourt.domain.model.BookingData
 import com.example.bookingcourt.domain.model.CourtTimeSlot
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
+import com.google.gson.Gson
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,21 +32,26 @@ fun PaymentScreen(
     onNavigateBack: () -> Unit,
     onPaymentSuccess: () -> Unit,
 ) {
-    // For now, using dummy data. In real implementation, fetch booking data by bookingId
-    val bookingData = BookingData(
-        courtId = bookingId,
-        courtName = "Star Club Badminton",
-        courtAddress = "Số 181 P. Cầu Cốc, Tây Mỗ, Nam Từ Liêm, Hà Nội",
-        selectedDate = "19/10/2025",
-        selectedSlots = setOf(
-            CourtTimeSlot(1, "08:00"),
-            CourtTimeSlot(1, "08:30")
-        ),
-        playerName = "Nguyễn Văn A",
-        phoneNumber = "0123456789",
-        pricePerHour = 150000,
-        totalPrice = 300000
-    )
+    // Decode URL-encoded JSON string and deserialize BookingData
+    val gson = Gson()
+    val bookingData = try {
+        // Decode URL-encoded string first
+        val decodedJson = URLDecoder.decode(bookingId, StandardCharsets.UTF_8.toString())
+        gson.fromJson(decodedJson, BookingData::class.java)
+    } catch (e: Exception) {
+        // Fallback to dummy data if deserialization fails
+        BookingData(
+            courtId = "error",
+            courtName = "Lỗi tải dữ liệu",
+            courtAddress = "Vui lòng thử lại",
+            selectedDate = "",
+            selectedSlots = emptySet(),
+            playerName = "",
+            phoneNumber = "",
+            pricePerHour = 0,
+            totalPrice = 0
+        )
+    }
 
     BookingConfirmationScreenContent(
         bookingData = bookingData,
@@ -172,11 +180,19 @@ fun BookingConfirmationScreenContent(
                                 color = Primary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = slots.map { it.timeSlot }.sorted().joinToString(" • "),
-                                fontSize = 13.sp,
-                                color = Color.DarkGray
-                            )
+
+                            // Convert time slots to time ranges and display each on new line
+                            val sortedSlots = slots.map { it.timeSlot }.sorted()
+                            sortedSlots.forEach { timeSlot ->
+                                val startTime = timeSlot
+                                val endTime = formatEndTime(timeSlot)
+                                Text(
+                                    text = "• $startTime - $endTime",
+                                    fontSize = 13.sp,
+                                    color = Color.DarkGray,
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -184,7 +200,7 @@ fun BookingConfirmationScreenContent(
                 Spacer(modifier = Modifier.height(8.dp))
                 InfoRow(
                     label = "Tổng số giờ:",
-                    value = "${bookingData.selectedSlots.size} giờ",
+                    value = "${bookingData.selectedSlots.size * 0.5} giờ",
                     valueColor = Primary
                 )
             }
@@ -213,7 +229,7 @@ fun BookingConfirmationScreenContent(
                 )
                 InfoRow(
                     label = "Số giờ:",
-                    value = "${bookingData.selectedSlots.size} giờ"
+                    value = "${bookingData.selectedSlots.size * 0.5} giờ"
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -399,3 +415,19 @@ fun PaymentScreenPreview() {
     }
 }
 
+// Format end time based on start time slot (add 30 minutes)
+fun formatEndTime(timeSlot: String): String {
+    // Assuming timeSlot is in "HH:mm" format
+    val parts = timeSlot.split(":")
+    if (parts.size != 2) return timeSlot // Return original if format is incorrect
+
+    val hour = parts[0].toIntOrNull() ?: return timeSlot
+    val minute = parts[1].toIntOrNull() ?: return timeSlot
+
+    // Add 30 minutes to the selected slot to calculate end time
+    val totalMinutes = hour * 60 + minute + 30
+    val endHour = (totalMinutes / 60) % 24
+    val endMinute = totalMinutes % 60
+
+    return String.format("%02d:%02d", endHour, endMinute)
+}
