@@ -211,6 +211,25 @@ class HomeViewModel @Inject constructor(
      *   → Khi click vào sẽ mở danh sách các Courts bên trong
      */
     private fun Venue.toCourt(index: Int): Court {
+        // Parse openingTime và closingTime từ string "HH:mm:ss" sang LocalTime
+        val openTime = try {
+            openingTime?.let {
+                val parts = it.split(":")
+                LocalTime(parts[0].toInt(), parts[1].toInt())
+            } ?: LocalTime(6, 0)
+        } catch (e: Exception) {
+            LocalTime(6, 0)
+        }
+
+        val closeTime = try {
+            closingTime?.let {
+                val parts = it.split(":")
+                LocalTime(parts[0].toInt(), parts[1].toInt())
+            } ?: LocalTime(22, 0)
+        } catch (e: Exception) {
+            LocalTime(22, 0)
+        }
+
         return Court(
             id = id.toString(),
             name = name, // Tên venue: "Sân bóng ABC"
@@ -222,8 +241,8 @@ class HomeViewModel @Inject constructor(
             sportType = SportType.BADMINTON, // Default
             courtType = CourtType.INDOOR, // Default
             pricePerHour = pricePerHour, // Sử dụng giá từ API
-            openTime = LocalTime(6, 0),
-            closeTime = LocalTime(22, 0),
+            openTime = openTime, // Parse từ API
+            closeTime = closeTime, // Parse từ API
             amenities = emptyList(),
             rules = null,
             ownerId = id.toString(),
@@ -231,6 +250,7 @@ class HomeViewModel @Inject constructor(
             totalReviews = totalReviews, // Sử dụng totalReviews từ API
             isActive = numberOfCourt > 0, // Active nếu có ít nhất 1 sân
             maxPlayers = 4,
+            courtsCount = courtsCount, // Số lượng sân từ API
         )
     }
 

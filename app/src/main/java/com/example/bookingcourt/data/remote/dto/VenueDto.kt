@@ -42,6 +42,12 @@ data class VenueDetailDto(
     @SerializedName("totalReviews")
     val totalReviews: Int? = null,
 
+    @SerializedName("openingTime")
+    val openingTime: String? = null,
+
+    @SerializedName("closingTime")
+    val closingTime: String? = null,
+
     @SerializedName("owner")
     val owner: OwnerDto? = null
 )

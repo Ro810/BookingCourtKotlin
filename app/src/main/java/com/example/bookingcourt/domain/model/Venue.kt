@@ -13,6 +13,8 @@ data class Venue(
     val pricePerHour: Long = 0,
     val averageRating: Float = 0f,
     val totalReviews: Int = 0,
+    val openingTime: String? = null,
+    val closingTime: String? = null,
     val phoneNumber: String? = null,
     val email: String? = null,
     val ownerPhone: String? = null // Số điện thoại chủ sân từ owner.phone

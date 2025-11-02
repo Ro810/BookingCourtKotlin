@@ -337,10 +337,12 @@ class VenueRepositoryImpl @Inject constructor(
             name = name,
             numberOfCourt = numberOfCourt,
             address = address.toDomain(),
-            courtsCount = numberOfCourt,
+            courtsCount = courtsCount ?: numberOfCourt,
             pricePerHour = pricePerHour ?: 0,
             averageRating = averageRating ?: 0f,
             totalReviews = totalReviews ?: 0,
+            openingTime = openingTime,
+            closingTime = closingTime,
             phoneNumber = phoneNumber,
             email = email,
             ownerPhone = owner?.phone // Lấy số điện thoại từ owner

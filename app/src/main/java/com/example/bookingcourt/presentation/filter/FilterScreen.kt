@@ -55,10 +55,10 @@ fun FilterScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bộ lọc") },
+                title = { Text("Bộ lọc", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -80,7 +80,8 @@ fun FilterScreen(
             Text(
                 text = "Tìm kiếm theo",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -118,7 +119,8 @@ fun FilterScreen(
                 Text(
                     text = "Tỉnh/Thành phố",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -159,7 +161,8 @@ fun FilterScreen(
                 Text(
                     text = "Quận/Huyện",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -199,7 +202,8 @@ fun FilterScreen(
                 Text(
                     text = "Khoảng cách",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -229,7 +233,8 @@ fun FilterScreen(
             Text(
                 text = "Khoảng giá (nghìn VNĐ/giờ)",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -256,7 +261,7 @@ fun FilterScreen(
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Primary)
             ) {
-                Text("Áp dụng", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Áp dụng", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
 
             Spacer(modifier = Modifier.height(8.dp))

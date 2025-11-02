@@ -161,6 +161,7 @@ fun HomeScreen(
                             text = "Sân nổi bật",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
+                            color = Color.Black,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
@@ -179,6 +180,7 @@ fun HomeScreen(
                             text = "Đề xuất sân của tôi",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
+                            color = Color.Black,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
@@ -197,6 +199,7 @@ fun HomeScreen(
                             text = "Sân gần bạn",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
+                            color = Color.Black,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
@@ -350,7 +353,7 @@ fun FilterSection(onFilterClick: () -> Unit) {
                 text = "Bộ lọc",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                color = TextPrimary
+                color = Color.Black
             )
             Icon(
                 imageVector = Icons.Default.FilterList,

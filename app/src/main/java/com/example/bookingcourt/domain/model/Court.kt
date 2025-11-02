@@ -22,6 +22,7 @@ data class Court(
     val totalReviews: Int,
     val isActive: Boolean,
     val maxPlayers: Int,
+    val courtsCount: Int = 1, // Số lượng sân từ API
 )
 
 enum class SportType {
