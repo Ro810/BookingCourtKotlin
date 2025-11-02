@@ -221,14 +221,14 @@ class HomeViewModel @Inject constructor(
             images = emptyList(), // TODO: thêm images vào backend
             sportType = SportType.BADMINTON, // Default
             courtType = CourtType.INDOOR, // Default
-            pricePerHour = 100000, // Default - sẽ lấy từ PriceRules sau
+            pricePerHour = pricePerHour, // Sử dụng giá từ API
             openTime = LocalTime(6, 0),
             closeTime = LocalTime(22, 0),
             amenities = emptyList(),
             rules = null,
             ownerId = id.toString(),
-            rating = 4.0f + (index % 5) * 0.2f, // Mock rating
-            totalReviews = numberOfCourt * 10, // Mock: nhiều sân = nhiều reviews
+            rating = averageRating, // Sử dụng rating từ API
+            totalReviews = totalReviews, // Sử dụng totalReviews từ API
             isActive = numberOfCourt > 0, // Active nếu có ít nhất 1 sân
             maxPlayers = 4,
         )

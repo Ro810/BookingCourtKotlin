@@ -434,7 +434,7 @@ fun CourtCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "• ${court.pricePerHour}k/giờ",
+                            text = "• ${court.pricePerHour / 1000}k/giờ",
                             fontSize = 12.sp,
                             color = Primary,
                             fontWeight = FontWeight.Medium

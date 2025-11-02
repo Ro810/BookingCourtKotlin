@@ -33,6 +33,15 @@ data class VenueDetailDto(
     @SerializedName("courtsCount")
     val courtsCount: Int? = null, // For GET /api/venues response
 
+    @SerializedName("pricePerHour")
+    val pricePerHour: Long? = null,
+
+    @SerializedName("averageRating")
+    val averageRating: Float? = null,
+
+    @SerializedName("totalReviews")
+    val totalReviews: Int? = null,
+
     @SerializedName("owner")
     val owner: OwnerDto? = null
 )
