@@ -80,7 +80,7 @@ class OwnerHomeViewModel @Inject constructor(
             try {
                 _state.value = _state.value.copy(isLoadingVenues = true)
 
-                venueRepository.getVenues().collect { result ->
+                venueRepository.getMyVenues().collect { result ->
                     when (result) {
                         is Resource.Success -> {
                             _state.value = _state.value.copy(

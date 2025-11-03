@@ -22,6 +22,13 @@ interface VenueApi {
     suspend fun getVenues(): Response<ApiResponse<List<VenueDetailDto>>>
 
     /**
+     * Get venues owned by current user (Owner only)
+     * GET /api/venues/my-venues
+     */
+    @GET("venues/my-venues")
+    suspend fun getMyVenues(): Response<ApiResponse<List<VenueDetailDto>>>
+
+    /**
      * Search venues with filters
      * GET /api/venues/search
      */

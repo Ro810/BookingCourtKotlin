@@ -75,6 +75,56 @@ class VenueRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getMyVenues(): Flow<Resource<List<Venue>>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "========== FETCHING MY VENUES ==========")
+            Log.d(TAG, "API Call: GET /api/venues/my-venues")
+
+            val response = venueApi.getMyVenues()
+
+            Log.d(TAG, "Response Code: ${response.code()}")
+            Log.d(TAG, "Response isSuccessful: ${response.isSuccessful}")
+
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+
+                Log.d(TAG, "Response body is null: ${apiResponse == null}")
+                Log.d(TAG, "Response success: ${apiResponse?.success}")
+                Log.d(TAG, "Response message: ${apiResponse?.message}")
+                Log.d(TAG, "Response data size: ${apiResponse?.data?.size}")
+
+                if (apiResponse != null && apiResponse.success) {
+                    val venues = apiResponse.data?.map { it.toDomain() } ?: emptyList()
+
+                    Log.d(TAG, "✓ Successfully fetched ${venues.size} my venues")
+                    venues.forEachIndexed { index, venue ->
+                        Log.d(TAG, "  [$index] ${venue.name} - ${venue.courtsCount} courts")
+                    }
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Success(venues))
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể tải danh sách sân của bạn"
+                    Log.e(TAG, "⚠ API returned success=false: $errorMsg")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "⚠ API error: ${response.code()}")
+                Log.e(TAG, "Error body: $errorBody")
+                Log.d(TAG, "======================================")
+                emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠ Exception fetching my venues: ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
     override suspend fun searchVenues(
         name: String?,
         province: String?,
