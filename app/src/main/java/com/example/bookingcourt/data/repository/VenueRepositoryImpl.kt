@@ -197,7 +197,10 @@ class VenueRepositoryImpl @Inject constructor(
         email: String,
         provinceOrCity: String,
         district: String,
-        detailAddress: String
+        detailAddress: String,
+        pricePerHour: Double?,
+        openingTime: String?,
+        closingTime: String?
     ): Flow<Resource<Venue>> = flow {
         try {
             emit(Resource.Loading())
@@ -206,6 +209,7 @@ class VenueRepositoryImpl @Inject constructor(
             Log.d(TAG, "Venue name: $name")
             Log.d(TAG, "Phone: $phoneNumber, Email: $email")
             Log.d(TAG, "Address: $detailAddress, $district, $provinceOrCity")
+            Log.d(TAG, "Price/hour: $pricePerHour, Time: $openingTime - $closingTime")
 
             val request = CreateVenueRequest(
                 name = name,
@@ -216,7 +220,10 @@ class VenueRepositoryImpl @Inject constructor(
                     provinceOrCity = provinceOrCity,
                     district = district,
                     detailAddress = detailAddress
-                )
+                ),
+                pricePerHour = pricePerHour,
+                openingTime = openingTime,
+                closingTime = closingTime
             )
 
             val response = venueApi.createVenue(request)
@@ -266,7 +273,11 @@ class VenueRepositoryImpl @Inject constructor(
         email: String,
         provinceOrCity: String,
         district: String,
-        detailAddress: String
+        detailAddress: String,
+        pricePerHour: Double?,
+        openingTime: String?,
+        closingTime: String?,
+        images: List<String>?
     ): Flow<Resource<Venue>> = flow {
         try {
             emit(Resource.Loading())
@@ -276,6 +287,8 @@ class VenueRepositoryImpl @Inject constructor(
             Log.d(TAG, "Venue name: $name")
             Log.d(TAG, "Phone: $phoneNumber, Email: $email")
             Log.d(TAG, "Address: $detailAddress, $district, $provinceOrCity")
+            Log.d(TAG, "Price/hour: $pricePerHour, Time: $openingTime - $closingTime")
+            Log.d(TAG, "Images: ${images?.size ?: 0} items")
 
             val request = UpdateVenueRequest(
                 name = name,
@@ -286,7 +299,11 @@ class VenueRepositoryImpl @Inject constructor(
                     provinceOrCity = provinceOrCity,
                     district = district,
                     detailAddress = detailAddress
-                )
+                ),
+                pricePerHour = pricePerHour,
+                openingTime = openingTime,
+                closingTime = closingTime,
+                images = images
             )
 
             val response = venueApi.updateVenue(venueId, request)
@@ -385,6 +402,7 @@ class VenueRepositoryImpl @Inject constructor(
         return Venue(
             id = id,
             name = name,
+            description = description,
             numberOfCourt = numberOfCourt,
             address = address.toDomain(),
             courtsCount = courtsCount ?: numberOfCourt,
@@ -395,7 +413,8 @@ class VenueRepositoryImpl @Inject constructor(
             closingTime = closingTime,
             phoneNumber = phoneNumber,
             email = email,
-            ownerPhone = owner?.phone // Lấy số điện thoại từ owner
+            ownerPhone = owner?.phone, // Lấy số điện thoại từ owner
+            images = null // Backend chưa trả về images trong list, sẽ cập nhật sau
         )
     }
 

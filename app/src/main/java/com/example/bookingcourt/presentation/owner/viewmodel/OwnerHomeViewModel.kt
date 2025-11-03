@@ -122,7 +122,11 @@ class OwnerHomeViewModel @Inject constructor(
         email: String,
         provinceOrCity: String,
         district: String,
-        detailAddress: String
+        detailAddress: String,
+        pricePerHour: Double? = null,
+        openingTime: String? = null,
+        closingTime: String? = null,
+        images: List<String>? = null
     ) {
         viewModelScope.launch {
             try {
@@ -136,7 +140,11 @@ class OwnerHomeViewModel @Inject constructor(
                     email = email,
                     provinceOrCity = provinceOrCity,
                     district = district,
-                    detailAddress = detailAddress
+                    detailAddress = detailAddress,
+                    pricePerHour = pricePerHour,
+                    openingTime = openingTime,
+                    closingTime = closingTime,
+                    images = images
                 ).collect { result ->
                     when (result) {
                         is Resource.Success -> {

@@ -113,7 +113,16 @@ data class CreateVenueRequest(
     val email: String,
 
     @SerializedName("address")
-    val address: CreateAddressRequest
+    val address: CreateAddressRequest,
+
+    @SerializedName("pricePerHour")
+    val pricePerHour: Double? = null,
+
+    @SerializedName("openingTime")
+    val openingTime: String? = null,
+
+    @SerializedName("closingTime")
+    val closingTime: String? = null
 )
 
 /**
@@ -134,7 +143,19 @@ data class UpdateVenueRequest(
     val email: String,
 
     @SerializedName("address")
-    val address: CreateAddressRequest
+    val address: CreateAddressRequest,
+
+    @SerializedName("pricePerHour")
+    val pricePerHour: Double? = null,
+
+    @SerializedName("openingTime")
+    val openingTime: String? = null,
+
+    @SerializedName("closingTime")
+    val closingTime: String? = null,
+
+    @SerializedName("images")
+    val images: List<String>? = null
 )
 
 /**

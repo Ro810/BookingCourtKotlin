@@ -31,6 +31,9 @@ fun CreateVenueScreen(
     var provinceOrCity by remember { mutableStateOf("") }
     var district by remember { mutableStateOf("") }
     var detailAddress by remember { mutableStateOf("") }
+    var pricePerHour by remember { mutableStateOf("") }
+    var openingTime by remember { mutableStateOf("") }
+    var closingTime by remember { mutableStateOf("") }
 
     // Show success dialog when venue is created
     LaunchedEffect(state.createdVenue) {
@@ -219,6 +222,70 @@ fun CreateVenueScreen(
                 singleLine = true,
             )
 
+            Text(
+                "Thông tin hoạt động",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // Price per hour field
+            OutlinedTextField(
+                value = pricePerHour,
+                onValueChange = {
+                    pricePerHour = it
+                    viewModel.clearValidationErrors()
+                },
+                label = { Text("Giá/1 giờ (VNĐ)") },
+                placeholder = { Text("Ví dụ: 100000") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = state.validationErrors.priceError != null,
+                supportingText = {
+                    state.validationErrors.priceError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                singleLine = true,
+            )
+
+            // Opening time field
+            OutlinedTextField(
+                value = openingTime,
+                onValueChange = {
+                    openingTime = it
+                    viewModel.clearValidationErrors()
+                },
+                label = { Text("Giờ mở cửa") },
+                placeholder = { Text("Ví dụ: 06:00 hoặc 06:00:00") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = state.validationErrors.openingTimeError != null,
+                supportingText = {
+                    state.validationErrors.openingTimeError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                singleLine = true,
+            )
+
+            // Closing time field
+            OutlinedTextField(
+                value = closingTime,
+                onValueChange = {
+                    closingTime = it
+                    viewModel.clearValidationErrors()
+                },
+                label = { Text("Giờ đóng cửa") },
+                placeholder = { Text("Ví dụ: 23:00 hoặc 23:00:00") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = state.validationErrors.closingTimeError != null,
+                supportingText = {
+                    state.validationErrors.closingTimeError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                singleLine = true,
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Create/Complete button
@@ -231,7 +298,10 @@ fun CreateVenueScreen(
                         email = email,
                         provinceOrCity = provinceOrCity,
                         district = district,
-                        detailAddress = detailAddress
+                        detailAddress = detailAddress,
+                        pricePerHour = pricePerHour,
+                        openingTime = openingTime,
+                        closingTime = closingTime
                     )
                 },
                 modifier = Modifier
