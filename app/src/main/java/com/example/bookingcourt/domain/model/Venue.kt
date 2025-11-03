@@ -7,6 +7,7 @@ package com.example.bookingcourt.domain.model
 data class Venue(
     val id: Long,
     val name: String,
+    val description: String? = null,
     val numberOfCourt: Int,
     val address: Address,
     val courtsCount: Int,
@@ -17,7 +18,8 @@ data class Venue(
     val closingTime: String? = null,
     val phoneNumber: String? = null,
     val email: String? = null,
-    val ownerPhone: String? = null // Số điện thoại chủ sân từ owner.phone
+    val ownerPhone: String? = null, // Số điện thoại chủ sân từ owner.phone
+    val images: List<String>? = null
 )
 
 /**

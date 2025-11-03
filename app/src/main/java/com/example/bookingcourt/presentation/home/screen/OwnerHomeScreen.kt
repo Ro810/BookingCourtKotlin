@@ -4,8 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -1161,9 +1165,18 @@ private fun EditVenueDialog(
     onSave: (com.example.bookingcourt.domain.model.Venue) -> Unit,
 ) {
     var venueName by remember { mutableStateOf(venue.name) }
+    var description by remember { mutableStateOf(venue.description ?: "") }
+    var phoneNumber by remember { mutableStateOf(venue.phoneNumber ?: "") }
+    var email by remember { mutableStateOf(venue.email ?: "") }
     var provinceOrCity by remember { mutableStateOf(venue.address.provinceOrCity) }
     var district by remember { mutableStateOf(venue.address.district) }
     var detailAddress by remember { mutableStateOf(venue.address.detailAddress) }
+    var pricePerHour by remember { mutableStateOf(venue.pricePerHour.toString()) }
+    var openingTime by remember { mutableStateOf(venue.openingTime ?: "") }
+    var closingTime by remember { mutableStateOf(venue.closingTime ?: "") }
+    var imageUrls by remember { mutableStateOf(venue.images ?: emptyList()) }
+    var newImageUrl by remember { mutableStateOf("") }
+    var showAddImageDialog by remember { mutableStateOf(false) }
 
     val primaryColor = Color(0xFF123E62)
 
@@ -1212,6 +1225,8 @@ private fun EditVenueDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -1219,7 +1234,7 @@ private fun EditVenueDialog(
                     OutlinedTextField(
                         value = venueName,
                         onValueChange = { venueName = it },
-                        label = { Text("Tên Sân", fontSize = 14.sp) },
+                        label = { Text("Tên Sân *", fontSize = 14.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !isLoading,
@@ -1230,6 +1245,66 @@ private fun EditVenueDialog(
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+
+                    // Mô tả
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Mô tả", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 2,
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                    )
+
+                    // Số điện thoại
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = { phoneNumber = it },
+                        label = { Text("Số điện thoại *", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+
+                    // Email
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email *", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Email,
                                 contentDescription = null,
                                 tint = primaryColor,
                                 modifier = Modifier.size(20.dp),
@@ -1285,7 +1360,7 @@ private fun EditVenueDialog(
                     OutlinedTextField(
                         value = detailAddress,
                         onValueChange = { detailAddress = it },
-                        label = { Text("Địa chỉ chi tiết", fontSize = 14.sp) },
+                        label = { Text("Địa chỉ chi tiết *", fontSize = 14.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 2,
                         enabled = !isLoading,
@@ -1302,6 +1377,109 @@ private fun EditVenueDialog(
                             )
                         },
                     )
+
+                    // Giá/1 giờ
+                    OutlinedTextField(
+                        value = pricePerHour,
+                        onValueChange = { pricePerHour = it },
+                        label = { Text("Giá/1 giờ (VNĐ)", fontSize = 14.sp) },
+                        placeholder = { Text("100000", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
+
+                    // Giờ mở cửa
+                    OutlinedTextField(
+                        value = openingTime,
+                        onValueChange = { openingTime = it },
+                        label = { Text("Giờ mở cửa", fontSize = 14.sp) },
+                        placeholder = { Text("6 hoặc 06:00", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                    )
+
+                    // Giờ đóng cửa
+                    OutlinedTextField(
+                        value = closingTime,
+                        onValueChange = { closingTime = it },
+                        label = { Text("Giờ đóng cửa", fontSize = 14.sp) },
+                        placeholder = { Text("23 hoặc 23:00", fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            focusedLabelColor = primaryColor,
+                        ),
+                    )
+
+                    // Images section
+                    if (imageUrls.isNotEmpty()) {
+                        Text(
+                            "Hình ảnh",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = primaryColor
+                        )
+                        imageUrls.forEachIndexed { index, url ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = url,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = { imageUrls = imageUrls.filterIndexed { i, _ -> i != index } },
+                                    enabled = !isLoading
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Xóa",
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Add image button
+                    OutlinedButton(
+                        onClick = { showAddImageDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = primaryColor
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Thêm ảnh", fontSize = 13.sp)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1331,12 +1509,19 @@ private fun EditVenueDialog(
                     Button(
                         onClick = {
                             val updatedVenue = venue.copy(
-                                name = venueName,
+                                name = venueName.trim(),
+                                description = description.trim().takeIf { it.isNotEmpty() },
+                                phoneNumber = phoneNumber.trim().takeIf { it.isNotEmpty() },
+                                email = email.trim().takeIf { it.isNotEmpty() },
                                 address = venue.address.copy(
-                                    provinceOrCity = provinceOrCity,
-                                    district = district,
-                                    detailAddress = detailAddress
-                                )
+                                    provinceOrCity = provinceOrCity.trim(),
+                                    district = district.trim(),
+                                    detailAddress = detailAddress.trim()
+                                ),
+                                pricePerHour = pricePerHour.trim().toLongOrNull() ?: venue.pricePerHour,
+                                openingTime = openingTime.trim().takeIf { it.isNotEmpty() },
+                                closingTime = closingTime.trim().takeIf { it.isNotEmpty() },
+                                images = imageUrls.takeIf { it.isNotEmpty() }
                             )
                             onSave(updatedVenue)
                         },
@@ -1372,6 +1557,47 @@ private fun EditVenueDialog(
                 }
             }
         }
+    }
+
+    // Add Image Dialog
+    if (showAddImageDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddImageDialog = false },
+            title = { Text("Thêm URL hình ảnh", color = primaryColor, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = newImageUrl,
+                    onValueChange = { newImageUrl = it },
+                    label = { Text("URL hình ảnh", fontSize = 14.sp) },
+                    placeholder = { Text("https://example.com/image.jpg", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryColor,
+                        focusedLabelColor = primaryColor,
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newImageUrl.isNotBlank()) {
+                            imageUrls = imageUrls + newImageUrl.trim()
+                            newImageUrl = ""
+                            showAddImageDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                ) {
+                    Text("Thêm")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showAddImageDialog = false }) {
+                    Text("Hủy", color = Color.Gray)
+                }
+            }
+        )
     }
 }
 
