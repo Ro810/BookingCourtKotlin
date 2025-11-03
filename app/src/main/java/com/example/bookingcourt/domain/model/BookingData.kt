@@ -13,9 +13,13 @@ data class BookingData(
     val playerName: String,
     val phoneNumber: String,
     val pricePerHour: Long,
-    val totalPrice: Long
+    val totalPrice: Long,
+    val ownerBankInfo: BankInfo? = null,  // Thông tin ngân hàng của chủ sân
+    val expireTime: String? = null        // Thời gian hết hạn thanh toán
 )
+
 data class CourtTimeSlot(
     val courtNumber: Int,
     val timeSlot: String
 )
+

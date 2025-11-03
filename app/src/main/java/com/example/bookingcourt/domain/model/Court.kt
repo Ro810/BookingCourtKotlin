@@ -2,6 +2,29 @@ package com.example.bookingcourt.domain.model
 
 import kotlinx.datetime.LocalTime
 
+/**
+ * COURT MODEL - Sân cụ thể trong một Venue
+ * Theo API: Court chỉ có id, description, booked và venues
+ */
+data class CourtDetail(
+    val id: Long,
+    val description: String,
+    val booked: Boolean,
+    val venue: CourtVenueInfo
+)
+
+data class CourtVenueInfo(
+    val id: Long,
+    val name: String
+)
+
+/**
+ * VENUE MODEL (đã được thiết kế nhầm thành Court)
+ * Model này thực ra là VENUE, không phải Court
+ * ⚠️ DEPRECATED: Nên sử dụng Venue.kt thay vì model này
+ * Giữ lại để tương thích với code cũ
+ */
+@Deprecated("Model này thực ra là Venue, nên dùng Venue.kt thay thế")
 data class Court(
     val id: String,
     val name: String,
@@ -22,7 +45,7 @@ data class Court(
     val totalReviews: Int,
     val isActive: Boolean,
     val maxPlayers: Int,
-    val courtsCount: Int = 1, // Số lượng sân từ API
+    val courtsCount: Int = 1, // Số lượng sân con trong venue này
 )
 
 enum class SportType {

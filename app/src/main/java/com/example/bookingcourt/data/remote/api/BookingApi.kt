@@ -1,9 +1,11 @@
 package com.example.bookingcourt.data.remote.api
 
+import com.example.bookingcourt.data.remote.dto.ApiResponse
 import com.example.bookingcourt.data.remote.dto.BaseResponseDto
 import com.example.bookingcourt.data.remote.dto.BookingDto
 import com.example.bookingcourt.data.remote.dto.BookingListResponseDto
 import com.example.bookingcourt.data.remote.dto.CreateBookingRequestDto
+import com.example.bookingcourt.data.remote.dto.CreateBookingResponseDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -13,7 +15,7 @@ import retrofit2.http.Query
 
 interface BookingApi {
     @POST("bookings")
-    suspend fun createBooking(@Body request: CreateBookingRequestDto): BookingDto
+    suspend fun createBooking(@Body request: CreateBookingRequestDto): ApiResponse<CreateBookingResponseDto>
 
     @GET("bookings")
     suspend fun getUserBookings(

@@ -1,5 +1,6 @@
 package com.example.bookingcourt.presentation.booking.screen
 
+import android.util.Log
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
@@ -22,12 +23,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.BookingData
 import com.example.bookingcourt.domain.model.CourtTimeSlot
+import com.example.bookingcourt.presentation.booking.viewmodel.BookingViewModel
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
 import kotlinx.datetime.LocalTime
@@ -40,17 +44,19 @@ import java.nio.charset.StandardCharsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingScreen(
-    courtId: String,
-    numberOfCourts: Int = 1, // Deprecated: sẽ sử dụng court.courtsCount
-    // Optional: prefer providing full court object and current user from caller
-    court: Court? = null,
+    courtId: String, // ⚠️ DEPRECATED: Tham số này thực ra là venueId
+    numberOfCourts: Int = 1, // Deprecated: sẽ sử dụng venue.numberOfCourt
+    // Optional: prefer providing full venue object and current user from caller
+    court: Court? = null, // ⚠️ DEPRECATED: Đây thực ra là Venue, không phải Court!
     currentUser: User? = null,
     onNavigateBack: () -> Unit,
-    onNavigateToPayment: (String) -> Unit
+    onNavigateToPayment: (String) -> Unit,
+    bookingViewModel: BookingViewModel = hiltViewModel()
 ) {
-    // Use provided court if available; otherwise, fallback to a placeholder court object
-    val court = court ?: Court(
-        id = courtId,
+    // ⚠️ LƯU Ý: Parameter "court" thực ra là VENUE theo thiết kế API
+    // Model Court hiện tại được thiết kế nhầm, nó chứa thông tin của Venue
+    val venue = court ?: Court(
+        id = courtId, // Thực ra đây là venueId
         name = "Sân Cầu Lông ABC",
         description = "Sân cầu lông chất lượng cao",
         address = "123 Đường Lê Lợi, Quận 1, TP.HCM",
@@ -72,8 +78,8 @@ fun BookingScreen(
         courtsCount = 3
     )
 
-    // Số lượng sân từ API
-    val actualNumberOfCourts = court.courtsCount
+    // Số lượng sân con trong venue này
+    val actualNumberOfCourts = venue.courtsCount
 
     var selectedDate by remember { mutableStateOf("") }
     var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) } // Lưu các ô đã chọn
@@ -82,18 +88,25 @@ fun BookingScreen(
     var phoneNumber by remember(currentUser) { mutableStateOf(currentUser?.phoneNumber ?: "") }
     var showDatePicker by remember { mutableStateOf(false) }
 
+    // State để hiển thị error message
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // ⚠️ QUAN TRỌNG: State để observe kết quả tạo booking với thông tin ngân hàng
+    val createBookingState by bookingViewModel.createBookingState.collectAsState()
+
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
 
     // Tạo danh sách khung giờ dựa trên openTime và closeTime từ API - mỗi 30 phút
-    val timeSlots = remember(court.openTime, court.closeTime) {
+    val timeSlots = remember(venue.openTime, venue.closeTime) {
         val slots = mutableListOf<String>()
-        var currentHour = court.openTime.hour
-        var currentMinute = court.openTime.minute
+        var currentHour = venue.openTime.hour
+        var currentMinute = venue.openTime.minute
 
-        val closeHour = court.closeTime.hour
-        val closeMinute = court.closeTime.minute
+        val closeHour = venue.closeTime.hour
+        val closeMinute = venue.closeTime.minute
 
         while (currentHour < closeHour || (currentHour == closeHour && currentMinute < closeMinute)) {
             slots.add(String.format("%02d:%02d", currentHour, currentMinute))
@@ -107,6 +120,53 @@ fun BookingScreen(
         }
 
         slots
+    }
+
+    // Handle create booking state
+    LaunchedEffect(createBookingState) {
+        when (val state = createBookingState) {
+            is Resource.Success -> {
+                val bookingWithBankInfo = state.data
+                if (bookingWithBankInfo != null) {
+                    // Truyền thông tin booking + bank info sang PaymentScreen
+                    val bookingData = BookingData(
+                        courtId = bookingWithBankInfo.court.id,
+                        courtName = "${bookingWithBankInfo.venue.name} - ${bookingWithBankInfo.court.description}",
+                        courtAddress = venue.address,
+                        selectedDate = selectedDate.ifEmpty {
+                            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                        },
+                        selectedSlots = selectedSlots,
+                        playerName = playerName,
+                        phoneNumber = phoneNumber,
+                        pricePerHour = venue.pricePerHour,
+                        totalPrice = bookingWithBankInfo.totalPrice,
+                        ownerBankInfo = bookingWithBankInfo.ownerBankInfo,
+                        expireTime = bookingWithBankInfo.expireTime.toString()
+                    )
+
+                    // Serialize to JSON for navigation
+                    val gson = Gson()
+                    val bookingDataJson = gson.toJson(bookingData)
+                    val encodedJson = URLEncoder.encode(bookingDataJson, StandardCharsets.UTF_8.toString())
+
+                    // Reset state trước khi navigate
+                    bookingViewModel.resetCreateBookingState()
+
+                    onNavigateToPayment(encodedJson)
+                }
+            }
+            is Resource.Error -> {
+                // Hiển thị error message
+                errorMessage = state.message ?: "Đã xảy ra lỗi khi tạo booking"
+                snackbarHostState.showSnackbar(
+                    message = errorMessage ?: "Đã xảy ra lỗi",
+                    duration = SnackbarDuration.Long
+                )
+                bookingViewModel.resetCreateBookingState()
+            }
+            else -> { /* Loading or null */ }
+        }
     }
 
     // DatePickerDialog
@@ -149,8 +209,21 @@ fun BookingScreen(
                     navigationIconContentColor = Color.Black
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
+        // Show loading overlay when creating booking
+        if (createBookingState is Resource.Loading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Primary)
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -158,23 +231,29 @@ fun BookingScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Court Info
+            // Court Info (thực ra là Venue Info)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = court.name,
+                        text = venue.name,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = court.address,
+                        text = venue.address,
                         fontSize = 14.sp,
                         color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Có ${venue.courtsCount} sân",
+                        fontSize = 12.sp,
+                        color = Color.Gray
                     )
                 }
             }
@@ -414,7 +493,7 @@ fun BookingScreen(
                     ) {
                         Text("Giá sân/giờ:", color = Color.Black)
                         Text(
-                            text = "${court.pricePerHour / 1000}.000 VNĐ",
+                            text = "${venue.pricePerHour / 1000}.000 VNĐ",
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
                         )
@@ -450,7 +529,7 @@ fun BookingScreen(
                                 color = Color.Black
                             )
                             Text(
-                                text = "${(court.pricePerHour * selectedSlots.size * 0.5).toLong() / 1000}.000 VNĐ",
+                                text = "${(venue.pricePerHour * selectedSlots.size * 0.5).toLong() / 1000}.000 VNĐ",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
@@ -462,40 +541,109 @@ fun BookingScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Confirm Button
+            // Confirm Button - CẬP NHẬT: Gọi API với courtId thực
             Button(
                 onClick = {
-                    // Create BookingData object with all booking information
-                    val bookingData = BookingData(
-                        courtId = court.id,
-                        courtName = court.name,
-                        courtAddress = court.address,
-                        selectedDate = selectedDate.ifEmpty {
+                    if (selectedSlots.isNotEmpty()) {
+                        // Lấy court đầu tiên được chọn
+                        val firstSlot = selectedSlots.first()
+                        val courtNumber = firstSlot.courtNumber
+
+                        // ⚠️ TẠM THỜI: Giả định courtId = "venueId_courtNumber"
+                        val realCourtId = "${venue.id}_$courtNumber"
+
+                        // Format start time và end time
+                        val selectedDateFormatted = selectedDate.ifEmpty {
                             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-                        },
-                        selectedSlots = selectedSlots,
-                        playerName = playerName,
-                        phoneNumber = phoneNumber,
-                        pricePerHour = court.pricePerHour,
-                        totalPrice = (court.pricePerHour * selectedSlots.size * 0.5).toLong()
-                    )
-                    // Serialize to JSON for navigation
-                    val gson = Gson()
-                    val bookingDataJson = gson.toJson(bookingData)
-                    // URL encode to prevent navigation errors
-                    val encodedJson = URLEncoder.encode(bookingDataJson, StandardCharsets.UTF_8.toString())
-                    onNavigateToPayment(encodedJson)
+                        }
+
+                        val dateForApi = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            .parse(selectedDateFormatted)
+                        val calendar = Calendar.getInstance()
+                        calendar.time = dateForApi ?: Date()
+
+                        // Lấy thời gian đầu tiên và cuối cùng
+                        val sortedSlots = selectedSlots.sortedBy { it.timeSlot }
+                        val firstTimeSlot = sortedSlots.first().timeSlot
+                        val lastTimeSlot = sortedSlots.last().timeSlot
+
+                        // Parse giờ từ timeSlot
+                        val firstTimeParts = firstTimeSlot.split(":")
+                        val firstHour = firstTimeParts[0].toInt()
+                        val firstMinute = firstTimeParts[1].toInt()
+
+                        // Set giờ cho startTime
+                        calendar.set(Calendar.HOUR_OF_DAY, firstHour)
+                        calendar.set(Calendar.MINUTE, firstMinute)
+                        calendar.set(Calendar.SECOND, 0)
+
+                        // Kiểm tra nếu thời gian đã qua, tự động chuyển sang ngày mai
+                        val now = Calendar.getInstance()
+                        if (calendar.before(now)) {
+                            // Nếu thời gian đã qua, thêm 1 ngày
+                            calendar.add(Calendar.DAY_OF_MONTH, 1)
+
+                            // Hiển thị thông báo cho user
+                            Log.w("BookingScreen", "Thời gian đã qua, tự động chuyển sang ngày mai")
+                        }
+
+                        // Format startTime
+                        val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                        val startTime = apiDateFormat.format(calendar.time)
+
+                        // Calculate endTime (thêm 30 phút cho mỗi slot)
+                        val endTimeSlot = calculateEndTime(lastTimeSlot)
+                        val endTimeParts = endTimeSlot.split(":")
+                        val endHour = endTimeParts[0].toInt()
+                        val endMinute = endTimeParts[1].toInt()
+
+                        calendar.set(Calendar.HOUR_OF_DAY, endHour)
+                        calendar.set(Calendar.MINUTE, endMinute)
+                        val endTime = apiDateFormat.format(calendar.time)
+
+                        // Gọi API tạo booking với courtId thực
+                        bookingViewModel.createBooking(
+                            courtId = realCourtId,
+                            startTime = startTime,
+                            endTime = endTime,
+                            notes = "Đặt sân cho ${selectedSlots.size} khung giờ",
+                            paymentMethod = "BANK_TRANSFER"
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                enabled = selectedSlots.isNotEmpty() && playerName.isNotEmpty() && phoneNumber.isNotEmpty()
+                enabled = selectedSlots.isNotEmpty() && playerName.isNotEmpty() && phoneNumber.isNotEmpty() && createBookingState !is Resource.Loading
             ) {
-                Text("Xác nhận đặt sân", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                if (createBookingState is Resource.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Xác nhận đặt sân", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
             }
         }
     }
+}
+
+// Helper function để tính end time
+private fun calculateEndTime(timeSlot: String): String {
+    val parts = timeSlot.split(":")
+    if (parts.size != 2) return timeSlot
+
+    val hour = parts[0].toIntOrNull() ?: return timeSlot
+    val minute = parts[1].toIntOrNull() ?: return timeSlot
+
+    val totalMinutes = hour * 60 + minute + 30
+    val endHour = (totalMinutes / 60) % 24
+    val endMinute = totalMinutes % 60
+
+    return String.format("%02d:%02d", endHour, endMinute)
 }
 
 @Preview(showBackground = true)

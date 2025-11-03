@@ -40,15 +40,17 @@ data class BookingDto(
 )
 
 data class CreateBookingRequestDto(
-    @SerializedName("court_id")
-    val courtId: String,
-    @SerializedName("start_time")
+    @SerializedName("courtId")
+    val courtId: Long,  // Đổi từ String sang Long
+    @SerializedName("venueId")
+    val venueId: Long,  // Đổi từ String sang Long
+    @SerializedName("startTime")
     val startTime: String,
-    @SerializedName("end_time")
+    @SerializedName("endTime")
     val endTime: String,
     @SerializedName("notes")
     val notes: String?,
-    @SerializedName("payment_method")
+    @SerializedName("paymentMethod")
     val paymentMethod: String,
 )
 
@@ -82,4 +84,77 @@ data class TimeSlotDto(
     val discount: Float?,
     @SerializedName("booking_id")
     val bookingId: String?,
+)
+
+data class BankInfoDto(
+    @SerializedName("bankName")
+    val bankName: String,
+    @SerializedName("bankAccountNumber")
+    val bankAccountNumber: String,
+    @SerializedName("bankAccountName")
+    val bankAccountName: String
+)
+
+/**
+ * Response DTO khi tạo booking mới - có thêm thông tin ngân hàng của chủ sân
+ * Theo API thực tế: POST /bookings trả về ownerBankInfo và expireTime
+ * Response có cấu trúc flat, không có nested objects
+ */
+data class CreateBookingResponseDto(
+    @SerializedName("id")
+    val id: Long,
+    @SerializedName("userId")
+    val userId: Long,
+    @SerializedName("userName")
+    val userName: String?, // Nullable để xử lý trường hợp server không trả về
+    @SerializedName("courtId")
+    val courtId: Long,
+    @SerializedName("courtName")
+    val courtName: String?, // Nullable để xử lý trường hợp server không trả về
+    @SerializedName("venuesName")
+    val venuesName: String?, // Nullable để xử lý trường hợp server không trả về
+    @SerializedName("startTime")
+    val startTime: String?, // Nullable để xử lý parse error
+    @SerializedName("endTime")
+    val endTime: String?, // Nullable để xử lý parse error
+    @SerializedName("totalPrice")
+    val totalPrice: Double,
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("expireTime")
+    val expireTime: String?, // Nullable để xử lý parse error
+    @SerializedName("ownerBankInfo")
+    val ownerBankInfo: BankInfoDto,
+    @SerializedName("paymentProofUploaded")
+    val paymentProofUploaded: Boolean? = null,
+    @SerializedName("paymentProofUrl")
+    val paymentProofUrl: String? = null,
+    @SerializedName("paymentProofUploadedAt")
+    val paymentProofUploadedAt: String? = null,
+    @SerializedName("rejectionReason")
+    val rejectionReason: String? = null
+)
+
+// Giữ lại các DTO cũ cho tương thích
+data class UserInfoDto(
+    @SerializedName("id")
+    val id: String,
+    @SerializedName("fullname")
+    val fullname: String,
+    @SerializedName("phone")
+    val phone: String
+)
+
+data class CourtInfoDto(
+    @SerializedName("id")
+    val id: String,
+    @SerializedName("description")
+    val description: String
+)
+
+data class VenueInfoDto(
+    @SerializedName("id")
+    val id: String,
+    @SerializedName("name")
+    val name: String
 )

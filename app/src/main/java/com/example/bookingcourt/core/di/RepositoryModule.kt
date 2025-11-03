@@ -1,8 +1,10 @@
 package com.example.bookingcourt.core.di
 
 import com.example.bookingcourt.data.repository.AuthRepositoryImpl
+import com.example.bookingcourt.data.repository.BookingRepositoryImpl
 import com.example.bookingcourt.data.repository.VenueRepositoryImpl
 import com.example.bookingcourt.domain.repository.AuthRepository
+import com.example.bookingcourt.domain.repository.BookingRepository
 import com.example.bookingcourt.domain.repository.VenueRepository
 import dagger.Binds
 import dagger.Module
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindVenueRepository(
         venueRepositoryImpl: VenueRepositoryImpl,
     ): VenueRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBookingRepository(
+        bookingRepositoryImpl: BookingRepositoryImpl,
+    ): BookingRepository
 }
