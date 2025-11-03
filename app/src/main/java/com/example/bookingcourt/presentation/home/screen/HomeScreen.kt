@@ -154,8 +154,9 @@ fun HomeScreen(
                     }
                 }
 
-                // Featured Courts Section
-                if (state.featuredCourts.isNotEmpty()) {
+                // Featured Courts Section - hiển thị tất cả các sân
+                val allCourts = state.featuredCourts + state.recommendedCourts + state.nearbyCourts
+                if (allCourts.isNotEmpty()) {
                     item {
                         Text(
                             text = "Sân nổi bật",
@@ -165,45 +166,7 @@ fun HomeScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
-                    items(state.featuredCourts) { court ->
-                        CourtCard(
-                            court = court,
-                            onCourtClick = { onCourtClick(court) }
-                        )
-                    }
-                }
-
-                // Recommended Courts Section
-                if (state.recommendedCourts.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Đề xuất sân của tôi",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    items(state.recommendedCourts) { court ->
-                        CourtCard(
-                            court = court,
-                            onCourtClick = { onCourtClick(court) }
-                        )
-                    }
-                }
-
-                // Nearby Courts Section
-                if (state.nearbyCourts.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Sân gần bạn",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    items(state.nearbyCourts) { court ->
+                    items(allCourts) { court ->
                         CourtCard(
                             court = court,
                             onCourtClick = { onCourtClick(court) }
