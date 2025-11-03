@@ -15,8 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,12 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.presentation.owner.viewmodel.OwnerHomeViewModel
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
+import com.example.bookingcourt.presentation.theme.Primary
 import kotlinx.datetime.LocalTime
 
 enum class HomeTab {
@@ -50,11 +54,22 @@ fun OwnerHomeScreen(
     val state by viewModel.state.collectAsState()
     var selectedTab by remember { mutableStateOf(HomeTab.HOME) }
 
-    // Lấy tên user từ state, nếu null thì dùng tên mặc định
-    val ownerName = state.currentUser?.fullName ?: "Chủ sân"
+    // Snackbar host for error messages
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Show error message if any
+    LaunchedEffect(state.error) {
+        state.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             NavigationBar(
                 containerColor = Color.White,
@@ -104,7 +119,6 @@ fun OwnerHomeScreen(
         when (selectedTab) {
             HomeTab.HOME -> {
                 OwnerHomeContent(
-                    ownerName = ownerName,
                     onNavigateToCourtDetail = onNavigateToCourtDetail,
                     onNavigateToCreateVenue = onNavigateToCreateVenue,
                     bottomPadding = paddingValues.calculateBottomPadding(),
@@ -129,7 +143,6 @@ fun OwnerHomeScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OwnerHomeContent(
-    ownerName: String,
     onNavigateToCourtDetail: (String) -> Unit,
     onNavigateToCreateVenue: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
@@ -175,70 +188,83 @@ private fun OwnerHomeContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, end = 18.dp, top = 8.dp, bottom = 16.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Avatar và thông tin chủ sân
+                        // Avatar và thông tin người dùng
                         Row(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // Avatar mặc định
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "Avatar",
-                                modifier = Modifier.size(56.dp),
-                                tint = Color(0xFF123E62),
+                            // Avatar
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.3f))
                             )
 
-                            Column(
-                                modifier = Modifier.weight(1f),
-                            ) {
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
                                 Text(
-                                    text = ownerName,
+                                    text = "Xin chào, ${state.currentUser?.fullName ?: "Người dùng"}",
+                                    color = Color.Black,
                                     fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF123E62),
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
 
-                        // Icon thông báo với badge
-                        Box {
-                            IconButton(
-                                onClick = { },
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(
-                                        color = Color(0xFF123E62).copy(alpha = 0.2f),
-                                        shape = CircleShape,
-                                    ),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = "Thông báo",
-                                    tint = Color(0xFF123E62), // Dark Blue
-                                    modifier = Modifier.size(24.dp),
-                                )
-                            }
-                            Badge(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(top = 4.dp, end = 4.dp),
-                                containerColor = Color(0xFFB71C1C),
-                                contentColor = Color.White,
-                            ) {
-                                Text(
-                                    text = "29",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
+                        // Icon thông báo
+                        IconButton(
+                            onClick = { },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.White, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Thông báo",
+                                tint = Primary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Search Bar
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .clickable { /* TODO: Navigate to search */ },
+                        shape = RoundedCornerShape(28.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Tìm kiếm",
+                                tint = Color(0xFF123E62)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Text(
+                                text = "Tìm kiếm sân của bạn...",
+                                color = Color.Gray,
+                                fontSize = 16.sp
+                            )
                         }
                     }
                 }
@@ -266,46 +292,6 @@ private fun OwnerHomeContent(
                         },
                     )
                 }
-            }
-
-            item {
-                // Box tìm kiếm
-                var searchQuery by remember { mutableStateOf("") }
-
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Tìm kiếm sân...") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Tìm kiếm",
-                            tint = Color.Gray,
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(
-                                    imageVector = Icons.Default.Clear,
-                                    contentDescription = "Xóa",
-                                    tint = Color.Gray,
-                                )
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF123E62),
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                    ),
-                )
             }
 
             // Hiển thị loading khi đang tải venues
@@ -395,12 +381,16 @@ private fun OwnerHomeContent(
                 viewModel.updateVenue(
                     venueId = updatedVenue.id,
                     name = updatedVenue.name,
-                    description = "",
-                    phoneNumber = "",
-                    email = "",
+                    description = updatedVenue.description,
+                    phoneNumber = updatedVenue.phoneNumber ?: "",
+                    email = updatedVenue.email ?: "",
                     provinceOrCity = updatedVenue.address.provinceOrCity,
                     district = updatedVenue.address.district,
-                    detailAddress = updatedVenue.address.detailAddress
+                    detailAddress = updatedVenue.address.detailAddress,
+                    pricePerHour = updatedVenue.pricePerHour.toDouble(),
+                    openingTime = updatedVenue.openingTime,
+                    closingTime = updatedVenue.closingTime,
+                    images = updatedVenue.images
                 )
             }
         )
@@ -1172,11 +1162,22 @@ private fun EditVenueDialog(
     var district by remember { mutableStateOf(venue.address.district) }
     var detailAddress by remember { mutableStateOf(venue.address.detailAddress) }
     var pricePerHour by remember { mutableStateOf(venue.pricePerHour.toString()) }
-    var openingTime by remember { mutableStateOf(venue.openingTime ?: "") }
-    var closingTime by remember { mutableStateOf(venue.closingTime ?: "") }
+
+    // Parse opening/closing time để lấy giờ và phút
+    val (openHour, openMinute) = parseTime(venue.openingTime ?: "06:00")
+    val (closeHour, closeMinute) = parseTime(venue.closingTime ?: "23:00")
+
+    var openingHour by remember { mutableStateOf(openHour) }
+    var openingMinute by remember { mutableStateOf(openMinute) }
+    var closingHour by remember { mutableStateOf(closeHour) }
+    var closingMinute by remember { mutableStateOf(closeMinute) }
+    var showOpeningTimePicker by remember { mutableStateOf(false) }
+    var showClosingTimePicker by remember { mutableStateOf(false) }
+
     var imageUrls by remember { mutableStateOf(venue.images ?: emptyList()) }
     var newImageUrl by remember { mutableStateOf("") }
     var showAddImageDialog by remember { mutableStateOf(false) }
+    var numberOfCourts by remember { mutableStateOf(venue.courtsCount.toString()) }
 
     val primaryColor = Color(0xFF123E62)
 
@@ -1402,66 +1403,191 @@ private fun EditVenueDialog(
                         },
                     )
 
-                    // Giờ mở cửa
-                    OutlinedTextField(
-                        value = openingTime,
-                        onValueChange = { openingTime = it },
-                        label = { Text("Giờ mở cửa", fontSize = 14.sp) },
-                        placeholder = { Text("6 hoặc 06:00", fontSize = 14.sp) },
+                    // Giờ hoạt động
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        enabled = !isLoading,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            focusedLabelColor = primaryColor,
-                        ),
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Giờ mở cửa
+                        OutlinedCard(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, if (!isLoading) primaryColor.copy(alpha = 0.5f) else Color.Gray),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = Color.Transparent
+                            ),
+                            onClick = { if (!isLoading) showOpeningTimePicker = true }
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    "Giờ mở cửa",
+                                    fontSize = 12.sp,
+                                    color = primaryColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.DateRange,
+                                        contentDescription = null,
+                                        tint = primaryColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        String.format("%02d:%02d", openingHour, openingMinute),
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
+                                    )
+                                }
+                            }
+                        }
 
-                    // Giờ đóng cửa
+                        // Giờ đóng cửa
+                        OutlinedCard(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, if (!isLoading) primaryColor.copy(alpha = 0.5f) else Color.Gray),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = Color.Transparent
+                            ),
+                            onClick = { if (!isLoading) showClosingTimePicker = true }
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    "Giờ đóng cửa",
+                                    fontSize = 12.sp,
+                                    color = primaryColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.DateRange,
+                                        contentDescription = null,
+                                        tint = primaryColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        String.format("%02d:%02d", closingHour, closingMinute),
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Số lượng sân con
                     OutlinedTextField(
-                        value = closingTime,
-                        onValueChange = { closingTime = it },
-                        label = { Text("Giờ đóng cửa", fontSize = 14.sp) },
-                        placeholder = { Text("23 hoặc 23:00", fontSize = 14.sp) },
+                        value = numberOfCourts,
+                        onValueChange = {
+                            // Chỉ cho phép nhập số
+                            if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                                numberOfCourts = it
+                            }
+                        },
+                        label = { Text("Số lượng sân", fontSize = 14.sp) },
+                        placeholder = { Text("Nhập số lượng sân", fontSize = 14.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !isLoading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryColor,
                             focusedLabelColor = primaryColor,
                         ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                        supportingText = {
+                            Text(
+                                "Số lượng sân con (hiển thị cho khách hàng)",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
                     )
 
                     // Images section
                     if (imageUrls.isNotEmpty()) {
                         Text(
-                            "Hình ảnh",
+                            "Hình ảnh sân (${imageUrls.size})",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = primaryColor
                         )
-                        imageUrls.forEachIndexed { index, url ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = url,
-                                    fontSize = 12.sp,
-                                    maxLines = 1,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(
-                                    onClick = { imageUrls = imageUrls.filterIndexed { i, _ -> i != index } },
-                                    enabled = !isLoading
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Xóa",
-                                        tint = Color.Red,
-                                        modifier = Modifier.size(18.dp)
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            imageUrls.forEachIndexed { index, url ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFF5F5F5)
                                     )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Image preview
+                                        Box(
+                                            modifier = Modifier
+                                                .size(60.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color(0xFFF0F0F0))
+                                        ) {
+                                            AsyncImage(
+                                                model = url,
+                                                contentDescription = "Ảnh ${index + 1}",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+
+                                        // URL text
+                                        Text(
+                                            text = url,
+                                            fontSize = 11.sp,
+                                            maxLines = 2,
+                                            color = Color.DarkGray,
+                                            modifier = Modifier.weight(1f)
+                                        )
+
+                                        // Delete button
+                                        IconButton(
+                                            onClick = { imageUrls = imageUrls.filterIndexed { i, _ -> i != index } },
+                                            enabled = !isLoading
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "Xóa",
+                                                tint = if (isLoading) Color.Gray else Color.Red,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1519,9 +1645,11 @@ private fun EditVenueDialog(
                                     detailAddress = detailAddress.trim()
                                 ),
                                 pricePerHour = pricePerHour.trim().toLongOrNull() ?: venue.pricePerHour,
-                                openingTime = openingTime.trim().takeIf { it.isNotEmpty() },
-                                closingTime = closingTime.trim().takeIf { it.isNotEmpty() },
-                                images = imageUrls.takeIf { it.isNotEmpty() }
+                                openingTime = String.format("%02d:%02d", openingHour, openingMinute),
+                                closingTime = String.format("%02d:%02d", closingHour, closingMinute),
+                                images = imageUrls.takeIf { it.isNotEmpty() },
+                                courtsCount = numberOfCourts.trim().toIntOrNull() ?: venue.courtsCount,
+                                numberOfCourt = numberOfCourts.trim().toIntOrNull() ?: venue.numberOfCourt
                             )
                             onSave(updatedVenue)
                         },
@@ -1598,6 +1726,125 @@ private fun EditVenueDialog(
                 }
             }
         )
+    }
+
+    // Opening Time Picker Dialog
+    if (showOpeningTimePicker) {
+        TimePickerDialog(
+            title = "Chọn giờ mở cửa",
+            initialHour = openingHour,
+            initialMinute = openingMinute,
+            onConfirm = { hour, minute ->
+                openingHour = hour
+                openingMinute = minute
+                showOpeningTimePicker = false
+            },
+            onDismiss = { showOpeningTimePicker = false }
+        )
+    }
+
+    // Closing Time Picker Dialog
+    if (showClosingTimePicker) {
+        TimePickerDialog(
+            title = "Chọn giờ đóng cửa",
+            initialHour = closingHour,
+            initialMinute = closingMinute,
+            onConfirm = { hour, minute ->
+                closingHour = hour
+                closingMinute = minute
+                showClosingTimePicker = false
+            },
+            onDismiss = { showClosingTimePicker = false }
+        )
+    }
+}
+
+// Helper function to parse time string
+private fun parseTime(timeString: String): Pair<Int, Int> {
+    return try {
+        val parts = timeString.split(":")
+        if (parts.size == 2) {
+            val hour = parts[0].toIntOrNull() ?: 0
+            val minute = parts[1].toIntOrNull() ?: 0
+            Pair(hour, minute)
+        } else {
+            // Chỉ có giờ, không có phút
+            val hour = timeString.toIntOrNull() ?: 0
+            Pair(hour, 0)
+        }
+    } catch (e: Exception) {
+        Pair(0, 0)
+    }
+}
+
+// Time Picker Dialog Component
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(
+    title: String,
+    initialHour: Int,
+    initialMinute: Int,
+    onConfirm: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = true
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF123E62)
+            )
+        },
+        text = {
+            TimePicker(
+                state = timePickerState,
+                colors = TimePickerDefaults.colors(
+                    clockDialColor = Color(0xFFE3F2FD),
+                    selectorColor = Color(0xFF123E62),
+                    timeSelectorSelectedContainerColor = Color(0xFF123E62),
+                    timeSelectorUnselectedContainerColor = Color(0xFFE3F2FD),
+                )
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(timePickerState.hour, timePickerState.minute)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF123E62)
+                )
+            ) {
+                Text("Xác nhận")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Hủy", color = Color.Gray)
+            }
+        }
+    )
+}
+
+// Helper function to get greeting message based on time of day
+private fun getGreetingMessage(): String {
+    val calendar = java.util.Calendar.getInstance()
+    val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+
+    return when (hour) {
+        in 0..4 -> "Đêm khuya rồi"
+        in 5..10 -> "Chào buổi sáng"
+        in 11..12 -> "Chào buổi trưa"
+        in 13..17 -> "Chào buổi chiều"
+        in 18..21 -> "Chào buổi tối"
+        else -> "Chúc ngủ ngon"
     }
 }
 

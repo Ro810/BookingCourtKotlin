@@ -22,7 +22,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.bookingcourt.domain.model.PlayingLevel
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,8 +34,6 @@ fun EditProfileScreen(
     var phoneNumber by remember { mutableStateOf("0123456789") }
     var email by remember { mutableStateOf("nguyen.van.a@example.com") }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
-    var playingLevel by remember { mutableStateOf<PlayingLevel?>(PlayingLevel.INTERMEDIATE) }
-    var expandedLevelMenu by remember { mutableStateOf(false) }
 
     var showSaveDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -215,82 +212,6 @@ fun EditProfileScreen(
                 }
             }
 
-            // Playing Level Section
-            item {
-                Text(
-                    "Trình độ chơi",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                    ) {
-                        ExposedDropdownMenuBox(
-                            expanded = expandedLevelMenu,
-                            onExpandedChange = { expandedLevelMenu = it },
-                        ) {
-                            OutlinedTextField(
-                                value = playingLevel?.let { getPlayingLevelText(it) } ?: "Chưa chọn",
-                                onValueChange = { },
-                                readOnly = true,
-                                label = { Text("Trình độ") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Star, contentDescription = null)
-                                },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLevelMenu)
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(),
-                                colors = OutlinedTextFieldDefaults.colors(),
-                            )
-
-                            ExposedDropdownMenu(
-                                expanded = expandedLevelMenu,
-                                onDismissRequest = { expandedLevelMenu = false },
-                            ) {
-                                PlayingLevel.entries.forEach { level ->
-                                    DropdownMenuItem(
-                                        text = { Text(getPlayingLevelText(level)) },
-                                        onClick = {
-                                            playingLevel = level
-                                            expandedLevelMenu = false
-                                        },
-                                        leadingIcon = {
-                                            if (playingLevel == level) {
-                                                Icon(
-                                                    Icons.Default.Check,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            "Trình độ giúp chúng tôi đề xuất đối thủ phù hợp với bạn",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
-                        )
-                    }
-                }
-            }
-
             // Delete Account Section
             item {
                 Card(
@@ -365,15 +286,6 @@ fun EditProfileScreen(
                 },
             )
         }
-    }
-}
-
-private fun getPlayingLevelText(level: PlayingLevel): String {
-    return when (level) {
-        PlayingLevel.BEGINNER -> "Người mới bắt đầu"
-        PlayingLevel.INTERMEDIATE -> "Trung bình"
-        PlayingLevel.ADVANCED -> "Nâng cao"
-        PlayingLevel.PROFESSIONAL -> "Chuyên nghiệp"
     }
 }
 
