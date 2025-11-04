@@ -137,7 +137,9 @@ fun BookingConfirmationScreenContent(
                 title = "Thông tin sân",
                 icon = Icons.Default.Place
             ) {
-                InfoRow(label = "Tên sân:", value = bookingData.courtName)
+                // Loại bỏ phần "- Sân X" khỏi tên sân vì đã có chi tiết ở dưới
+                val venueName = bookingData.courtName.substringBefore(" - Sân").trim()
+                InfoRow(label = "Tên sân:", value = venueName)
                 InfoRow(label = "Địa chỉ:", value = bookingData.courtAddress)
             }
 
