@@ -32,13 +32,12 @@ class BookingRepositoryImpl @Inject constructor(
             val courtIdLong = parts.getOrNull(1)?.toLongOrNull()
                 ?: throw IllegalArgumentException("Invalid courtId format: $courtId. Expected format: venueId_courtNumber")
 
+            // Backend only accepts venueId, courtId, startTime, endTime
             val request = CreateBookingRequestDto(
-                courtId = courtIdLong,     // Long: 1, 2, 3...
-                venueId = venueIdLong,     // Long: 5
+                courtId = courtIdLong,
+                venueId = venueIdLong,
                 startTime = startTime,
-                endTime = endTime,
-                notes = notes,
-                paymentMethod = paymentMethod
+                endTime = endTime
             )
 
             // Log request để debug
@@ -47,18 +46,29 @@ class BookingRepositoryImpl @Inject constructor(
             Log.d("BookingRepo", "  venueId: $venueIdLong")
             Log.d("BookingRepo", "  startTime: $startTime")
             Log.d("BookingRepo", "  endTime: $endTime")
-            Log.d("BookingRepo", "  notes: $notes")
-            Log.d("BookingRepo", "  paymentMethod: $paymentMethod")
 
-            val apiResponse = bookingApi.createBooking(request)
+            val response = bookingApi.createBooking(request)
 
-            // Lấy data từ wrapper response
-            val response = apiResponse.data
+            // Check if API call was successful
+            if (!response.isSuccessful) {
+                val errorMsg = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("BookingRepo", "API error: $errorMsg")
+                emit(Resource.Error("Lỗi tạo booking: $errorMsg"))
+                return@flow
+            }
 
-            Log.d("BookingRepo", "Booking created successfully: ${response.id}")
+            val apiResponse = response.body()
+            if (apiResponse == null || !apiResponse.success || apiResponse.data == null) {
+                val message = apiResponse?.message ?: "Response body is null"
+                Log.e("BookingRepo", "Invalid response: $message")
+                emit(Resource.Error("Lỗi: $message"))
+                return@flow
+            }
+
+            Log.d("BookingRepo", "Booking created successfully: ${apiResponse.data.id}")
             Log.d("BookingRepo", "API message: ${apiResponse.message}")
 
-            val bookingWithBankInfo = response.toBookingWithBankInfo()
+            val bookingWithBankInfo = apiResponse.data.toBookingWithBankInfo()
             emit(Resource.Success(bookingWithBankInfo))
         } catch (e: IllegalArgumentException) {
             // Lỗi parse courtId
@@ -145,7 +155,7 @@ class BookingRepositoryImpl @Inject constructor(
 }
 
 // Mapper functions
-private fun CreateBookingResponseDto.toBookingWithBankInfo(): BookingWithBankInfo {
+private fun BookingResponseDto.toBookingWithBankInfo(): BookingWithBankInfo {
     // Helper function để parse time với xử lý lỗi
     fun parseDateTime(timeString: String?): LocalDateTime {
         if (timeString.isNullOrBlank()) {
@@ -187,19 +197,22 @@ private fun CreateBookingResponseDto.toBookingWithBankInfo(): BookingWithBankInf
         totalPrice = this.totalPrice.toLong(),
         status = when (this.status.uppercase()) {
             "PENDING_PAYMENT" -> BookingStatus.PENDING
+            "PENDING_CONFIRMATION" -> BookingStatus.PENDING
             "CONFIRMED" -> BookingStatus.CONFIRMED
             "CANCELLED" -> BookingStatus.CANCELLED
+            "REJECTED" -> BookingStatus.CANCELLED
+            "EXPIRED" -> BookingStatus.CANCELLED
             "COMPLETED" -> BookingStatus.COMPLETED
             "NO_SHOW" -> BookingStatus.NO_SHOW
             else -> BookingStatus.PENDING
         },
         expireTime = parseDateTime(this.expireTime),
-        ownerBankInfo = this.ownerBankInfo.toBankInfo(),
+        ownerBankInfo = this.ownerBankInfo?.toBankInfo(),
         notes = null
     )
 }
 
-private fun BankInfoDto.toBankInfo(): BankInfo {
+private fun OwnerBankInfoDto.toBankInfo(): BankInfo {
     return BankInfo(
         bankName = this.bankName,
         bankAccountNumber = this.bankAccountNumber,

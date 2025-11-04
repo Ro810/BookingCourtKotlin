@@ -39,19 +39,22 @@ data class BookingDto(
     val qrCode: String?,
 )
 
+/**
+ * CreateBookingRequestDto - Matches backend BookingRequest.java
+ * Backend expects: venueId, courtId, startTime, endTime (all required)
+ */
 data class CreateBookingRequestDto(
-    @SerializedName("courtId")
-    val courtId: Long,  // Đổi từ String sang Long
     @SerializedName("venueId")
-    val venueId: Long,  // Đổi từ String sang Long
+    val venueId: Long,
+
+    @SerializedName("courtId")
+    val courtId: Long,
+
     @SerializedName("startTime")
-    val startTime: String,
+    val startTime: String,  // ISO datetime string
+
     @SerializedName("endTime")
-    val endTime: String,
-    @SerializedName("notes")
-    val notes: String?,
-    @SerializedName("paymentMethod")
-    val paymentMethod: String,
+    val endTime: String  // ISO datetime string
 )
 
 data class BookingListResponseDto(

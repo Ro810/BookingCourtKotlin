@@ -4,13 +4,14 @@ import com.google.gson.annotations.SerializedName
 
 /**
  * Generic API response wrapper
+ * Matches backend ApiResponse.java structure
  */
 data class ApiResponse<T>(
     @SerializedName("success")
     val success: Boolean,
 
     @SerializedName("data")
-    val data: T, // Non-null vì response thành công luôn có data
+    val data: T? = null, // Nullable vì backend có thể trả null khi lỗi
 
     @SerializedName("message")
     val message: String? = null,

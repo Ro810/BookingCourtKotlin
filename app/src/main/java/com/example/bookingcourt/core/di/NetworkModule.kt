@@ -108,4 +108,14 @@ object NetworkModule {
     @Singleton
     fun provideUserApi(retrofit: Retrofit): com.example.bookingcourt.data.remote.api.UserApi =
         retrofit.create(com.example.bookingcourt.data.remote.api.UserApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideReviewApi(retrofit: Retrofit): com.example.bookingcourt.data.remote.api.ReviewApi =
+        retrofit.create(com.example.bookingcourt.data.remote.api.ReviewApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): com.example.bookingcourt.data.remote.api.NotificationApi =
+        retrofit.create(com.example.bookingcourt.data.remote.api.NotificationApi::class.java)
 }
