@@ -25,6 +25,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.*
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
+import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +41,10 @@ fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     val userName = state.user?.fullName ?: "Người dùng"
+
+    val swipeRefreshState = rememberSwipeRefreshState(
+        isRefreshing = state.isLoading && state.featuredVenues.isNotEmpty()
+    )
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -93,35 +100,48 @@ fun HomeScreen(
                     ),
                 ),
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            SwipeRefresh(
+                state = swipeRefreshState,
+                onRefresh = {
+                    viewModel.handleIntent(HomeIntent.Refresh)
+                },
+                modifier = Modifier.fillMaxSize()
             ) {
-                // Header Section
-                item {
-                    HeaderSection(
-                        userName = userName,
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        onSearchClick = onSearchClick,
-                        onClearSearch = { searchQuery = "" }
-                    )
-                }
-
-                // Loading State
-                if (state.isLoading && state.featuredVenues.isEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    // Header Section
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = Primary)
+                        HeaderSection(
+                            userName = userName,
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = {
+                                searchQuery = it
+                                viewModel.handleIntent(HomeIntent.Search(it))
+                            },
+                            onSearchClick = onSearchClick,
+                            onClearSearch = {
+                                searchQuery = ""
+                                viewModel.handleIntent(HomeIntent.ClearSearch)
+                            }
+                        )
+                    }
+
+                    // Loading State
+                    if (state.isLoading && state.featuredVenues.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Primary)
+                            }
                         }
                     }
-                }
 
                     state.error?.let { error ->
                         item {
@@ -203,6 +223,7 @@ fun HomeScreen(
             }
         }
     }
+}
 
 @Composable
 fun HeaderSection(

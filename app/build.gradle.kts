@@ -101,6 +101,7 @@ dependencies {
 
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.36.0")
 
     implementation("com.airbnb.android:lottie-compose:6.5.2")
 
