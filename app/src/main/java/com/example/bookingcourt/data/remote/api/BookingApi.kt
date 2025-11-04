@@ -126,4 +126,5 @@ interface BookingApi {
      */
     @GET("bookings/owner/all-bookings")
     suspend fun getAllBookingsForOwner(): Response<ApiResponse<List<BookingResponseDto>>>
+    fun getUserBookings(page: Int, size: Int, status: String?)
 }

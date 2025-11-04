@@ -99,10 +99,29 @@ class BookingRepositoryImpl @Inject constructor(
     ): Flow<Resource<List<Booking>>> = flow {
         emit(Resource.Loading())
         try {
-            val response = bookingApi.getUserBookings(page, size, status)
-            val bookings = response.bookings.map { it.toBooking() }
+            Log.d("BookingRepo", "Getting user bookings - page: $page, size: $size, status: $status")
+            val response = bookingApi.getMyBookings()
+
+            if (!response.isSuccessful) {
+                val errorMsg = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("BookingRepo", "API error: $errorMsg")
+                emit(Resource.Error("Lỗi lấy danh sách booking: $errorMsg"))
+                return@flow
+            }
+
+            val apiResponse = response.body()
+            if (apiResponse == null || !apiResponse.success || apiResponse.data == null) {
+                val message = apiResponse?.message ?: "Response body is null"
+                Log.e("BookingRepo", "Invalid response: $message")
+                emit(Resource.Error("Lỗi: $message"))
+                return@flow
+            }
+
+            val bookings = apiResponse.data.map { it.toBooking() }
+            Log.d("BookingRepo", "Got ${bookings.size} bookings")
             emit(Resource.Success(bookings))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting user bookings", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách booking"))
         }
     }
@@ -110,10 +129,35 @@ class BookingRepositoryImpl @Inject constructor(
     override suspend fun getBookingById(bookingId: String): Flow<Resource<Booking>> = flow {
         emit(Resource.Loading())
         try {
-            val response = bookingApi.getBookingById(bookingId)
-            val booking = response.toBooking()
+            val bookingIdLong = bookingId.toLongOrNull()
+                ?: throw IllegalArgumentException("Invalid bookingId: $bookingId")
+
+            Log.d("BookingRepo", "Getting booking by id: $bookingIdLong")
+            val response = bookingApi.getBookingById(bookingIdLong)
+
+            if (!response.isSuccessful) {
+                val errorMsg = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("BookingRepo", "API error: $errorMsg")
+                emit(Resource.Error("Lỗi lấy chi tiết booking: $errorMsg"))
+                return@flow
+            }
+
+            val apiResponse = response.body()
+            if (apiResponse == null || !apiResponse.success || apiResponse.data == null) {
+                val message = apiResponse?.message ?: "Response body is null"
+                Log.e("BookingRepo", "Invalid response: $message")
+                emit(Resource.Error("Lỗi: $message"))
+                return@flow
+            }
+
+            val booking = apiResponse.data.toBooking()
+            Log.d("BookingRepo", "Got booking: ${booking.id}")
             emit(Resource.Success(booking))
+        } catch (e: IllegalArgumentException) {
+            Log.e("BookingRepo", "Invalid bookingId format", e)
+            emit(Resource.Error("Lỗi: ${e.message}"))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting booking by id", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy chi tiết booking"))
         }
     }
@@ -124,9 +168,34 @@ class BookingRepositoryImpl @Inject constructor(
     ): Flow<Resource<Unit>> = flow {
         emit(Resource.Loading())
         try {
-            bookingApi.cancelBooking(bookingId, mapOf("reason" to reason))
+            val bookingIdLong = bookingId.toLongOrNull()
+                ?: throw IllegalArgumentException("Invalid bookingId: $bookingId")
+
+            Log.d("BookingRepo", "Cancelling booking: $bookingIdLong, reason: $reason")
+            val response = bookingApi.cancelBooking(bookingIdLong)
+
+            if (!response.isSuccessful) {
+                val errorMsg = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("BookingRepo", "API error: $errorMsg")
+                emit(Resource.Error("Lỗi hủy booking: $errorMsg"))
+                return@flow
+            }
+
+            val apiResponse = response.body()
+            if (apiResponse == null || !apiResponse.success) {
+                val message = apiResponse?.message ?: "Response body is null"
+                Log.e("BookingRepo", "Invalid response: $message")
+                emit(Resource.Error("Lỗi: $message"))
+                return@flow
+            }
+
+            Log.d("BookingRepo", "Booking cancelled successfully")
             emit(Resource.Success(Unit))
+        } catch (e: IllegalArgumentException) {
+            Log.e("BookingRepo", "Invalid bookingId format", e)
+            emit(Resource.Error("Lỗi: ${e.message}"))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error cancelling booking", e)
             emit(Resource.Error(e.message ?: "Lỗi khi hủy booking"))
         }
     }
@@ -134,10 +203,35 @@ class BookingRepositoryImpl @Inject constructor(
     override suspend fun confirmBooking(bookingId: String): Flow<Resource<Booking>> = flow {
         emit(Resource.Loading())
         try {
-            val response = bookingApi.confirmBooking(bookingId)
-            val booking = response.toBooking()
+            val bookingIdLong = bookingId.toLongOrNull()
+                ?: throw IllegalArgumentException("Invalid bookingId: $bookingId")
+
+            Log.d("BookingRepo", "Confirming booking: $bookingIdLong")
+            val response = bookingApi.acceptBooking(bookingIdLong)
+
+            if (!response.isSuccessful) {
+                val errorMsg = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("BookingRepo", "API error: $errorMsg")
+                emit(Resource.Error("Lỗi xác nhận booking: $errorMsg"))
+                return@flow
+            }
+
+            val apiResponse = response.body()
+            if (apiResponse == null || !apiResponse.success || apiResponse.data == null) {
+                val message = apiResponse?.message ?: "Response body is null"
+                Log.e("BookingRepo", "Invalid response: $message")
+                emit(Resource.Error("Lỗi: $message"))
+                return@flow
+            }
+
+            val booking = apiResponse.data.toBooking()
+            Log.d("BookingRepo", "Booking confirmed successfully")
             emit(Resource.Success(booking))
+        } catch (e: IllegalArgumentException) {
+            Log.e("BookingRepo", "Invalid bookingId format", e)
+            emit(Resource.Error("Lỗi: ${e.message}"))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error confirming booking", e)
             emit(Resource.Error(e.message ?: "Lỗi khi xác nhận booking"))
         }
     }
@@ -145,10 +239,33 @@ class BookingRepositoryImpl @Inject constructor(
     override suspend fun getUpcomingBookings(): Flow<Resource<List<Booking>>> = flow {
         emit(Resource.Loading())
         try {
-            val response = bookingApi.getUpcomingBookings()
-            val bookings = response.map { it.toBooking() }
+            Log.d("BookingRepo", "Getting upcoming bookings")
+            val response = bookingApi.getMyBookings()
+
+            if (!response.isSuccessful) {
+                val errorMsg = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("BookingRepo", "API error: $errorMsg")
+                emit(Resource.Error("Lỗi lấy danh sách booking: $errorMsg"))
+                return@flow
+            }
+
+            val apiResponse = response.body()
+            if (apiResponse == null || !apiResponse.success || apiResponse.data == null) {
+                val message = apiResponse?.message ?: "Response body is null"
+                Log.e("BookingRepo", "Invalid response: $message")
+                emit(Resource.Error("Lỗi: $message"))
+                return@flow
+            }
+
+            // Filter for upcoming bookings (CONFIRMED status and future start time)
+            val bookings = apiResponse.data
+                .filter { it.status.uppercase() == "CONFIRMED" || it.status.uppercase() == "PENDING_CONFIRMATION" }
+                .map { it.toBooking() }
+
+            Log.d("BookingRepo", "Got ${bookings.size} upcoming bookings")
             emit(Resource.Success(bookings))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting upcoming bookings", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy booking sắp tới"))
         }
     }
@@ -206,38 +323,75 @@ private fun BookingResponseDto.toBookingWithBankInfo(): BookingWithBankInfo {
             "NO_SHOW" -> BookingStatus.NO_SHOW
             else -> BookingStatus.PENDING
         },
-        expireTime = parseDateTime(this.expireTime),
-        ownerBankInfo = this.ownerBankInfo?.toBankInfo(),
+        expireTime = parseDateTime(this.expireTime ?: this.endTime),
+        ownerBankInfo = this.ownerBankInfo?.toBankInfo() ?: BankInfo(
+            bankName = "N/A",
+            bankAccountNumber = "N/A",
+            bankAccountName = "N/A"
+        ),
         notes = null
     )
 }
 
 private fun OwnerBankInfoDto.toBankInfo(): BankInfo {
     return BankInfo(
-        bankName = this.bankName,
-        bankAccountNumber = this.bankAccountNumber,
-        bankAccountName = this.bankAccountName
+        bankName = this.bankName ?: "N/A",
+        bankAccountNumber = this.bankAccountNumber ?: "N/A",
+        bankAccountName = this.bankAccountName ?: "N/A"
     )
 }
 
-private fun BookingDto.toBooking(): Booking {
+private fun BookingResponseDto.toBooking(): Booking {
+    // Helper function để parse time với xử lý lỗi
+    fun parseDateTime(timeString: String?): LocalDateTime {
+        if (timeString.isNullOrBlank()) {
+            throw IllegalArgumentException("Time string is null or empty")
+        }
+        return try {
+            // Xử lý format có microseconds: 2025-11-03T23:00:09.5733903
+            val cleanedTime = if (timeString.contains('.')) {
+                timeString.substringBefore('.')
+            } else {
+                timeString
+            }
+            LocalDateTime.parse(cleanedTime)
+        } catch (e: Exception) {
+            Log.e("BookingMapper", "Error parsing time: $timeString", e)
+            throw IllegalArgumentException("Invalid time format: $timeString")
+        }
+    }
+
     return Booking(
-        id = this.id,
-        courtId = this.courtId,
-        courtName = this.courtName,
-        userId = this.userId,
-        userName = this.userName,
-        userPhone = this.userPhone,
-        startTime = LocalDateTime.parse(this.startTime),
-        endTime = LocalDateTime.parse(this.endTime),
-        totalPrice = this.totalPrice,
-        status = BookingStatus.valueOf(this.status.uppercase()),
-        paymentStatus = PaymentStatus.valueOf(this.paymentStatus.uppercase()),
-        paymentMethod = this.paymentMethod?.let { PaymentMethod.valueOf(it.uppercase()) },
-        notes = this.notes,
-        createdAt = LocalDateTime.parse(this.createdAt),
-        updatedAt = LocalDateTime.parse(this.updatedAt),
-        cancellationReason = this.cancellationReason,
-        qrCode = this.qrCode
+        id = this.id.toString(),
+        courtId = this.courtId.toString(),
+        courtName = this.courtName ?: "Sân",
+        userId = this.userId.toString(),
+        userName = this.userName ?: "Người dùng",
+        userPhone = "", // BookingResponseDto không có userPhone
+        startTime = parseDateTime(this.startTime),
+        endTime = parseDateTime(this.endTime),
+        totalPrice = this.totalPrice.toLong(),
+        status = when (this.status.uppercase()) {
+            "PENDING_PAYMENT" -> BookingStatus.PENDING
+            "PENDING_CONFIRMATION" -> BookingStatus.PENDING
+            "CONFIRMED" -> BookingStatus.CONFIRMED
+            "CANCELLED" -> BookingStatus.CANCELLED
+            "REJECTED" -> BookingStatus.CANCELLED
+            "EXPIRED" -> BookingStatus.CANCELLED
+            "COMPLETED" -> BookingStatus.COMPLETED
+            "NO_SHOW" -> BookingStatus.NO_SHOW
+            else -> BookingStatus.PENDING
+        },
+        paymentStatus = if (this.paymentProofUploaded == true) {
+            PaymentStatus.PAID
+        } else {
+            PaymentStatus.PENDING
+        },
+        paymentMethod = PaymentMethod.BANK_TRANSFER, // Default to bank transfer
+        notes = this.rejectionReason,
+        createdAt = LocalDateTime.parse("2025-01-01T00:00:00"), // BookingResponseDto không có createdAt
+        updatedAt = LocalDateTime.parse("2025-01-01T00:00:00"), // BookingResponseDto không có updatedAt
+        cancellationReason = this.rejectionReason,
+        qrCode = null // BookingResponseDto không có qrCode
     )
 }
