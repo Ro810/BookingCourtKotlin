@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.core.common.UiEvent
+import com.example.bookingcourt.domain.model.CourtDetail // <-- Lấy từ tệp bên trái
 import com.example.bookingcourt.domain.model.Venue
+import com.example.bookingcourt.domain.repository.CourtRepository // <-- Lấy từ tệp bên trái
 import com.example.bookingcourt.domain.repository.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,25 +21,28 @@ import javax.inject.Inject
 data class CourtDetailState(
     val isLoading: Boolean = false,
     val venue: Venue? = null,
+    val courts: List<CourtDetail> = emptyList(), // Lấy từ bên trái
     val error: String? = null,
-    val todayRevenue: Long = 0,
+    val todayRevenue: Long = 0, // Lấy từ bên phải
 )
 
 sealed interface CourtDetailIntent {
-    data class LoadVenue(val venueId: String) : CourtDetailIntent
-    object NavigateToBooking : CourtDetailIntent
+    data class LoadVenueDetail(val venueId: Long) : CourtDetailIntent // Giữ của bên trái (dùng Long)
+    data class NavigateToBooking(val courtId: Long) : CourtDetailIntent // Giữ của bên trái
     object NavigateBack : CourtDetailIntent
-    data class CheckIn(val bookingId: String) : CourtDetailIntent
     object Refresh : CourtDetailIntent
+    data class CheckIn(val bookingId: String) : CourtDetailIntent // Thêm từ bên phải
 }
 
 @HiltViewModel
 class CourtDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val venueRepository: VenueRepository,
+    private val courtRepository: CourtRepository, // Thêm dòng này từ bên trái
+
 ) : ViewModel() {
 
-    private val venueId: String = savedStateHandle.get<String>("courtId") ?: ""
+    private val venueId: String = savedStateHandle.get<String>("venueId") ?: ""
 
     private val _state = MutableStateFlow(CourtDetailState())
     val state: StateFlow<CourtDetailState> = _state.asStateFlow()
@@ -47,59 +52,72 @@ class CourtDetailViewModel @Inject constructor(
 
     init {
         if (venueId.isNotEmpty()) {
-            handleIntent(CourtDetailIntent.LoadVenue(venueId))
+            handleIntent(CourtDetailIntent.LoadVenueDetail(venueId.toLongOrNull() ?: 0))
         }
     }
 
     fun handleIntent(intent: CourtDetailIntent) {
         when (intent) {
-            is CourtDetailIntent.LoadVenue -> loadVenue(intent.venueId)
-            CourtDetailIntent.NavigateToBooking -> navigateToBooking()
+            is CourtDetailIntent.LoadVenueDetail -> loadVenueDetail(intent.venueId)
+            is CourtDetailIntent.NavigateToBooking -> navigateToBooking(intent.courtId)
             CourtDetailIntent.NavigateBack -> navigateBack()
-            is CourtDetailIntent.CheckIn -> checkIn(intent.bookingId)
             CourtDetailIntent.Refresh -> refresh()
+            is CourtDetailIntent.CheckIn -> checkIn(intent.bookingId) // Thêm từ P2
         }
     }
-
-    private fun loadVenue(venueId: String) {
+    private fun loadVenueDetail(venueId: Long) {
         viewModelScope.launch {
-            try {
-                _state.value = _state.value.copy(isLoading = true, error = null)
+            _state.value = _state.value.copy(isLoading = true)
 
-                venueRepository.getVenueById(venueId.toLongOrNull() ?: 0).collect { result ->
-                    when (result) {
-                        is Resource.Success -> {
-                            _state.value = _state.value.copy(
-                                isLoading = false,
-                                venue = result.data,
-                                error = null
-                            )
-                        }
-                        is Resource.Error -> {
-                            _state.value = _state.value.copy(
-                                isLoading = false,
-                                error = result.message ?: "Đã xảy ra lỗi"
-                            )
-                        }
-                        is Resource.Loading -> {
-                            _state.value = _state.value.copy(isLoading = true)
+            // 1. Tải Venue
+            venueRepository.getVenueById(venueId).collect { venueResult ->
+                when (venueResult) {
+                    is Resource.Success -> {
+                        _state.value = _state.value.copy(venue = venueResult.data)
+
+                        // 2. Tải Courts (sân con)
+                        courtRepository.getCourtsByVenueId(venueId).collect { courtsResult ->
+                            when (courtsResult) {
+                                is Resource.Success -> {
+                                    _state.value = _state.value.copy(
+                                        isLoading = false,
+                                        courts = courtsResult.data ?: emptyList(),
+                                        error = null
+                                        // TODO: Thêm logic gọi repo lấy todayRevenue ở đây
+                                        // todayRevenue = ...
+                                    )
+                                }
+                                is Resource.Error -> {
+                                    _state.value = _state.value.copy(
+                                        isLoading = false,
+                                        error = courtsResult.message
+                                    )
+                                }
+                                is Resource.Loading -> {
+                                    _state.value = _state.value.copy(isLoading = true)
+                                }
+                            }
                         }
                     }
+                    is Resource.Error -> {
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            error = venueResult.message
+                        )
+                    }
+                    is Resource.Loading -> {
+                        _state.value = _state.value.copy(isLoading = true)
+                    }
                 }
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Đã xảy ra lỗi"
-                )
             }
         }
     }
+    
 
-    private fun navigateToBooking() {
+
+    private fun navigateToBooking(courtId: Long) {
         viewModelScope.launch {
-            _state.value.venue?.let { venue ->
-                _uiEvent.emit(UiEvent.NavigateTo("booking/${venue.id}"))
-            }
+            _uiEvent.emit(UiEvent.NavigateTo("booking/$courtId"))
         }
     }
 
@@ -108,17 +126,16 @@ class CourtDetailViewModel @Inject constructor(
             _uiEvent.emit(UiEvent.NavigateUp)
         }
     }
-
+// Thêm hàm từ P2
     private fun checkIn(bookingId: String) {
         viewModelScope.launch {
             // TODO: Implement check-in logic
             _uiEvent.emit(UiEvent.ShowSnackbar("Check-in thành công"))
         }
     }
-
     private fun refresh() {
-        if (venueId.isNotEmpty()) {
-            handleIntent(CourtDetailIntent.LoadVenue(venueId))
+       if (venueId.isNotEmpty()) {
+            handleIntent(CourtDetailIntent.LoadVenueDetail(venueId.toLongOrNull() ?: 0))
         }
     }
 }

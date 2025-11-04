@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.UiEvent
 import com.example.bookingcourt.domain.model.PlayingLevel
-import com.example.bookingcourt.domain.model.SportType
+//import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.UserRole
 import com.example.bookingcourt.domain.repository.AuthRepository

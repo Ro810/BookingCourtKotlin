@@ -4,13 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,40 +18,32 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.bookingcourt.domain.model.Court
+import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.*
 import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
+import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onCourtClick: (Court) -> Unit,
+    onVenueClick: (Venue) -> Unit,
     onSearchClick: () -> Unit,
-    onFilterClick: () -> Unit,
     onProfileClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
 
-    var searchQuery by remember { mutableStateOf("") }
-
-    // Lấy tên user từ state, nếu null thì dùng tên mặc định
     val userName = state.user?.fullName ?: "Người dùng"
-
-    // Auto refresh when screen appears
-    LaunchedEffect(Unit) {
-        viewModel.handleIntent(HomeIntent.Refresh)
-    }
 
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
-            // Bottom Navigation
             NavigationBar(
                 containerColor = Color.White,
                 tonalElevation = 8.dp,
@@ -68,8 +60,8 @@ fun HomeScreen(
                     selected = true,
                     onClick = { },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color(0xFF123E62), // DarkBlue
-                        selectedTextColor = Color(0xFF123E62), // DarkBlue
+                        selectedIconColor = Color(0xFF123E62),
+                        selectedTextColor = Color(0xFF123E62),
                         indicatorColor = Color.Transparent,
                     ),
                 )
@@ -97,11 +89,11 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
-                        0.0f to Color(0xFF8BB1F6), // Mid Blue
-                        0.4f to Color(0xFFE3F2FD), // Light Blue tint
+                        0.0f to Color(0xFF8BB1F6),
+                        0.4f to Color(0xFFE3F2FD),
                         1.0f to Color.White,
                     ),
-                )
+                ),
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -142,78 +134,81 @@ fun HomeScreen(
                     }
                 }
 
-                // Error Message
-                state.error?.let { error ->
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Error.copy(alpha = 0.1f))
-                        ) {
-                            Text(
-                                text = "⚠️ $error",
-                                modifier = Modifier.padding(16.dp),
-                                color = Error
-                            )
+                    state.error?.let { error ->
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Error.copy(alpha = 0.1f))
+                            ) {
+                                Text(
+                                    text = "⚠️ $error",
+                                    modifier = Modifier.padding(16.dp),
+                                    color = Error
+                                )
+                            }
                         }
                     }
-                }
 
-                // Featured Courts Section
-                if (state.featuredCourts.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Sân nổi bật",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    items(state.featuredCourts) { court ->
-                        CourtCard(
-                            court = court,
-                            onCourtClick = { onCourtClick(court) }
-                        )
-                    }
-                }
+                    // Hiển thị kết quả tìm kiếm nếu đang search
+                    if (state.searchQuery.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = if (state.searchResults.isNotEmpty())
+                                    "Kết quả tìm kiếm (${state.searchResults.size})"
+                                else
+                                    "Đang tìm kiếm...",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
 
-                // Recommended Courts Section
-                if (state.recommendedCourts.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Đề xuất sân của tôi",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    items(state.recommendedCourts) { court ->
-                        CourtCard(
-                            court = court,
-                            onCourtClick = { onCourtClick(court) }
-                        )
-                    }
-                }
-
-                // Nearby Courts Section
-                if (state.nearbyCourts.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Sân gần bạn",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    items(state.nearbyCourts) { court ->
-                        CourtCard(
-                            court = court,
-                            onCourtClick = { onCourtClick(court) }
-                        )
+                        if (state.searchResults.isNotEmpty()) {
+                            items(state.searchResults) { venue ->
+                                VenueCard(
+                                    venue = venue,
+                                    onVenueClick = { onVenueClick(venue) }
+                                )
+                            }
+                        } else if (!state.isSearching) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Không tìm thấy kết quả",
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Hiển thị danh sách mặc định khi không search
+                        val allVenues = (state.featuredVenues + state.recommendedVenues + state.nearbyVenues)
+                            .distinctBy { it.id }
+                        if (allVenues.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Sân nổi bật",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            items(allVenues) { venue ->
+                                VenueCard(
+                                    venue = venue,
+                                    onVenueClick = { onVenueClick(venue) }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -226,7 +221,8 @@ fun HeaderSection(
     userName: String,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    onClearSearch: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -234,14 +230,12 @@ fun HeaderSection(
             .statusBarsPadding()
             .padding(start = 16.dp, end = 18.dp, top = 8.dp, bottom = 16.dp)
     ) {
-        // Avatar and Name Section
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -261,7 +255,6 @@ fun HeaderSection(
                 }
             }
 
-            // Notification Icon
             IconButton(
                 onClick = { },
                 modifier = Modifier
@@ -278,132 +271,86 @@ fun HeaderSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Search Bar
-        Card(
+        // TextField cho tìm kiếm
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .clickable { onSearchClick() },
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                .height(56.dp),
+            placeholder = {
+                Text(
+                    text = "Tìm kiếm theo tên sân hoặc địa chỉ...",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+            },
+            leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
                     tint = Primary
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Tìm kiếm sân...",
-                    color = TextSecondary,
-                    modifier = Modifier.weight(1f)
-                )
-
-                IconButton(onClick = { }) {
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = TextSecondary
-                    )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = onClearSearch) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear",
+                            tint = TextSecondary
+                        )
+                    }
+                } else {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite",
+                            tint = TextSecondary
+                        )
+                    }
                 }
-            }
-        }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = Primary,
+                unfocusedBorderColor = Color.Transparent
+            )
+        )
     }
 }
 
 @Composable
-fun CategoryChips() {
-    LazyRow(
-        modifier = Modifier.padding(vertical = 8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(listOf("Cầu lông gần tôi", "Vé của tôi", "Sân đã lưu")) { category ->
-            AssistChip(
-                onClick = { },
-                label = { Text(category) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = SurfaceVariant
-                )
-            )
-        }
-    }
-}
-
-@Composable
-fun FilterSection(onFilterClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onFilterClick() },
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Bộ lọc",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color.Black
-            )
-            Icon(
-                imageVector = Icons.Default.FilterList,
-                contentDescription = "Filter",
-                tint = Primary
-            )
-        }
-    }
-}
-
-@Composable
-fun CourtCard(
-    court: Court,
-    onCourtClick: () -> Unit
+fun VenueCard(
+    venue: Venue,
+    onVenueClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onCourtClick() },
+            .clickable { onVenueClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Surface)
     ) {
         Column {
-            // Image Section
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
                     .background(Primary.copy(alpha = 0.2f))
-            ) {
-                // TODO: Add image loading with Coil
-                // AsyncImage(model = court.images.firstOrNull(), ...)
-            }
+            )
 
-            // Info Section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Logo/Avatar
                 Box(
                     modifier = Modifier
                         .size(50.dp)
@@ -415,17 +362,18 @@ fun CourtCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = court.name,
+                        text = venue.name,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = TextPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = court.address,
+                        text = venue.address.getFullAddress(),
                         fontSize = 12.sp,
                         color = TextSecondary,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -437,13 +385,13 @@ fun CourtCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${court.rating} (${court.totalReviews})",
+                            text = "${venue.averageRating} (${venue.totalReviews})",
                             fontSize = 12.sp,
                             color = TextSecondary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "• ${court.pricePerHour / 1000}k/giờ",
+                            text = "• ${venue.pricePerHour / 1000}k/giờ",
                             fontSize = 12.sp,
                             color = Primary,
                             fontWeight = FontWeight.Medium
@@ -460,7 +408,7 @@ fun CourtCard(
                         )
                     }
                     Button(
-                        onClick = onCourtClick,
+                        onClick = onVenueClick,
                         colors = ButtonDefaults.buttonColors(containerColor = Primary),
                         modifier = Modifier.height(36.dp)
                     ) {
@@ -478,9 +426,8 @@ fun HomeScreenPreview() {
     BookingCourtTheme {
         Surface {
             HomeScreen(
-                onCourtClick = { },
-                onSearchClick = { },
-                onFilterClick = { }
+                onVenueClick = { },
+                onSearchClick = { }
             )
         }
     }

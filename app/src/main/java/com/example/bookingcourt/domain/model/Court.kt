@@ -1,47 +1,17 @@
 package com.example.bookingcourt.domain.model
 
-import kotlinx.datetime.LocalTime
-
-data class Court(
-    val id: String,
-    val name: String,
+/**
+ * Court Model - Sân cụ thể trong một Venue
+ * Theo API: Court chỉ có id, description, booked và venues
+ */
+data class CourtDetail(
+    val id: Long,
     val description: String,
-    val address: String,
-    val latitude: Double,
-    val longitude: Double,
-    val images: List<String>,
-    val sportType: SportType,
-    val courtType: CourtType,
-    val pricePerHour: Long,
-    val openTime: LocalTime,
-    val closeTime: LocalTime,
-    val amenities: List<Amenity>,
-    val rules: String?,
-    val ownerId: String,
-    val rating: Float,
-    val totalReviews: Int,
-    val isActive: Boolean,
-    val maxPlayers: Int,
-    val courtsCount: Int = 1, // Số lượng sân từ API
+    val booked: Boolean = false,
+    val venue: CourtVenueInfo
 )
 
-enum class SportType {
-    BADMINTON,
-    TABLE_TENNIS,
-    TENNIS,
-    FOOTBALL,
-    BASKETBALL,
-    VOLLEYBALL,
-}
-
-enum class CourtType {
-    INDOOR,
-    OUTDOOR,
-    COVERED,
-}
-
-data class Amenity(
-    val id: String,
-    val name: String,
-    val icon: String,
+data class CourtVenueInfo(
+    val id: Long,
+    val name: String
 )

@@ -10,7 +10,7 @@ data class ApiResponse<T>(
     val success: Boolean,
 
     @SerializedName("data")
-    val data: T? = null,
+    val data: T, // Non-null vì response thành công luôn có data
 
     @SerializedName("message")
     val message: String? = null,
@@ -18,4 +18,3 @@ data class ApiResponse<T>(
     @SerializedName("timestamp")
     val timestamp: String? = null
 )
-

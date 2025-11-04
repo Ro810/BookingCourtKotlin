@@ -20,19 +20,15 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.SportType
-import com.example.bookingcourt.domain.model.CourtType
-import com.example.bookingcourt.domain.model.Amenity
+import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.Primary
-import kotlinx.datetime.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
-    court: Court,
+    venue: Venue,
     onBackClick: () -> Unit,
-    onBookClick: (Court) -> Unit
+    onBookClick: (Venue) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Mô tả", "Hình ảnh", "Đánh giá")
@@ -68,7 +64,7 @@ fun DetailScreen(
 
                     // Book Button in top right corner
                     Button(
-                        onClick = { onBookClick(court) },
+                        onClick = { onBookClick(venue) },
                         modifier = Modifier.height(40.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Primary)
                     ) {
@@ -84,11 +80,11 @@ fun DetailScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Court Info Section
+            // Venue Info Section
             Column(modifier = Modifier.padding(16.dp)) {
-                // Court Name
+                // Venue Name
                 Text(
-                    text = court.name,
+                    text = venue.name,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
@@ -106,20 +102,20 @@ fun DetailScreen(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${court.rating}",
+                        text = "${venue.averageRating}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "(${court.totalReviews} đánh giá)",
+                        text = "(${venue.totalReviews} đánh giá)",
                         fontSize = 14.sp,
                         color = Color.Gray
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "${court.pricePerHour / 1000}k/giờ",
+                        text = "${venue.pricePerHour / 1000}k/giờ",
                         fontSize = 16.sp,
                         color = Primary,
                         fontWeight = FontWeight.Bold
@@ -128,29 +124,31 @@ fun DetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Số lượng sân - lấy từ court.courtsCount
+                // Số lượng sân
                 InfoCard(
                     icon = Icons.Default.Stadium,
                     title = "Số lượng sân",
-                    value = "${court.courtsCount} sân"
+                    value = "${venue.courtsCount} sân"
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Thời gian hoạt động
-                InfoCard(
-                    icon = Icons.Default.Schedule,
-                    title = "Thời gian hoạt động",
-                    value = "${court.openTime} - ${court.closeTime}"
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
+                if (venue.openingTime != null && venue.closingTime != null) {
+                    InfoCard(
+                        icon = Icons.Default.Schedule,
+                        title = "Thời gian hoạt động",
+                        value = "${venue.openingTime} - ${venue.closingTime}"
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
                 // Số điện thoại
+                val phoneNumber = venue.phoneNumber ?: venue.ownerPhone ?: "Liên hệ để biết thêm"
                 InfoCard(
                     icon = Icons.Default.Phone,
                     title = "Số điện thoại",
-                    value = "Liên hệ để biết thêm"
+                    value = phoneNumber
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -159,41 +157,14 @@ fun DetailScreen(
                 InfoCard(
                     icon = Icons.Default.LocationOn,
                     title = "Địa chỉ",
-                    value = court.address
+                    value = venue.address.getFullAddress()
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Trạng thái - kiểm tra theo thời gian thực, cập nhật mỗi phút
-                var currentTime by remember {
-                    mutableStateOf(
-                        LocalTime(
-                            java.time.LocalTime.now().hour,
-                            java.time.LocalTime.now().minute
-                        )
-                    )
-                }
-
-                // Cập nhật currentTime mỗi 60 giây
-                LaunchedEffect(Unit) {
-                    while (true) {
-                        kotlinx.coroutines.delay(60000) // 60 giây
-                        val now = java.time.LocalTime.now()
-                        currentTime = LocalTime(now.hour, now.minute)
-                    }
-                }
-
-                val isOpenNow = currentTime >= court.openTime && currentTime < court.closeTime
-                val statusText = when {
-                    !court.isActive -> "Tạm đóng cửa"
-                    court.courtsCount == 0 -> "Đã đóng cửa" // Không có sân nào
-                    isOpenNow -> "Đang mở cửa"
-                    else -> "Đã đóng cửa"
-                }
-                val statusIcon = if (court.isActive && isOpenNow && court.courtsCount > 0)
-                    Icons.Default.CheckCircle
-                else
-                    Icons.Default.Cancel
+                // Trạng thái
+                val statusText = if (venue.courtsCount > 0) "Đang hoạt động" else "Chưa có sân"
+                val statusIcon = if (venue.courtsCount > 0) Icons.Default.CheckCircle else Icons.Default.Cancel
 
                 InfoCard(
                     icon = statusIcon,
@@ -202,7 +173,7 @@ fun DetailScreen(
                 )
             }
 
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 color = Color.Gray.copy(alpha = 0.2f)
             )
@@ -231,9 +202,9 @@ fun DetailScreen(
 
             // Tab Content
             when (selectedTab) {
-                0 -> DescriptionTabContent(court)
-                1 -> ImagesTabContent(court)
-                2 -> ReviewsTabContent(court)
+                0 -> DescriptionTabContent(venue)
+                1 -> ImagesTabContent(venue)
+                2 -> ReviewsTabContent(venue)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -279,84 +250,96 @@ fun InfoCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: Strin
 }
 
 @Composable
-fun DescriptionTabContent(court: Court) {
+fun DescriptionTabContent(venue: Venue) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
         Text(
-            text = court.description,
+            text = venue.description ?: "Chưa có mô tả",
             fontSize = 14.sp,
             color = Color.Black,
             lineHeight = 20.sp
         )
 
-        if (court.rules != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Quy định:",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = court.rules,
-                fontSize = 14.sp,
-                color = Color.Gray,
-                lineHeight = 20.sp
-            )
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Tiện ích:",
+            text = "Thông tin:",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (court.amenities.isEmpty()) {
-            Text(
-                text = "Chưa có thông tin tiện ích",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(vertical = 4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = Primary,
+                modifier = Modifier.size(20.dp)
             )
-        } else {
-            court.amenities.forEach { amenity ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = amenity.name,
-                        fontSize = 14.sp,
-                        color = Color.Black
-                    )
-                }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "${venue.courtsCount} sân có sẵn",
+                fontSize = 14.sp,
+                color = Color.Black
+            )
+        }
+
+        if (venue.phoneNumber != null || venue.ownerPhone != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Có thể liên hệ trực tiếp",
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+            }
+        }
+
+        if (venue.email != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Email: ${venue.email}",
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
             }
         }
     }
 }
 
 @Composable
-fun ImagesTabContent(court: Court) {
+fun ImagesTabContent(venue: Venue) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        if (court.images.isEmpty()) {
+        if (venue.images.isNullOrEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -384,7 +367,7 @@ fun ImagesTabContent(court: Court) {
             }
         } else {
             // TODO: Implement image gallery with Coil
-            court.images.forEach { imageUrl ->
+            venue.images.forEach { imageUrl ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -403,7 +386,7 @@ fun ImagesTabContent(court: Court) {
 }
 
 @Composable
-fun ReviewsTabContent(court: Court) {
+fun ReviewsTabContent(venue: Venue) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -419,7 +402,7 @@ fun ReviewsTabContent(court: Court) {
                 modifier = Modifier.padding(end = 24.dp)
             ) {
                 Text(
-                    text = "${court.rating}",
+                    text = "${venue.averageRating}",
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
@@ -427,7 +410,7 @@ fun ReviewsTabContent(court: Court) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     repeat(5) { index ->
                         Icon(
-                            imageVector = if (index < court.rating.toInt()) Icons.Default.Star else Icons.Default.StarOutline,
+                            imageVector = if (index < venue.averageRating.toInt()) Icons.Default.Star else Icons.Default.StarOutline,
                             contentDescription = null,
                             tint = Color(0xFFFFA000),
                             modifier = Modifier.size(20.dp)
@@ -436,7 +419,7 @@ fun ReviewsTabContent(court: Court) {
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${court.totalReviews} đánh giá",
+                    text = "${venue.totalReviews} đánh giá",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -462,7 +445,7 @@ fun ReviewsTabContent(court: Court) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         LinearProgressIndicator(
-                            progress = if (court.totalReviews > 0) 0.1f else 0f,
+                            progress = { if (venue.totalReviews > 0) 0.1f else 0f },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(8.dp)
@@ -476,10 +459,10 @@ fun ReviewsTabContent(court: Court) {
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        Divider(color = Color.Gray.copy(alpha = 0.2f))
+        HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (court.totalReviews == 0) {
+        if (venue.totalReviews == 0) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -513,32 +496,29 @@ fun ReviewsTabContent(court: Court) {
     }
 }
 
-// Preview Provider for Court
-class SampleCourtProvider : PreviewParameterProvider<Court> {
+// Preview Provider for Venue
+class SampleVenueProvider : PreviewParameterProvider<Venue> {
     override val values = sequenceOf(
-        Court(
-            id = "1",
+        Venue(
+            id = 1L,
             name = "Sân cầu lông Thống Nhất",
             description = "Sân cầu lông chất lượng cao với đầy đủ tiện nghi, không gian thoáng mát, giá cả phải chăng.",
-            address = "123 Nguyễn Văn Linh, Quận 7, TP.HCM",
-            latitude = 10.7553411,
-            longitude = 106.7423709,
-            images = listOf("https://example.com/court1.jpg"),
-            sportType = SportType.BADMINTON,
-            courtType = CourtType.INDOOR,
-            pricePerHour = 150000,
-            openTime = LocalTime(7, 0),
-            closeTime = LocalTime(22, 0),
-            amenities = listOf(
-                Amenity(id = "1", name = "Bãi đỗ xe", icon = "parking"),
-                Amenity(id = "2", name = "Phòng tắm", icon = "shower")
+            numberOfCourt = 5,
+            address = com.example.bookingcourt.domain.model.Address(
+                id = 1L,
+                provinceOrCity = "TP.HCM",
+                district = "Quận 7",
+                detailAddress = "123 Nguyễn Văn Linh"
             ),
-            rules = "Vui lòng mang giày đúng quy định",
-            ownerId = "owner1",
-            rating = 4.5f,
+            courtsCount = 5,
+            pricePerHour = 150000,
+            averageRating = 4.5f,
             totalReviews = 120,
-            isActive = true,
-            maxPlayers = 4
+            openingTime = "07:00",
+            closingTime = "22:00",
+            phoneNumber = "0123456789",
+            email = "contact@thongnhat.com",
+            images = listOf("https://example.com/court1.jpg")
         )
     )
 }
@@ -546,10 +526,10 @@ class SampleCourtProvider : PreviewParameterProvider<Court> {
 @Preview(showBackground = true)
 @Composable
 fun DetailScreenPreview(
-    @PreviewParameter(SampleCourtProvider::class) court: Court
+    @PreviewParameter(SampleVenueProvider::class) venue: Venue
 ) {
     DetailScreen(
-        court = court,
+        venue = venue,
         onBackClick = {},
         onBookClick = {}
     )

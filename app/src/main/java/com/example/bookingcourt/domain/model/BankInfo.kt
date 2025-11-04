@@ -6,8 +6,8 @@ package com.example.bookingcourt.domain.model
  */
 data class BankInfo(
     val bankName: String,           // Tên ngân hàng (VD: Vietcombank, Techcombank, ...)
-    val accountNumber: String,      // Số tài khoản
-    val accountHolderName: String,  // Tên chủ tài khoản
+    val bankAccountNumber: String,  // Số tài khoản (đổi từ accountNumber để match API)
+    val bankAccountName: String,    // Tên chủ tài khoản (đổi từ accountHolderName để match API)
 )
 
 /**
