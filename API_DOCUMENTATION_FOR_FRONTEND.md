@@ -112,9 +112,50 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
+### 3. Change Password
+**POST** `/auth/change-password`
+
+**Authentication Required:** ✅ Yes (Any authenticated user)
+
+**Request Body:**
+```json
+{
+  "currentPassword": "oldPassword123",
+  "newPassword": "newPassword456"
+}
+```
+
+**Validation Rules:**
+- `currentPassword`: Bắt buộc
+- `newPassword`: Bắt buộc, tối thiểu 6 ký tự
+
+**Response Success (200):**
+```json
+{
+  "success": true,
+  "message": "Đổi mật khẩu thành công",
+  "timestamp": "2025-10-28T15:30:00Z"
+}
+```
+
+**Response Error (400):**
+```json
+{
+  "success": false,
+  "message": "Mật khẩu hiện tại không đúng",
+  "timestamp": "2025-10-28T15:30:00Z"
+}
+```
+
+**Note:**
+- Sau khi đổi mật khẩu thành công, người dùng có thể tiếp tục sử dụng với token hiện tại
+- Mật khẩu mới phải khác mật khẩu cũ
+
+---
+
 ## User Management APIs
 
-### 3. Get Current User Info
+### 4. Get Current User Info
 **GET** `/users/me`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -140,7 +181,7 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
-### 4. Update Current User Info
+### 5. Update Current User Info
 **PUT** `/users/me`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -179,7 +220,7 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
-### 5. Request Owner Role (Trở thành chủ sân)
+### 6. Request Owner Role (Trở thành chủ sân)
 **POST** `/users/me/request-owner-role`
 
 **Authentication Required:** ✅ Yes (ROLE_USER only)
@@ -202,7 +243,7 @@ Authorization: Bearer {your_jwt_token}
 
 ## Venues APIs
 
-### 6. Get All Venues
+### 7. Get All Venues
 **GET** `/venues`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -232,7 +273,7 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
-### 7. Search Venues
+### 8. Search Venues
 **GET** `/venues/search`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -273,7 +314,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 ---
 
-### 8. Get Venue by ID
+### 9. Get Venue by ID
 **GET** `/venues/{id}`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -301,7 +342,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 ---
 
-### 9. Create Venue
+### 10. Create Venue
 **POST** `/venues`
 
 **Authentication Required:** ✅ Yes (ROLE_OWNER required)
@@ -350,7 +391,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 ---
 
-### 10. Update Venue
+### 11. Update Venue
 **PUT** `/venues/{id}`
 
 **Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
@@ -535,7 +576,7 @@ const response = await fetch(`/api/venues/${venueId}`, {
 
 ---
 
-### 11. Delete Venue
+### 12. Delete Venue
 **DELETE** `/venues/{id}`
 
 **Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
