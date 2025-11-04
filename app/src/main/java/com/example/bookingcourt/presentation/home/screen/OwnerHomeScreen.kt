@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,16 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
-import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.CourtType
-import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.domain.model.Address
+import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.presentation.owner.viewmodel.OwnerHomeViewModel
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
-import kotlinx.datetime.LocalTime
 
 enum class HomeTab {
     HOME,
@@ -156,7 +152,7 @@ private fun OwnerHomeContent(
 
     // State for edit dialog
     var showEditDialog by remember { mutableStateOf(false) }
-    var venueToEdit by remember { mutableStateOf<com.example.bookingcourt.domain.model.Venue?>(null) }
+    var venueToEdit by remember { mutableStateOf<Venue?>(null) }
 
     // Lấy venues từ ViewModel thay vì hardcode
     val venues = state.venues
@@ -414,7 +410,7 @@ private fun OwnerHomeContent(
 }
 @Composable
 private fun VenueCard(
-    venue: Court, // Đã đổi tên biến từ venue thành court cho khớp data class
+    venue: Venue,
     onClick: () -> Unit = {},
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -536,7 +532,7 @@ private fun VenueCard(
                         Spacer(modifier = Modifier.height(2.dp))
 
                         Text(
-                            text = "Sức chứa: ${venue.maxPlayers} người",
+                            text = "Số sân: ${venue.courtsCount}",
                             fontSize = 14.sp,
                             color = Color.Gray,
                             fontWeight = FontWeight.Medium,
@@ -554,45 +550,23 @@ private fun VenueCard(
                     Row(verticalAlignment = Alignment.Top) {
                         Icon(Icons.Default.LocationOn, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(venue.address, fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(venue.address.getFullAddress(), fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
 
                     // Mô tả
-                    if (venue.description.isNotBlank()) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Default.Info, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(venue.description, fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    venue.description?.let { desc ->
+                        if (desc.isNotBlank()) {
+                            Row(verticalAlignment = Alignment.Top) {
+                                Icon(Icons.Default.Info, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(desc, fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 } // Đóng Column chứa thông tin chi tiết
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Thông tin trạng thái
-                Row(
-                    modifier = Modifier
-                        .background(
-                            color = if (venue.isActive) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(8.dp),
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle, // Đổi icon cho trạng thái
-                        contentDescription = null,
-                        tint = if (venue.isActive) Color(0xFF4CAF50) else Color.Gray,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (venue.isActive) "Đang hoạt động" else "Ngừng hoạt động",
-                        fontSize = 13.sp,
-                        color = if (venue.isActive) Color(0xFF4CAF50) else Color.Gray,
-                        fontWeight = FontWeight.Medium,
-                    )
-                } // Đóng Row chứa thông tin trạng thái
             } // Đóng Column chứa nội dung 2/3 dưới
         } // Đóng Column chính trong Card
     } // Đóng Card
@@ -627,19 +601,23 @@ private fun VenueCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddEditVenueDialog(
-    venue: Court?,
+    venue: Venue?,
     onDismiss: () -> Unit,
-    onSave: (Court) -> Unit,
+    onSave: (Venue) -> Unit,
 ) {
-    var venueId by remember { mutableStateOf(venue?.id ?: "") }
+    var venueId by remember { mutableStateOf(venue?.id?.toString() ?: "") }
     var venueName by remember { mutableStateOf(venue?.name ?: "") }
-    var venueAddress by remember { mutableStateOf(venue?.address ?: "") }
+    var venueProvinceOrCity by remember { mutableStateOf(venue?.address?.provinceOrCity ?: "") }
+    var venueDistrict by remember { mutableStateOf(venue?.address?.district ?: "") }
+    var venueDetailAddress by remember { mutableStateOf(venue?.address?.detailAddress ?: "") }
     var venueDescription by remember { mutableStateOf(venue?.description ?: "") }
-    var openTime by remember { mutableStateOf(venue?.openTime?.toString() ?: "05:00") }
-    var closeTime by remember { mutableStateOf(venue?.closeTime?.toString() ?: "23:00") }
-    var subCourtCount by remember { mutableStateOf(venue?.maxPlayers?.toString() ?: "1") }
+    var openTime by remember { mutableStateOf(venue?.openingTime ?: "06:00:00") }
+    var closeTime by remember { mutableStateOf(venue?.closingTime ?: "23:00:00") }
+    var courtsCount by remember { mutableStateOf(venue?.courtsCount?.toString() ?: "1") }
     var imageUrl by remember { mutableStateOf(venue?.images?.firstOrNull() ?: "") }
     var pricePerHour by remember { mutableStateOf(venue?.pricePerHour?.toString() ?: "0") }
+    var phoneNumber by remember { mutableStateOf(venue?.phoneNumber ?: "") }
+    var email by remember { mutableStateOf(venue?.email ?: "") }
 
     val primaryColor = Color(0xFF123E62)
     val isEditMode = venue != null
@@ -740,11 +718,57 @@ private fun AddEditVenueDialog(
                     }
 
                     item {
-                        // Địa chỉ
+                        // Tỉnh/Thành phố
                         OutlinedTextField(
-                            value = venueAddress,
-                            onValueChange = { venueAddress = it },
-                            label = { Text("Địa Chỉ", fontSize = 14.sp) },
+                            value = venueProvinceOrCity,
+                            onValueChange = { venueProvinceOrCity = it },
+                            label = { Text("Tỉnh/Thành phố", fontSize = 14.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                focusedLabelColor = primaryColor,
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            },
+                        )
+                    }
+
+                    item {
+                        // Quận/Huyện
+                        OutlinedTextField(
+                            value = venueDistrict,
+                            onValueChange = { venueDistrict = it },
+                            label = { Text("Quận/Huyện", fontSize = 14.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                focusedLabelColor = primaryColor,
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            },
+                        )
+                    }
+
+                    item {
+                        // Địa chỉ chi tiết
+                        OutlinedTextField(
+                            value = venueDetailAddress,
+                            onValueChange = { venueDetailAddress = it },
+                            label = { Text("Địa chỉ chi tiết", fontSize = 14.sp) },
                             modifier = Modifier.fillMaxWidth(),
                             maxLines = 2,
                             colors = OutlinedTextFieldDefaults.colors(
@@ -819,11 +843,12 @@ private fun AddEditVenueDialog(
                             )
 
                             OutlinedTextField(
-                                value = subCourtCount,
-                                onValueChange = { subCourtCount = it },
+                                value = courtsCount,
+                                onValueChange = { courtsCount = it },
                                 label = { Text("Số Sân", fontSize = 12.sp) },
                                 modifier = Modifier.weight(0.8f),
                                 singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = primaryColor,
                                     focusedLabelColor = primaryColor,
@@ -840,6 +865,7 @@ private fun AddEditVenueDialog(
                             label = { Text("Giá/giờ (VNĐ)", fontSize = 14.sp) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = primaryColor,
                                 focusedLabelColor = primaryColor,
@@ -847,6 +873,54 @@ private fun AddEditVenueDialog(
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.ShoppingCart,
+                                    contentDescription = null,
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            },
+                        )
+                    }
+
+                    item {
+                        // Số điện thoại
+                        OutlinedTextField(
+                            value = phoneNumber,
+                            onValueChange = { phoneNumber = it },
+                            label = { Text("Số điện thoại", fontSize = 14.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                focusedLabelColor = primaryColor,
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = null,
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            },
+                        )
+                    }
+
+                    item {
+                        // Email
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email", fontSize = 14.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                focusedLabelColor = primaryColor,
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Email,
                                     contentDescription = null,
                                     tint = primaryColor,
                                     modifier = Modifier.size(20.dp),
@@ -906,40 +980,30 @@ private fun AddEditVenueDialog(
 
                     Button(
                         onClick = {
-                            if (venueId.isNotBlank() && venueName.isNotBlank() &&
-                                venueAddress.isNotBlank() && venueDescription.isNotBlank() &&
-                                openTime.isNotBlank() && closeTime.isNotBlank()
+                            if (venueName.isNotBlank() && venueDetailAddress.isNotBlank() &&
+                                venueProvinceOrCity.isNotBlank() && venueDistrict.isNotBlank()
                             ) {
-                                val openTimeParts = openTime.split(":")
-                                val closeTimeParts = closeTime.split(":")
-
                                 onSave(
-                                    Court(
-                                        id = venueId,
+                                    Venue(
+                                        id = venueId.toLongOrNull() ?: 0L,
                                         name = venueName,
-                                        description = venueDescription,
-                                        address = venueAddress,
-                                        latitude = 21.0,
-                                        longitude = 105.0,
-                                        images = if (imageUrl.isNotBlank()) listOf(imageUrl) else emptyList(),
-                                        sportType = SportType.BADMINTON,
-                                        courtType = CourtType.INDOOR,
+                                        description = venueDescription.ifBlank { null },
+                                        numberOfCourt = courtsCount.toIntOrNull() ?: 1,
+                                        address = Address(
+                                            id = venue?.address?.id ?: 0L,
+                                            provinceOrCity = venueProvinceOrCity,
+                                            district = venueDistrict,
+                                            detailAddress = venueDetailAddress
+                                        ),
+                                        courtsCount = courtsCount.toIntOrNull() ?: 1,
                                         pricePerHour = pricePerHour.toLongOrNull() ?: 0,
-                                        openTime = LocalTime(
-                                            openTimeParts.getOrNull(0)?.toIntOrNull() ?: 5,
-                                            openTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
-                                        ),
-                                        closeTime = LocalTime(
-                                            closeTimeParts.getOrNull(0)?.toIntOrNull() ?: 23,
-                                            closeTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
-                                        ),
-                                        amenities = emptyList(),
-                                        rules = null,
-                                        ownerId = "owner1",
-                                        rating = 0f,
-                                        totalReviews = 0,
-                                        isActive = true,
-                                        maxPlayers = subCourtCount.toIntOrNull() ?: 1,
+                                        openingTime = openTime,
+                                        closingTime = closeTime,
+                                        phoneNumber = phoneNumber.ifBlank { null },
+                                        email = email.ifBlank { null },
+                                        images = if (imageUrl.isNotBlank()) listOf(imageUrl) else null,
+                                        averageRating = venue?.averageRating ?: 0f,
+                                        totalReviews = venue?.totalReviews ?: 0
                                     ),
                                 )
                             }
@@ -949,9 +1013,8 @@ private fun AddEditVenueDialog(
                             containerColor = primaryColor,
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = venueId.isNotBlank() && venueName.isNotBlank() &&
-                            venueAddress.isNotBlank() && venueDescription.isNotBlank() &&
-                            openTime.isNotBlank() && closeTime.isNotBlank(),
+                        enabled = venueName.isNotBlank() && venueDetailAddress.isNotBlank() &&
+                            venueProvinceOrCity.isNotBlank() && venueDistrict.isNotBlank(),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,
@@ -1002,7 +1065,7 @@ private fun CreateCourtButton(
 // Composable để hiển thị Venue từ API
 @Composable
 private fun VenueCardFromVenue(
-    venue: com.example.bookingcourt.domain.model.Venue,
+    venue: Venue,
     onClick: () -> Unit = {},
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -1165,11 +1228,11 @@ private fun VenueCardFromVenue(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditVenueDialog(
-    venue: com.example.bookingcourt.domain.model.Venue,
+    venue: Venue,
     currentUser: User?,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onSave: (com.example.bookingcourt.domain.model.Venue) -> Unit,
+    onSave: (Venue) -> Unit,
 ) {
     var venueName by remember { mutableStateOf(venue.name) }
     var description by remember { mutableStateOf(venue.description ?: "") }
@@ -1795,26 +1858,26 @@ fun AddEditVenueDialogPreview() {
 fun EditVenueDialogPreview() {
     BookingCourtTheme {
         AddEditVenueDialog(
-            venue = Court(
-                id = "VN001",
+            venue = Venue(
+                id = 1L,
                 name = "Star Club Badminton",
                 description = "Sân cầu lông chất lượng cao",
-                address = "Số 181 P. Cầu Cốc, Tây Mỗ, Nam Từ Liêm, Hà Nội",
-                latitude = 21.0159,
-                longitude = 105.7447,
-                images = emptyList(),
-                sportType = SportType.BADMINTON,
-                courtType = CourtType.INDOOR,
+                numberOfCourt = 4,
+                address = Address(
+                    id = 1L,
+                    provinceOrCity = "Hà Nội",
+                    district = "Nam Từ Liêm",
+                    detailAddress = "Số 181 P. Cầu Cốc, Tây Mỗ"
+                ),
+                courtsCount = 4,
                 pricePerHour = 150000,
-                openTime = LocalTime(5, 0),
-                closeTime = LocalTime(23, 0),
-                amenities = emptyList(),
-                rules = "Không hút thuốc trong sân",
-                ownerId = "owner1",
-                rating = 4.5f,
-                totalReviews = 25,
-                isActive = true,
-                maxPlayers = 4,
+                openingTime = "06:00:00",
+                closingTime = "23:00:00",
+                phoneNumber = "0123456789",
+                email = "starclub@example.com",
+                images = listOf("https://example.com/image.jpg"),
+                averageRating = 4.5f,
+                totalReviews = 25
             ),
             onDismiss = { },
             onSave = { },

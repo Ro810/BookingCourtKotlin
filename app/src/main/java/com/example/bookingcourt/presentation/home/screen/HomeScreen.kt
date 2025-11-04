@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,9 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.*
-import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
-import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +35,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
     val userName = state.user?.fullName ?: "Người dùng"
 
@@ -106,22 +104,13 @@ fun HomeScreen(
                         userName = userName,
                         searchQuery = searchQuery,
                         onSearchQueryChange = { searchQuery = it },
-                        onSearchClick = onSearchClick
+                        onSearchClick = onSearchClick,
+                        onClearSearch = { searchQuery = "" }
                     )
                 }
 
-                // Category Chips
-                item {
-                    CategoryChips()
-                }
-
-                // Filter Section
-                item {
-                    FilterSection(onFilterClick = onFilterClick)
-                }
-
                 // Loading State
-                if (state.isLoading && state.featuredCourts.isEmpty()) {
+                if (state.isLoading && state.featuredVenues.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -214,7 +203,6 @@ fun HomeScreen(
             }
         }
     }
-}
 
 @Composable
 fun HeaderSection(
