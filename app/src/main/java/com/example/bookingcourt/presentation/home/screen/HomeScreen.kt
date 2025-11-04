@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.*
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
+import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,11 @@ fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     val userName = state.user?.fullName ?: "Người dùng"
+
+    // Reload data mỗi khi HomeScreen được hiển thị
+    LaunchedEffect(Unit) {
+        viewModel.handleIntent(HomeIntent.Refresh)
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -96,75 +103,84 @@ fun HomeScreen(
                     ),
                 ),
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            // Thêm pull-to-refresh
+            PullToRefreshBox(
+                isRefreshing = state.isLoading,
+                onRefresh = {
+                    viewModel.handleIntent(HomeIntent.Refresh)
+                },
+                modifier = Modifier.fillMaxSize()
             ) {
-                item {
-                    HeaderSection(
-                        userName = userName,
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        onSearchClick = onSearchClick
-                    )
-                }
-
-                item {
-                    CategoryChips()
-                }
-
-                item {
-                    FilterSection(onFilterClick = onFilterClick)
-                }
-
-                if (state.isLoading && state.featuredVenues.isEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = Primary)
+                        HeaderSection(
+                            userName = userName,
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            onSearchClick = onSearchClick
+                        )
+                    }
+
+                    item {
+                        CategoryChips()
+                    }
+
+                    item {
+                        FilterSection(onFilterClick = onFilterClick)
+                    }
+
+                    if (state.isLoading && state.featuredVenues.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Primary)
+                            }
                         }
                     }
-                }
 
-                state.error?.let { error ->
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Error.copy(alpha = 0.1f))
-                        ) {
+                    state.error?.let { error ->
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Error.copy(alpha = 0.1f))
+                            ) {
+                                Text(
+                                    text = "⚠️ $error",
+                                    modifier = Modifier.padding(16.dp),
+                                    color = Error
+                                )
+                            }
+                        }
+                    }
+
+                    val allVenues = (state.featuredVenues + state.recommendedVenues + state.nearbyVenues)
+                        .distinctBy { it.id }
+                    if (allVenues.isNotEmpty()) {
+                        item {
                             Text(
-                                text = "⚠️ $error",
-                                modifier = Modifier.padding(16.dp),
-                                color = Error
+                                text = "Sân nổi bật",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
-                    }
-                }
-
-                val allVenues = (state.featuredVenues + state.recommendedVenues + state.nearbyVenues)
-                    .distinctBy { it.id }
-                if (allVenues.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Sân nổi bật",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    items(allVenues) { venue ->
-                        VenueCard(
-                            venue = venue,
-                            onVenueClick = { onVenueClick(venue) }
-                        )
+                        items(allVenues) { venue ->
+                            VenueCard(
+                                venue = venue,
+                                onVenueClick = { onVenueClick(venue) }
+                            )
+                        }
                     }
                 }
             }
