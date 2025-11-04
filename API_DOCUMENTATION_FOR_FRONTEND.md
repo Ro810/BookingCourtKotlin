@@ -112,50 +112,9 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
-### 3. Change Password
-**POST** `/auth/change-password`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Request Body:**
-```json
-{
-  "currentPassword": "oldPassword123",
-  "newPassword": "newPassword456"
-}
-```
-
-**Validation Rules:**
-- `currentPassword`: Bắt buộc
-- `newPassword`: Bắt buộc, tối thiểu 6 ký tự
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "message": "Đổi mật khẩu thành công",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
-**Response Error (400):**
-```json
-{
-  "success": false,
-  "message": "Mật khẩu hiện tại không đúng",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
-**Note:**
-- Sau khi đổi mật khẩu thành công, người dùng có thể tiếp tục sử dụng với token hiện tại
-- Mật khẩu mới phải khác mật khẩu cũ
-
----
-
 ## User Management APIs
 
-### 4. Get Current User Info
+### 3. Get Current User Info
 **GET** `/users/me`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -181,7 +140,7 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
-### 5. Update Current User Info
+### 4. Update Current User Info
 **PUT** `/users/me`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -220,7 +179,7 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
-### 6. Request Owner Role (Trở thành chủ sân)
+### 5. Request Owner Role (Trở thành chủ sân)
 **POST** `/users/me/request-owner-role`
 
 **Authentication Required:** ✅ Yes (ROLE_USER only)
@@ -243,7 +202,7 @@ Authorization: Bearer {your_jwt_token}
 
 ## Venues APIs
 
-### 7. Get All Venues
+### 6. Get All Venues
 **GET** `/venues`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -273,7 +232,7 @@ Authorization: Bearer {your_jwt_token}
 
 ---
 
-### 8. Search Venues
+### 7. Search Venues
 **GET** `/venues/search`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -314,7 +273,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 ---
 
-### 9. Get Venue by ID
+### 8. Get Venue by ID
 **GET** `/venues/{id}`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
@@ -342,7 +301,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 ---
 
-### 10. Create Venue
+### 9. Create Venue
 **POST** `/venues`
 
 **Authentication Required:** ✅ Yes (ROLE_OWNER required)
@@ -391,7 +350,7 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
 
 ---
 
-### 11. Update Venue
+### 10. Update Venue
 **PUT** `/venues/{id}`
 
 **Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
@@ -506,9 +465,9 @@ const currentPriceRules = await pricesResponse.json();
 ```
 
 3. **Hiển thị form với 2 options:**
-   - ☑️ Checkbox: "Cập nhật giá tiền"
-   - Nếu KHÔNG check: Không gửi field `priceRules` → Giữ nguyên giá cũ
-   - Nếu CHECK: Hiển thị form nhập price rules → Gửi `priceRules` → Thay thế toàn bộ
+    - ☑️ Checkbox: "Cập nhật giá tiền"
+    - Nếu KHÔNG check: Không gửi field `priceRules` → Giữ nguyên giá cũ
+    - Nếu CHECK: Hiển thị form nhập price rules → Gửi `priceRules` → Thay thế toàn bộ
 
 4. **Khi user check "Cập nhật giá tiền":**
 ```javascript
@@ -576,7 +535,7 @@ const response = await fetch(`/api/venues/${venueId}`, {
 
 ---
 
-### 12. Delete Venue
+### 11. Delete Venue
 **DELETE** `/venues/{id}`
 
 **Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
@@ -1025,7 +984,7 @@ const bookingResponse = await fetch('/api/bookings', {
 }
 ```
 
-**Note:** 
+**Note:**
 - Trạng thái ban đầu: `PENDING_PAYMENT`
 - Có 5 phút để upload ảnh và confirm payment
 - `ownerBankInfo` chứa thông tin tài khoản ngân hàng của chủ sân để người dùng chuyển tiền
@@ -1110,7 +1069,7 @@ const bookingResponse = await fetch('/api/bookings', {
 }
 ```
 
-**Note:** 
+**Note:**
 - Trạng thái chuyển sang `PENDING_CONFIRMATION`
 - Hệ thống gửi thông báo cho chủ sân
 
@@ -1150,7 +1109,7 @@ const bookingResponse = await fetch('/api/bookings', {
 }
 ```
 
-**Note:** 
+**Note:**
 - Trạng thái chuyển sang `COMPLETED`
 - Hệ thống gửi thông báo cho người đặt sân
 
@@ -1195,7 +1154,7 @@ const bookingResponse = await fetch('/api/bookings', {
 }
 ```
 
-**Note:** 
+**Note:**
 - Trạng thái chuyển sang `REJECTED`
 - Hệ thống gửi thông báo cho người đặt sân
 
@@ -1900,7 +1859,7 @@ Authorization: Bearer {jwtToken}
 ---
 
 ## Swagger UI
-Truy cập Swagger UI để test API tương tác:
+Truy cập Swagger UI để test API tương tác
 ```
 http://localhost:8080/swagger-ui/index.html
 ```
