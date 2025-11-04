@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.Booking
 import com.example.bookingcourt.domain.model.BookingWithBankInfo
+import com.example.bookingcourt.domain.model.CourtDetail
 import com.example.bookingcourt.domain.repository.BookingRepository
+import com.example.bookingcourt.domain.repository.CourtRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BookingViewModel @Inject constructor(
-    private val bookingRepository: BookingRepository
+    private val bookingRepository: BookingRepository,
+    private val courtRepository: CourtRepository
 ) : ViewModel() {
 
     private val _createBookingState = MutableStateFlow<Resource<BookingWithBankInfo>?>(null)
@@ -26,6 +29,9 @@ class BookingViewModel @Inject constructor(
 
     private val _bookingDetailState = MutableStateFlow<Resource<Booking>?>(null)
     val bookingDetailState: StateFlow<Resource<Booking>?> = _bookingDetailState.asStateFlow()
+
+    private val _courtsState = MutableStateFlow<Resource<List<CourtDetail>>?>(null)
+    val courtsState: StateFlow<Resource<List<CourtDetail>>?> = _courtsState.asStateFlow()
 
     /**
      * Tạo booking mới - trả về thông tin booking kèm thông tin ngân hàng của chủ sân
@@ -102,6 +108,17 @@ class BookingViewModel @Inject constructor(
         viewModelScope.launch {
             bookingRepository.confirmBooking(bookingId).collect { result ->
                 _bookingDetailState.value = result
+            }
+        }
+    }
+
+    /**
+     * Lấy danh sách courts theo venueId để có được court IDs thực
+     */
+    fun getCourtsByVenueId(venueId: Long) {
+        viewModelScope.launch {
+            courtRepository.getCourtsByVenueId(venueId).collect { result ->
+                _courtsState.value = result
             }
         }
     }

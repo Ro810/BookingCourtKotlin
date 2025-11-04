@@ -1,5 +1,6 @@
 package com.example.bookingcourt.presentation.court.screen
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,25 +16,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.Primary
+import com.example.bookingcourt.presentation.venue.viewmodel.VenueDetailViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
-    venue: Venue,
+    venueId: String,
     onBackClick: () -> Unit,
-    onBookClick: (Venue) -> Unit
+    onBookClick: (Venue) -> Unit,
+    viewModel: VenueDetailViewModel = hiltViewModel()
 ) {
+    val state by viewModel.state.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Mô tả", "Hình ảnh", "Đánh giá")
+
+    // ✅ Gọi API GET /venues/{id} khi screen load
+    LaunchedEffect(venueId) {
+        viewModel.loadVenueDetail(venueId.toLongOrNull() ?: 0L)
+    }
 
     Scaffold(
         topBar = {
@@ -64,199 +75,263 @@ fun DetailScreen(
                         )
                     }
 
-                    // Book Button in top right corner
-                    Button(
-                        onClick = { onBookClick(venue) },
-                        modifier = Modifier.height(40.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                    ) {
-                        Text("Đặt sân", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    // Book Button - chỉ hiển thị khi đã load xong venue
+                    if (state.venue != null) {
+                        Button(
+                            onClick = { state.venue?.let { onBookClick(it) } },
+                            modifier = Modifier.height(40.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) {
+                            Text("Đặt sân", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
         ) {
-            // Venue Info Section
-            Column(modifier = Modifier.padding(16.dp)) {
-                // Venue Name
-                Text(
-                    text = venue.name,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Rating và giá
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFFFA000),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${venue.averageRating}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "(${venue.totalReviews} đánh giá)",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "${venue.pricePerHour / 1000}k/giờ",
-                        fontSize = 16.sp,
-                        color = Primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Số lượng sân
-                InfoCard(
-                    icon = Icons.Default.Stadium,
-                    title = "Số lượng sân",
-                    value = "${venue.courtsCount} sân"
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Thời gian hoạt động
-                if (venue.openingTime != null && venue.closingTime != null) {
-                    InfoCard(
-                        icon = Icons.Default.Schedule,
-                        title = "Thời gian hoạt động",
-                        value = "${venue.openingTime} - ${venue.closingTime}"
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // Số điện thoại
-                val phoneNumber = venue.phoneNumber ?: venue.ownerPhone ?: "Liên hệ để biết thêm"
-                InfoCard(
-                    icon = Icons.Default.Phone,
-                    title = "Số điện thoại",
-                    value = phoneNumber
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Địa chỉ chi tiết
-                InfoCard(
-                    icon = Icons.Default.LocationOn,
-                    title = "Địa chỉ",
-                    value = venue.address.getFullAddress()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Trạng thái
-                val isOpen = isVenueOpen(venue.openingTime, venue.closingTime)
-                val hasCourtAvailable = venue.courtsCount > 0
-
-                val statusText = when {
-                    !hasCourtAvailable -> "Chưa có sân"
-                    !isOpen -> "Ngoài giờ hoạt động"
-                    else -> "Đang hoạt động"
-                }
-
-                val statusIcon = when {
-                    !hasCourtAvailable -> Icons.Default.Cancel
-                    !isOpen -> Icons.Default.Schedule
-                    else -> Icons.Default.CheckCircle
-                }
-
-                val statusColor = when {
-                    !hasCourtAvailable -> Color.Red
-                    !isOpen -> Color(0xFFFFA000) // Orange
-                    else -> Primary
-                }
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            when {
+                // Loading state
+                state.isLoading -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            imageVector = statusIcon,
-                            contentDescription = "Trạng thái",
-                            tint = statusColor,
-                            modifier = Modifier.size(24.dp)
+                        CircularProgressIndicator(color = Primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Đang tải thông tin sân...", color = Color.Gray)
+                    }
+                }
+
+                // Error state
+                state.error != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "⚠️ ${state.error}",
+                            color = Color.Red,
+                            textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Trạng thái",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                            Text(
-                                text = statusText,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.Black
-                            )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.retry(venueId.toLongOrNull() ?: 0L) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) {
+                            Text("Thử lại")
                         }
                     }
                 }
-            }
 
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = Color.Gray.copy(alpha = 0.2f)
-            )
-
-            // Tab Navigation - Full width evenly distributed
-            TabRow(
-                selectedTabIndex = selectedTab,
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = Color.White,
-                contentColor = Primary
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontSize = 14.sp,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+                // Success state - hiển thị venue details
+                state.venue != null -> {
+                    DetailScreenContent(
+                        venue = state.venue!!,
+                        selectedTab = selectedTab,
+                        tabs = tabs,
+                        onTabSelected = { selectedTab = it }
                     )
                 }
             }
+        }
+    }
+}
 
-            // Tab Content
-            when (selectedTab) {
-                0 -> DescriptionTabContent(venue)
-                1 -> ImagesTabContent(venue)
-                2 -> ReviewsTabContent(venue)
+@Composable
+private fun DetailScreenContent(
+    venue: Venue,
+    selectedTab: Int,
+    tabs: List<String>,
+    onTabSelected: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Venue Info Section
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Venue Name
+            Text(
+                text = venue.name,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Rating và giá
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFFFA000),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${venue.averageRating}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "(${venue.totalReviews} đánh giá)",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "${venue.pricePerHour / 1000}k/giờ",
+                    fontSize = 16.sp,
+                    color = Primary,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Số lượng sân
+            InfoCard(
+                icon = Icons.Default.Stadium,
+                title = "Số lượng sân",
+                value = "${venue.courtsCount} sân"
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Thời gian hoạt động
+            if (venue.openingTime != null && venue.closingTime != null) {
+                InfoCard(
+                    icon = Icons.Default.Schedule,
+                    title = "Thời gian hoạt động",
+                    value = "${venue.openingTime} - ${venue.closingTime}"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Số điện thoại
+            val phoneNumber = venue.phoneNumber ?: venue.ownerPhone ?: "Liên hệ để biết thêm"
+            InfoCard(
+                icon = Icons.Default.Phone,
+                title = "Số điện thoại",
+                value = phoneNumber
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Địa chỉ chi tiết
+            InfoCard(
+                icon = Icons.Default.LocationOn,
+                title = "Địa chỉ",
+                value = venue.address.getFullAddress()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Trạng thái
+            val isOpen = isVenueOpen(venue.openingTime, venue.closingTime)
+            val hasCourtAvailable = venue.courtsCount > 0
+
+            val statusText = when {
+                !hasCourtAvailable -> "Chưa có sân"
+                !isOpen -> "Ngoài giờ hoạt động"
+                else -> "Đang hoạt động"
+            }
+
+            val statusIcon = when {
+                !hasCourtAvailable -> Icons.Default.Cancel
+                !isOpen -> Icons.Default.Schedule
+                else -> Icons.Default.CheckCircle
+            }
+
+            val statusColor = when {
+                !hasCourtAvailable -> Color.Red
+                !isOpen -> Color(0xFFFFA000) // Orange
+                else -> Primary
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = "Trạng thái",
+                        tint = statusColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Trạng thái",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = statusText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
         }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            color = Color.Gray.copy(alpha = 0.2f)
+        )
+
+        // Tab Navigation - Full width evenly distributed
+        TabRow(
+            selectedTabIndex = selectedTab,
+            modifier = Modifier.fillMaxWidth(),
+            containerColor = Color.White,
+            contentColor = Primary
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { onTabSelected(index) }, // ✅ Sử dụng callback thay vì gán trực tiếp
+                    text = {
+                        Text(
+                            text = title,
+                            fontSize = 14.sp,
+                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                )
+            }
+        }
+
+        // Tab Content
+        when (selectedTab) {
+            0 -> DescriptionTabContent(venue)
+            1 -> ImagesTabContent(venue)
+            2 -> ReviewsTabContent(venue)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -606,11 +681,10 @@ class SampleVenueProvider : PreviewParameterProvider<Venue> {
 
 @Preview(showBackground = true)
 @Composable
-fun DetailScreenPreview(
-    @PreviewParameter(SampleVenueProvider::class) venue: Venue
-) {
+fun DetailScreenPreview() {
+    // Preview không thể gọi API thực, nên để venueId = "1" cho demo
     DetailScreen(
-        venue = venue,
+        venueId = "1",
         onBackClick = {},
         onBookClick = {}
     )

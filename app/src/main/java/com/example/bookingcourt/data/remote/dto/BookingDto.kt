@@ -40,18 +40,14 @@ data class BookingDto(
 )
 
 data class CreateBookingRequestDto(
-    @SerializedName("courtId")
-    val courtId: Long,  // Đổi từ String sang Long
     @SerializedName("venueId")
-    val venueId: Long,  // Đổi từ String sang Long
+    val venueId: Long,
+    @SerializedName("courtId")
+    val courtId: Long,
     @SerializedName("startTime")
     val startTime: String,
     @SerializedName("endTime")
-    val endTime: String,
-    @SerializedName("notes")
-    val notes: String?,
-    @SerializedName("paymentMethod")
-    val paymentMethod: String,
+    val endTime: String
 )
 
 data class BookingListResponseDto(

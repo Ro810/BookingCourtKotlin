@@ -32,23 +32,20 @@ class BookingRepositoryImpl @Inject constructor(
             val courtIdLong = parts.getOrNull(1)?.toLongOrNull()
                 ?: throw IllegalArgumentException("Invalid courtId format: $courtId. Expected format: venueId_courtNumber")
 
+            // ✅ Theo API document, chỉ cần 4 fields: venueId, courtId, startTime, endTime
             val request = CreateBookingRequestDto(
-                courtId = courtIdLong,     // Long: 1, 2, 3...
-                venueId = venueIdLong,     // Long: 5
+                venueId = venueIdLong,
+                courtId = courtIdLong,
                 startTime = startTime,
-                endTime = endTime,
-                notes = notes,
-                paymentMethod = paymentMethod
+                endTime = endTime
             )
 
             // Log request để debug
             Log.d("BookingRepo", "Creating booking with:")
-            Log.d("BookingRepo", "  courtId: $courtIdLong (parsed from: $courtId)")
             Log.d("BookingRepo", "  venueId: $venueIdLong")
+            Log.d("BookingRepo", "  courtId: $courtIdLong (parsed from: $courtId)")
             Log.d("BookingRepo", "  startTime: $startTime")
             Log.d("BookingRepo", "  endTime: $endTime")
-            Log.d("BookingRepo", "  notes: $notes")
-            Log.d("BookingRepo", "  paymentMethod: $paymentMethod")
 
             val apiResponse = bookingApi.createBooking(request)
 
@@ -72,7 +69,7 @@ class BookingRepositoryImpl @Inject constructor(
 
             val errorMessage = when {
                 e.message?.contains("401") == true -> "Vui lòng đăng nhập lại"
-                e.message?.contains("404") == true -> "Không tìm thấy sân"
+                e.message?.contains("404") == true -> "Không tìm thấy sân. Vui lòng thử lại."
                 e.message?.contains("400") == true -> "Thông tin đặt sân không hợp lệ"
                 e.message?.contains("timeout") == true -> "Kết nối tới server bị timeout"
                 else -> "Lỗi: ${e.message ?: "Không xác định"}"

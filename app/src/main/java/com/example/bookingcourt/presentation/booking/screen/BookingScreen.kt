@@ -30,6 +30,7 @@ import com.example.bookingcourt.domain.model.Address
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.BookingData
 import com.example.bookingcourt.domain.model.CourtTimeSlot
+import com.example.bookingcourt.domain.model.CourtDetail
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingViewModel
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
@@ -72,8 +73,43 @@ fun BookingScreen(
         email = "contact@abc.com"
     )
 
-    // Số lượng sân con trong venue này
-    val actualNumberOfCourts = venue.courtsCount
+    // Fetch real courts for this venue
+    val courtsState by bookingViewModel.courtsState.collectAsState()
+    val realCourts = remember { mutableStateOf<List<CourtDetail>>(emptyList()) }
+
+    // Fetch courts when screen is first composed
+    LaunchedEffect(venue.id) {
+        bookingViewModel.getCourtsByVenueId(venue.id)
+    }
+
+    // Update realCourts when courtsState changes
+    LaunchedEffect(courtsState) {
+        when (courtsState) {
+            is Resource.Success -> {
+                realCourts.value = (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
+                Log.d("BookingScreen", "✅ Loaded ${realCourts.value.size} real courts for venue ${venue.id}")
+                realCourts.value.forEachIndexed { index, court ->
+                    Log.d("BookingScreen", "  Court ${index + 1}: ID=${court.id}, Description=${court.description}")
+                }
+            }
+            is Resource.Error -> {
+                Log.e("BookingScreen", "❌ Error loading courts: ${(courtsState as Resource.Error).message}")
+                Log.w("BookingScreen", "⚠️ Will use fallback: sequential court numbers")
+                // Fallback: Không có courts từ API, sẽ dùng số thứ tự
+            }
+            is Resource.Loading -> {
+                Log.d("BookingScreen", "⏳ Loading courts for venue ${venue.id}...")
+            }
+            else -> {}
+        }
+    }
+
+    // Số lượng sân con trong venue này - sử dụng số sân thực tế từ API hoặc fallback
+    val actualNumberOfCourts = if (realCourts.value.isNotEmpty()) {
+        realCourts.value.size
+    } else {
+        venue.courtsCount
+    }
 
     var selectedDate by remember { mutableStateOf("") }
     var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
@@ -539,8 +575,33 @@ fun BookingScreen(
                         val firstSlot = selectedSlots.first()
                         val courtNumber = firstSlot.courtNumber
 
-                        // ⚠️ TẠM THỜI: Giả định courtId = "venueId_courtNumber"
-                        val realCourtId = "${venue.id}_$courtNumber"
+                        // Xác định court ID để gửi
+                        val realCourtId = if (realCourts.value.isNotEmpty()) {
+                            // ✅ Có courts từ API → Sử dụng court ID thực
+                            val courtIndex = courtNumber - 1
+                            if (courtIndex < realCourts.value.size) {
+                                val actualCourtId = realCourts.value[courtIndex].id
+                                val combinedId = "${venue.id}_$actualCourtId"
+
+                                Log.d("BookingScreen", "✅ Using real court ID from API")
+                                Log.d("BookingScreen", "  Court Number (UI): $courtNumber")
+                                Log.d("BookingScreen", "  Actual Court ID: $actualCourtId")
+                                Log.d("BookingScreen", "  Venue ID: ${venue.id}")
+                                Log.d("BookingScreen", "  Combined ID: $combinedId")
+
+                                combinedId
+                            } else {
+                                Log.e("BookingScreen", "Invalid court index: $courtIndex")
+                                "${venue.id}_$courtNumber" // Fallback
+                            }
+                        } else {
+                            // ⚠️ Không có courts từ API → Fallback: dùng số thứ tự
+                            Log.w("BookingScreen", "⚠️ Courts not loaded from API, using fallback (sequential number)")
+                            Log.w("BookingScreen", "  Court Number: $courtNumber")
+                            Log.w("BookingScreen", "  Venue ID: ${venue.id}")
+                            Log.w("BookingScreen", "  Fallback ID: ${venue.id}_$courtNumber")
+                            "${venue.id}_$courtNumber"
+                        }
 
                         val selectedDateFormatted = selectedDate.ifEmpty {
                             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
@@ -581,11 +642,16 @@ fun BookingScreen(
                         calendar.set(Calendar.MINUTE, endMinute)
                         val endTime = apiDateFormat.format(calendar.time)
 
+                        Log.d("BookingScreen", "📝 Final booking request:")
+                        Log.d("BookingScreen", "  Court ID: $realCourtId")
+                        Log.d("BookingScreen", "  Start: $startTime")
+                        Log.d("BookingScreen", "  End: $endTime")
+
                         bookingViewModel.createBooking(
                             courtId = realCourtId,
                             startTime = startTime,
                             endTime = endTime,
-                            notes = "Đặt sân cho ${selectedSlots.size} khung giờ",
+                            notes = null,
                             paymentMethod = "BANK_TRANSFER"
                         )
                     }
@@ -594,7 +660,11 @@ fun BookingScreen(
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                enabled = selectedSlots.isNotEmpty() && playerName.isNotEmpty() && phoneNumber.isNotEmpty() && createBookingState !is Resource.Loading
+                enabled = selectedSlots.isNotEmpty() &&
+                         playerName.isNotEmpty() &&
+                         phoneNumber.isNotEmpty() &&
+                         createBookingState !is Resource.Loading
+                // ✅ Đã loại bỏ điều kiện realCourts.value.isNotEmpty()
             ) {
                 if (createBookingState is Resource.Loading) {
                     CircularProgressIndicator(

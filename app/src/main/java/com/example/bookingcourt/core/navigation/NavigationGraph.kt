@@ -252,32 +252,17 @@ fun NavigationGraph(
             ) { backStackEntry ->
                 val venueId = backStackEntry.arguments?.getString("courtId") ?: ""
 
-                // Lấy venue từ HomeViewModel state để tránh gọi API lại
-                val parentEntry = remember(backStackEntry) {
-                    try {
-                        navController.getBackStackEntry(Screen.Home.route)
-                    } catch (_: Exception) {
-                        backStackEntry
+                // ✅ SỬA: Gọi DetailScreen với venueId, không cần lấy venue từ cache
+                // DetailScreen sẽ tự gọi API GET /venues/{id}
+                DetailScreen(
+                    venueId = venueId,
+                    onBackClick = { navController.navigateUp() },
+                    onBookClick = { venue ->
+                        navController.navigate(
+                            Screen.Booking.createRoute(venue.id.toString()),
+                        )
                     }
-                }
-                val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
-                val state by homeViewModel.state.collectAsState()
-                val venue = remember(venueId, state) {
-                    state.featuredVenues.find { it.id.toString() == venueId }
-                        ?: state.recommendedVenues.find { it.id.toString() == venueId }
-                        ?: state.nearbyVenues.find { it.id.toString() == venueId }
-                }
-                venue?.let {
-                    DetailScreen(
-                        venue = it,
-                        onBackClick = { navController.navigateUp() },
-                        onBookClick = { selectedVenue ->
-                            navController.navigate(
-                                Screen.Booking.createRoute(selectedVenue.id.toString()),
-                            )
-                        }
-                    )
-                }
+                )
             }
 
             composable(
