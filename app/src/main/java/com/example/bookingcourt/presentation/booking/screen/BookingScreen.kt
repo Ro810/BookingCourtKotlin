@@ -39,6 +39,7 @@ import java.util.*
 import com.google.gson.Gson
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +77,9 @@ fun BookingScreen(
     // Fetch real courts for this venue
     val courtsState by bookingViewModel.courtsState.collectAsState()
     val realCourts = remember { mutableStateOf<List<CourtDetail>>(emptyList()) }
+
+    // ✅ Thêm coroutineScope để gọi suspend functions
+    val coroutineScope = rememberCoroutineScope()
 
     // Fetch courts when screen is first composed
     LaunchedEffect(venue.id) {
@@ -594,8 +598,9 @@ fun BookingScreen(
 
                                 combinedId
                             } else {
-                                Log.e("BookingScreen", "Invalid court index: $courtIndex")
-                                "${venue.id}_$courtNumber" // Fallback
+                                Log.e("BookingScreen", "❌ Invalid court index: $courtIndex, size: ${realCourts.value.size}")
+                                // Fallback: Sử dụng số thứ tự
+                                "${venue.id}_$courtNumber"
                             }
                         } else {
                             // ⚠️ Không có courts từ API → Fallback: dùng số thứ tự
@@ -667,7 +672,7 @@ fun BookingScreen(
                          playerName.isNotEmpty() &&
                          phoneNumber.isNotEmpty() &&
                          createBookingState !is Resource.Loading
-                // ✅ Đã loại bỏ điều kiện realCourts.value.isNotEmpty()
+                // ✅ Đã bỏ điều kiện realCourts.value.isNotEmpty() để cho phép đặt sân với fallback
             ) {
                 if (createBookingState is Resource.Loading) {
                     CircularProgressIndicator(

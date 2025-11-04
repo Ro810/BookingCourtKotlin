@@ -41,37 +41,63 @@ class BookingRepositoryImpl @Inject constructor(
             )
 
             // Log request để debug
-            Log.d("BookingRepo", "Creating booking with:")
-            Log.d("BookingRepo", "  venueId: $venueIdLong")
-            Log.d("BookingRepo", "  courtId: $courtIdLong (parsed from: $courtId)")
+            Log.d("BookingRepo", "========== CREATE BOOKING REQUEST ==========")
+            Log.d("BookingRepo", "  Original courtId: $courtId")
+            Log.d("BookingRepo", "  Parsed venueId: $venueIdLong")
+            Log.d("BookingRepo", "  Parsed courtId: $courtIdLong")
             Log.d("BookingRepo", "  startTime: $startTime")
             Log.d("BookingRepo", "  endTime: $endTime")
+            Log.d("BookingRepo", "==========================================")
 
             val apiResponse = bookingApi.createBooking(request)
 
             // Lấy data từ wrapper response
             val response = apiResponse.data
 
-            Log.d("BookingRepo", "Booking created successfully: ${response.id}")
-            Log.d("BookingRepo", "API message: ${apiResponse.message}")
+            Log.d("BookingRepo", "✅ Booking created successfully!")
+            Log.d("BookingRepo", "  Booking ID: ${response.id}")
+            Log.d("BookingRepo", "  Total Price: ${response.totalPrice}")
+            Log.d("BookingRepo", "  API message: ${apiResponse.message}")
 
             val bookingWithBankInfo = response.toBookingWithBankInfo()
             emit(Resource.Success(bookingWithBankInfo))
         } catch (e: IllegalArgumentException) {
             // Lỗi parse courtId
-            Log.e("BookingRepo", "Invalid courtId format", e)
+            Log.e("BookingRepo", "❌ Invalid courtId format", e)
             emit(Resource.Error("Lỗi: ${e.message}"))
+        } catch (e: retrofit2.HttpException) {
+            // Lỗi HTTP từ server
+            val errorBody = try {
+                e.response()?.errorBody()?.string()
+            } catch (ex: Exception) {
+                null
+            }
+
+            Log.e("BookingRepo", "❌ HTTP Error creating booking")
+            Log.e("BookingRepo", "  HTTP Code: ${e.code()}")
+            Log.e("BookingRepo", "  Error message: ${e.message()}")
+            Log.e("BookingRepo", "  Error body: $errorBody")
+
+            val errorMessage = when (e.code()) {
+                400 -> "Thông tin đặt sân không hợp lệ. Vui lòng kiểm tra lại."
+                401 -> "Vui lòng đăng nhập lại"
+                404 -> "Không tìm thấy sân. Vui lòng thử lại."
+                409 -> "Sân đã được đặt trong khung giờ này. Vui lòng chọn giờ khác."
+                500 -> "Lỗi server: ${errorBody ?: "Server đang gặp sự cố. Vui lòng thử lại sau."}"
+                else -> "Lỗi: ${e.message()}"
+            }
+
+            emit(Resource.Error(errorMessage))
         } catch (e: Exception) {
-            // Log chi tiết lỗi
-            Log.e("BookingRepo", "Error creating booking", e)
-            Log.e("BookingRepo", "Error message: ${e.message}")
-            Log.e("BookingRepo", "Error cause: ${e.cause}")
+            // Lỗi khác
+            Log.e("BookingRepo", "❌ Error creating booking", e)
+            Log.e("BookingRepo", "  Error type: ${e.javaClass.simpleName}")
+            Log.e("BookingRepo", "  Error message: ${e.message}")
+            Log.e("BookingRepo", "  Error cause: ${e.cause}")
 
             val errorMessage = when {
-                e.message?.contains("401") == true -> "Vui lòng đăng nhập lại"
-                e.message?.contains("404") == true -> "Không tìm thấy sân. Vui lòng thử lại."
-                e.message?.contains("400") == true -> "Thông tin đặt sân không hợp lệ"
-                e.message?.contains("timeout") == true -> "Kết nối tới server bị timeout"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "Kết nối tới server bị timeout. Vui lòng kiểm tra mạng."
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "Không thể kết nối tới server. Vui lòng kiểm tra kết nối mạng."
                 else -> "Lỗi: ${e.message ?: "Không xác định"}"
             }
 

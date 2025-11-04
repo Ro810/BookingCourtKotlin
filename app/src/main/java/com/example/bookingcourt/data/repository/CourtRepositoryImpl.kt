@@ -78,23 +78,47 @@ class CourtRepositoryImpl @Inject constructor(
         try {
             emit(Resource.Loading())
 
+            Log.d(TAG, "========== GET COURTS BY VENUE ID ==========")
+            Log.d(TAG, "  Venue ID: $venueId")
+
             // Get all courts and filter by venueId
             val response = courtApi.getAllCourts()
 
+            Log.d(TAG, "  API Response Code: ${response.code()}")
+            Log.d(TAG, "  API Response Success: ${response.isSuccessful}")
+
             if (response.isSuccessful) {
                 val courtsDto = response.body() ?: emptyList()
+                Log.d(TAG, "  Total courts from API: ${courtsDto.size}")
+
+                // Log tất cả courts để debug
+                courtsDto.forEachIndexed { index, court ->
+                    Log.d(TAG, "    Court $index: ID=${court.id}, VenueID=${court.venue.id}, Desc=${court.description}")
+                }
+
                 val filteredCourts = courtsDto
                     .filter { it.venue.id == venueId }
                     .map { it.toDomain() }
 
-                Log.d(TAG, "Found ${filteredCourts.size} courts for venue $venueId")
+                Log.d(TAG, "  ✅ Filtered courts for venue $venueId: ${filteredCourts.size}")
+
+                if (filteredCourts.isEmpty()) {
+                    Log.w(TAG, "  ⚠️ No courts found for venue $venueId")
+                    Log.w(TAG, "  ⚠️ This venue may not have any courts in database")
+                }
+
                 emit(Resource.Success(filteredCourts))
             } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "  ❌ API Error: ${response.code()}")
+                Log.e(TAG, "  ❌ Error body: $errorBody")
                 emit(Resource.Error("Lỗi tải danh sách sân: ${response.code()}"))
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Exception fetching courts for venue: $venueId", e)
+            Log.e(TAG, "❌ Exception fetching courts for venue: $venueId", e)
+            Log.e(TAG, "  Exception type: ${e.javaClass.simpleName}")
+            Log.e(TAG, "  Exception message: ${e.message}")
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
         }
     }
