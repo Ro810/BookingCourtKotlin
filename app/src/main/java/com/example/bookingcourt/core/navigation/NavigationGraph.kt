@@ -25,8 +25,6 @@ import com.example.bookingcourt.presentation.court.screen.CourtListScreen
 import com.example.bookingcourt.presentation.court.screen.CourtDetailScreen
 import com.example.bookingcourt.presentation.home.screen.HomeScreen // HomeScreen của User (Customer)
 import com.example.bookingcourt.presentation.home.screen.OwnerHomeScreen // OwnerHomeScreen của chủ sân
-import com.example.bookingcourt.presentation.filter.SearchScreen // Của User (ThuyTien)
-import com.example.bookingcourt.presentation.filter.FilterScreen // Của User (ThuyTien)
 import com.example.bookingcourt.presentation.payment.screen.PaymentScreen
 import com.example.bookingcourt.presentation.profile.screen.EditProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
@@ -151,10 +149,7 @@ fun NavigationGraph(
                         )
                     },
                     onSearchClick = { // Tính năng mới của ThuyTien
-                        navController.navigate(Screen.Search.route)
-                    },
-                    onFilterClick = { // Tính năng mới của ThuyTien
-                        navController.navigate(Screen.Filter.route)
+                        // Không cần navigate vì đã có search ngay trên HomeScreen
                     },
                     onProfileClick = { // Tính năng mới của ThuyTien
                         navController.navigate(Screen.Profile.route)
@@ -162,33 +157,7 @@ fun NavigationGraph(
                 )
             }
 
-            // 2. SearchScreen (USER - Code của ThuyTien)
-            composable(route = Screen.Search.route) {
-                SearchScreen(
-                    onBackClick = {
-                        navController.navigateUp()
-                    },
-                    onVenueClick = { venue -> // Lambda nhận Venue, không phải Court
-                        navController.navigate(
-                            Screen.CourtDetail.createRoute(venue.id.toString()),
-                        )
-                    },
-                )
-            }
-
-            // 3. FilterScreen (USER - Code của ThuyTien)
-            composable(route = Screen.Filter.route) {
-                FilterScreen(
-                    onBackClick = {
-                        navController.navigateUp()
-                    },
-                    onApplyFilter = {
-                        navController.navigateUp()
-                    },
-                )
-            }
-
-            // 4. OwnerHomeScreen (OWNER - Màn hình quản lý sân của chủ sân)
+            // 2. OwnerHomeScreen (OWNER - Màn hình quản lý sân của chủ sân)
             composable(route = Screen.OwnerHome.route) {
                 OwnerHomeScreen(
                     onNavigateToCourtDetail = { courtId ->
@@ -221,7 +190,7 @@ fun NavigationGraph(
                 )
             }
 
-            // 4.1. OwnerCourtDetail (OWNER - Màn hình chi tiết sân cho chủ sân)
+            // 4. OwnerCourtDetail (OWNER - Màn hình chi tiết sân cho chủ sân)
             composable(
                 route = Screen.OwnerCourtDetail.route,
                 arguments = listOf(
@@ -281,18 +250,14 @@ fun NavigationGraph(
                     },
                 ),
             ) { backStackEntry ->
-                val venueId = backStackEntry.arguments?.getString("courtId") ?: "" // courtId ở đây thực chất là venueId
+                val venueId = backStackEntry.arguments?.getString("courtId") ?: ""
 
                 // Lấy venue từ HomeViewModel state để tránh gọi API lại
                 val parentEntry = remember(backStackEntry) {
                     try {
-                        navController.getBackStackEntry(Screen.Search.route)
+                        navController.getBackStackEntry(Screen.Home.route)
                     } catch (_: Exception) {
-                        try {
-                            navController.getBackStackEntry(Screen.Home.route)
-                        } catch (_: Exception) {
-                            backStackEntry
-                        }
+                        backStackEntry
                     }
                 }
                 val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
@@ -304,9 +269,9 @@ fun NavigationGraph(
                 }
                 venue?.let {
                     DetailScreen(
-                        venue = it, // Sửa từ court -> venue
+                        venue = it,
                         onBackClick = { navController.navigateUp() },
-                        onBookClick = { selectedVenue -> // Lambda nhận Venue
+                        onBookClick = { selectedVenue ->
                             navController.navigate(
                                 Screen.Booking.createRoute(selectedVenue.id.toString()),
                             )
@@ -323,18 +288,14 @@ fun NavigationGraph(
                     },
                 ),
             ) { backStackEntry ->
-                val venueId = backStackEntry.arguments?.getString("courtId") ?: "" // courtId ở đây thực chất là venueId
+                val venueId = backStackEntry.arguments?.getString("courtId") ?: ""
 
                 // Lấy venue từ HomeViewModel state
                 val parentEntry = remember(backStackEntry) {
                     try {
-                        navController.getBackStackEntry(Screen.Search.route)
+                        navController.getBackStackEntry(Screen.Home.route)
                     } catch (_: Exception) {
-                        try {
-                            navController.getBackStackEntry(Screen.Home.route)
-                        } catch (_: Exception) {
-                            backStackEntry
-                        }
+                        backStackEntry
                     }
                 }
                 val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
@@ -351,7 +312,7 @@ fun NavigationGraph(
 
                 BookingScreen(
                     courtId = venueId,
-                    court = resolvedVenue, // BookingScreen vẫn nhận tham số tên "court" nhưng thực chất là Venue
+                    court = resolvedVenue,
                     currentUser = profileState.currentUser,
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToPayment = { bookingId ->

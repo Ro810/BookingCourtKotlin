@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,13 +33,10 @@ import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
 fun HomeScreen(
     onVenueClick: (Venue) -> Unit,
     onSearchClick: () -> Unit,
-    onFilterClick: () -> Unit,
     onProfileClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-
-    var searchQuery by remember { mutableStateOf("") }
 
     val userName = state.user?.fullName ?: "Người dùng"
 
@@ -105,7 +101,7 @@ fun HomeScreen(
         ) {
             // Thêm pull-to-refresh
             PullToRefreshBox(
-                isRefreshing = state.isLoading,
+                isRefreshing = state.isLoading && !state.isSearching,
                 onRefresh = {
                     viewModel.handleIntent(HomeIntent.Refresh)
                 },
@@ -119,21 +115,18 @@ fun HomeScreen(
                     item {
                         HeaderSection(
                             userName = userName,
-                            searchQuery = searchQuery,
-                            onSearchQueryChange = { searchQuery = it },
-                            onSearchClick = onSearchClick
+                            searchQuery = state.searchQuery,
+                            onSearchQueryChange = { query ->
+                                viewModel.handleIntent(HomeIntent.Search(query))
+                            },
+                            onSearchClick = onSearchClick,
+                            onClearSearch = {
+                                viewModel.handleIntent(HomeIntent.ClearSearch)
+                            }
                         )
                     }
 
-                    item {
-                        CategoryChips()
-                    }
-
-                    item {
-                        FilterSection(onFilterClick = onFilterClick)
-                    }
-
-                    if (state.isLoading && state.featuredVenues.isEmpty()) {
+                    if ((state.isLoading || state.isSearching) && state.featuredVenues.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -163,23 +156,63 @@ fun HomeScreen(
                         }
                     }
 
-                    val allVenues = (state.featuredVenues + state.recommendedVenues + state.nearbyVenues)
-                        .distinctBy { it.id }
-                    if (allVenues.isNotEmpty()) {
+                    // Hiển thị kết quả tìm kiếm nếu đang search
+                    if (state.searchQuery.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Sân nổi bật",
+                                text = if (state.searchResults.isNotEmpty())
+                                    "Kết quả tìm kiếm (${state.searchResults.size})"
+                                else
+                                    "Đang tìm kiếm...",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
-                        items(allVenues) { venue ->
-                            VenueCard(
-                                venue = venue,
-                                onVenueClick = { onVenueClick(venue) }
-                            )
+
+                        if (state.searchResults.isNotEmpty()) {
+                            items(state.searchResults) { venue ->
+                                VenueCard(
+                                    venue = venue,
+                                    onVenueClick = { onVenueClick(venue) }
+                                )
+                            }
+                        } else if (!state.isSearching) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Không tìm thấy kết quả",
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Hiển thị danh sách mặc định khi không search
+                        val allVenues = (state.featuredVenues + state.recommendedVenues + state.nearbyVenues)
+                            .distinctBy { it.id }
+                        if (allVenues.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Sân nổi bật",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            items(allVenues) { venue ->
+                                VenueCard(
+                                    venue = venue,
+                                    onVenueClick = { onVenueClick(venue) }
+                                )
+                            }
                         }
                     }
                 }
@@ -193,7 +226,8 @@ fun HeaderSection(
     userName: String,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    onClearSearch: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -242,94 +276,55 @@ fun HeaderSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Card(
+        // TextField cho tìm kiếm
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .clickable { onSearchClick() },
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                .height(56.dp),
+            placeholder = {
+                Text(
+                    text = "Tìm kiếm theo tên sân hoặc địa chỉ...",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+            },
+            leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
                     tint = Primary
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Tìm kiếm sân...",
-                    color = TextSecondary,
-                    modifier = Modifier.weight(1f)
-                )
-
-                IconButton(onClick = { }) {
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = TextSecondary
-                    )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = onClearSearch) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear",
+                            tint = TextSecondary
+                        )
+                    }
+                } else {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite",
+                            tint = TextSecondary
+                        )
+                    }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun CategoryChips() {
-    LazyRow(
-        modifier = Modifier.padding(vertical = 8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(listOf("Cầu lông gần tôi", "Vé của tôi", "Sân đã lưu")) { category ->
-            AssistChip(
-                onClick = { },
-                label = { Text(category) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = SurfaceVariant
-                )
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = Primary,
+                unfocusedBorderColor = Color.Transparent
             )
-        }
-    }
-}
-
-@Composable
-fun FilterSection(onFilterClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onFilterClick() },
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Bộ lọc",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color.Black
-            )
-            Icon(
-                imageVector = Icons.Default.FilterList,
-                contentDescription = "Filter",
-                tint = Primary
-            )
-        }
+        )
     }
 }
 
@@ -437,8 +432,7 @@ fun HomeScreenPreview() {
         Surface {
             HomeScreen(
                 onVenueClick = { },
-                onSearchClick = { },
-                onFilterClick = { }
+                onSearchClick = { }
             )
         }
     }

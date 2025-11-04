@@ -25,6 +25,9 @@ data class HomeState(
     val recommendedVenues: List<Venue> = emptyList(),
     val recentBookings: List<Any> = emptyList(), // TODO: Add Booking model
     val error: String? = null,
+    val searchQuery: String = "",
+    val isSearching: Boolean = false,
+    val searchResults: List<Venue> = emptyList(),
 )
 
 sealed interface HomeIntent {
@@ -34,6 +37,8 @@ sealed interface HomeIntent {
     object NavigateToProfile : HomeIntent
     object NavigateToBookings : HomeIntent
     object Refresh : HomeIntent
+    data class Search(val query: String) : HomeIntent
+    object ClearSearch : HomeIntent
 }
 
 @HiltViewModel
@@ -60,6 +65,8 @@ class HomeViewModel @Inject constructor(
             HomeIntent.NavigateToProfile -> navigateToProfile()
             HomeIntent.NavigateToBookings -> navigateToBookings()
             HomeIntent.Refresh -> refresh()
+            is HomeIntent.Search -> searchVenues(intent.query)
+            HomeIntent.ClearSearch -> clearSearch()
         }
     }
 
@@ -147,35 +154,72 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Search venues by name or location
+     * Search venues by query (name or address)
      */
-    fun searchVenues(
-        name: String? = null,
-        province: String? = null,
-        district: String? = null,
-    ) {
+    private fun searchVenues(query: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
+            _state.value = _state.value.copy(
+                searchQuery = query,
+                isSearching = true
+            )
 
-            venueRepository.searchVenues(name, province, district).collect { result ->
+            if (query.isEmpty()) {
+                _state.value = _state.value.copy(
+                    isSearching = false,
+                    searchResults = emptyList()
+                )
+                return@launch
+            }
+
+            // Tìm kiếm local trước từ dữ liệu đã có
+            val allVenues = (state.value.featuredVenues +
+                            state.value.recommendedVenues +
+                            state.value.nearbyVenues).distinctBy { it.id }
+
+            val searchTerm = query.trim().lowercase()
+
+            val localResults = allVenues.filter { venue ->
+                // Tìm kiếm không phân biệt hoa thường
+                venue.name.lowercase().contains(searchTerm) ||
+                venue.address.getFullAddress().lowercase().contains(searchTerm) ||
+                venue.address.provinceOrCity.lowercase().contains(searchTerm) ||
+                venue.address.district.lowercase().contains(searchTerm) ||
+                venue.address.detailAddress.lowercase().contains(searchTerm) ||
+                (venue.description?.lowercase()?.contains(searchTerm) ?: false)
+            }
+
+            _state.value = _state.value.copy(
+                isSearching = false,
+                searchResults = localResults
+            )
+
+            // Tìm kiếm từ API - gửi query vào tất cả các trường để tăng khả năng tìm thấy
+            venueRepository.searchVenues(
+                name = query,
+                province = query,
+                district = query,
+                detail = query
+            ).collect { result ->
                 when (result) {
                     is Resource.Success -> {
                         val venues = result.data ?: emptyList()
 
+                        // Merge kết quả từ API với kết quả local, loại bỏ duplicate
+                        val mergedResults = (localResults + venues).distinctBy { it.id }
+
                         _state.value = _state.value.copy(
-                            isLoading = false,
-                            featuredVenues = venues,
-                            error = null
+                            searchResults = mergedResults,
+                            isSearching = false
                         )
                     }
                     is Resource.Error -> {
+                        // Giữ kết quả local nếu API fail
                         _state.value = _state.value.copy(
-                            isLoading = false,
-                            error = result.message ?: "Không tìm thấy kết quả"
+                            isSearching = false
                         )
                     }
                     is Resource.Loading -> {
-                        _state.value = _state.value.copy(isLoading = true)
+                        // Đang tìm kiếm từ API
                     }
                 }
             }
@@ -208,5 +252,15 @@ class HomeViewModel @Inject constructor(
 
     private fun refresh() {
         handleIntent(HomeIntent.LoadHomeData)
+    }
+
+    private fun clearSearch() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                searchQuery = "",
+                isSearching = false,
+                searchResults = emptyList()
+            )
+        }
     }
 }
