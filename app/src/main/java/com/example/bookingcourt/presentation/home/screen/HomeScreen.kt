@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.presentation.theme.*
+import com.example.bookingcourt.presentation.home.viewmodel.HomeIntent
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +42,11 @@ fun HomeScreen(
 
     // Lấy tên user từ state, nếu null thì dùng tên mặc định
     val userName = state.user?.fullName ?: "Người dùng"
+
+    // Auto refresh when screen appears
+    LaunchedEffect(Unit) {
+        viewModel.handleIntent(HomeIntent.Refresh)
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -95,7 +101,7 @@ fun HomeScreen(
                         0.4f to Color(0xFFE3F2FD), // Light Blue tint
                         1.0f to Color.White,
                     ),
-                ),
+                )
         ) {
             LazyColumn(
                 modifier = Modifier

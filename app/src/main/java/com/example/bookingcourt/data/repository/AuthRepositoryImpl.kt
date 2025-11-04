@@ -489,10 +489,50 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun updateProfile(user: User): Flow<Resource<User>> = flow {
         try {
             emit(Resource.Loading())
-            // API call to update profile
-            saveUserSession(user)
-            emit(Resource.Success(user))
+
+            Log.d(TAG, "========== UPDATE PROFILE ==========")
+            Log.d(TAG, "Fullname: ${user.fullName}")
+            Log.d(TAG, "Email: ${user.email}")
+
+            val updateRequest = com.example.bookingcourt.data.remote.dto.UpdateUserRequest(
+                fullname = user.fullName,
+                email = user.email.takeIf { it.isNotEmpty() }
+            )
+
+            val response = userApi.updateUser(updateRequest)
+
+            Log.d(TAG, "Response code: ${response.code()}")
+            Log.d(TAG, "Response successful: ${response.isSuccessful}")
+
+            if (response.isSuccessful) {
+                val userResponse = response.body()
+
+                if (userResponse != null && userResponse.success && userResponse.data != null) {
+                    val updatedUser = userResponse.toUser()
+
+                    if (updatedUser != null) {
+                        // Lưu thông tin user đã cập nhật vào cache
+                        saveUserSession(updatedUser)
+                        Log.d(TAG, "✓ Profile updated successfully")
+                        Log.d(TAG, "======================================")
+                        emit(Resource.Success(updatedUser))
+                    } else {
+                        Log.e(TAG, "✗ Failed to parse updated user")
+                        emit(Resource.Error("Không thể cập nhật thông tin"))
+                    }
+                } else {
+                    val errorMsg = userResponse?.message ?: "Không thể cập nhật thông tin"
+                    Log.e(TAG, "✗ API returned success=false: $errorMsg")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "✗ API error: ${response.code()}")
+                Log.e(TAG, "Error body: $errorBody")
+                emit(Resource.Error("Lỗi cập nhật thông tin: ${response.code()}"))
+            }
         } catch (e: Exception) {
+            Log.e(TAG, "✗ Exception updating profile: ${e.message}", e)
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
         }
     }

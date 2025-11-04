@@ -54,8 +54,15 @@ fun CourtDetailScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToBooking: () -> Unit = {},
     onNavigateToBookingDetail: (String) -> Unit = {},
+    viewModel: com.example.bookingcourt.presentation.court.viewmodel.CourtDetailViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
-    val todayRevenue = 2500000
+    val state by viewModel.state.collectAsState()
+
+    val todayRevenue = state.todayRevenue
+    val venue = state.venue
+    val actualVenueName = venue?.name ?: venueName
+    val actualCourtCount = venue?.courtsCount ?: courtCount
+
     val checkInSchedules = remember {
         listOf(
             CheckInSchedule("booking_1", 1, "Nguyễn Văn A", "14:00", "1 giờ"),
@@ -65,8 +72,8 @@ fun CourtDetailScreen(
         )
     }
 
-    val courtStatuses = remember {
-        (1..courtCount).map { courtNum ->
+    val courtStatuses = remember(actualCourtCount) {
+        (1..actualCourtCount).map { courtNum ->
             CourtStatus(
                 courtNumber = courtNum,
                 isAvailable = courtNum % 3 != 0,
@@ -75,14 +82,12 @@ fun CourtDetailScreen(
         }
     }
 
-    val courtImages = remember {
-        listOf(
-            "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=400",
-            "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400",
-            "https://images.unsplash.com/photo-1609710228159-0fa9bd7c0827?w=400",
-            "https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=400",
-        )
-    }
+    val courtImages = venue?.images?.takeIf { it.isNotEmpty() } ?: listOf(
+        "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=400",
+        "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400",
+        "https://images.unsplash.com/photo-1609710228159-0fa9bd7c0827?w=400",
+        "https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=400",
+    )
 
     var selectedImage by remember { mutableStateOf<String?>(null) }
 
@@ -91,7 +96,7 @@ fun CourtDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(venueName) },
+                title = { Text(actualVenueName) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
@@ -105,14 +110,41 @@ fun CourtDetailScreen(
             )
         },
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF5F5F5)),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (state.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else if (state.error != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = state.error ?: "Đã xảy ra lỗi",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { viewModel.handleIntent(com.example.bookingcourt.presentation.court.viewmodel.CourtDetailIntent.Refresh) }) {
+                        Text("Thử lại")
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFF5F5F5)),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
             // Revenue Card
             item {
                 Card(
@@ -275,14 +307,16 @@ fun CourtDetailScreen(
                     }
                 }
             }
-        }
+                }
+            }
 
-        // Image Preview Dialog
-        selectedImage?.let { imageUrl ->
-            ImagePreviewDialog(
-                imageUrl = imageUrl,
-                onDismiss = { selectedImage = null },
-            )
+            // Image Preview Dialog
+            selectedImage?.let { imageUrl ->
+                ImagePreviewDialog(
+                    imageUrl = imageUrl,
+                    onDismiss = { selectedImage = null },
+                )
+            }
         }
     }
 }

@@ -112,6 +112,9 @@ data class CreateVenueRequest(
     @SerializedName("email")
     val email: String,
 
+    @SerializedName("numberOfCourt")
+    val numberOfCourt: Int? = null,
+
     @SerializedName("address")
     val address: CreateAddressRequest,
 

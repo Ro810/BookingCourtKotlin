@@ -1,6 +1,7 @@
 package com.example.bookingcourt.presentation.home.screen
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +32,7 @@ import coil.compose.AsyncImage
 import com.example.bookingcourt.domain.model.Court
 import com.example.bookingcourt.domain.model.CourtType
 import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.presentation.owner.viewmodel.OwnerHomeViewModel
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
@@ -122,6 +124,7 @@ fun OwnerHomeScreen(
                     onNavigateToCourtDetail = onNavigateToCourtDetail,
                     onNavigateToCreateVenue = onNavigateToCreateVenue,
                     bottomPadding = paddingValues.calculateBottomPadding(),
+                    snackbarHostState = snackbarHostState,
                 )
             }
             HomeTab.PROFILE -> {
@@ -146,6 +149,7 @@ private fun OwnerHomeContent(
     onNavigateToCourtDetail: (String) -> Unit,
     onNavigateToCreateVenue: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
+    snackbarHostState: SnackbarHostState,
     viewModel: OwnerHomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -164,6 +168,17 @@ private fun OwnerHomeContent(
             showEditDialog = false
             venueToEdit = null
             viewModel.clearUpdateSuccess()
+        }
+    }
+
+    // Show success message when delete succeeds
+    LaunchedEffect(state.deleteSuccess) {
+        if (state.deleteSuccess) {
+            snackbarHostState.showSnackbar(
+                message = "Đã xóa sân thành công",
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearDeleteSuccess()
         }
     }
 
@@ -349,7 +364,7 @@ private fun OwnerHomeContent(
                     VenueCardFromVenue(
                         venue = venue,
                         onClick = {
-                            // TODO: Navigate to venue detail
+                            onNavigateToCourtDetail(venue.id.toString())
                         },
                         onEditClick = {
                             venueToEdit = venue
@@ -372,6 +387,7 @@ private fun OwnerHomeContent(
     if (showEditDialog && venueToEdit != null) {
         EditVenueDialog(
             venue = venueToEdit!!,
+            currentUser = state.currentUser,
             isLoading = state.isUpdatingVenue,
             onDismiss = {
                 showEditDialog = false
@@ -1150,14 +1166,14 @@ private fun VenueCardFromVenue(
 @Composable
 private fun EditVenueDialog(
     venue: com.example.bookingcourt.domain.model.Venue,
+    currentUser: User?,
     isLoading: Boolean,
     onDismiss: () -> Unit,
     onSave: (com.example.bookingcourt.domain.model.Venue) -> Unit,
 ) {
     var venueName by remember { mutableStateOf(venue.name) }
     var description by remember { mutableStateOf(venue.description ?: "") }
-    var phoneNumber by remember { mutableStateOf(venue.phoneNumber ?: "") }
-    var email by remember { mutableStateOf(venue.email ?: "") }
+    var phoneNumber by remember { mutableStateOf(venue.phoneNumber ?: venue.ownerPhone ?: currentUser?.phoneNumber ?: "") }
     var provinceOrCity by remember { mutableStateOf(venue.address.provinceOrCity) }
     var district by remember { mutableStateOf(venue.address.district) }
     var detailAddress by remember { mutableStateOf(venue.address.detailAddress) }
@@ -1174,10 +1190,7 @@ private fun EditVenueDialog(
     var showOpeningTimePicker by remember { mutableStateOf(false) }
     var showClosingTimePicker by remember { mutableStateOf(false) }
 
-    var imageUrls by remember { mutableStateOf(venue.images ?: emptyList()) }
-    var newImageUrl by remember { mutableStateOf("") }
-    var showAddImageDialog by remember { mutableStateOf(false) }
-    var numberOfCourts by remember { mutableStateOf(venue.courtsCount.toString()) }
+    var numberOfCourts by remember { mutableStateOf(venue.courtsCount) }
 
     val primaryColor = Color(0xFF123E62)
 
@@ -1283,29 +1296,6 @@ private fun EditVenueDialog(
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Phone,
-                                contentDescription = null,
-                                tint = primaryColor,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        },
-                    )
-
-                    // Email
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email *", fontSize = 14.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        enabled = !isLoading,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            focusedLabelColor = primaryColor,
-                        ),
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Email,
                                 contentDescription = null,
                                 tint = primaryColor,
                                 modifier = Modifier.size(20.dp),
@@ -1490,121 +1480,96 @@ private fun EditVenueDialog(
                     }
 
                     // Số lượng sân con
-                    OutlinedTextField(
-                        value = numberOfCourts,
-                        onValueChange = {
-                            // Chỉ cho phép nhập số
-                            if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                                numberOfCourts = it
-                            }
-                        },
-                        label = { Text("Số lượng sân", fontSize = 14.sp) },
-                        placeholder = { Text("Nhập số lượng sân", fontSize = 14.sp) },
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        enabled = !isLoading,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            focusedLabelColor = primaryColor,
-                        ),
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Home,
-                                contentDescription = null,
-                                tint = primaryColor,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        },
-                        supportingText = {
-                            Text(
-                                "Số lượng sân con (hiển thị cho khách hàng)",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                        }
-                    )
-
-                    // Images section
-                    if (imageUrls.isNotEmpty()) {
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
-                            "Hình ảnh sân (${imageUrls.size})",
+                            "Số lượng sân",
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Medium,
                             color = primaryColor
                         )
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    width = 1.dp,
+                                    color = primaryColor.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            imageUrls.forEachIndexed { index, url ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFF5F5F5)
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(8.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // Image preview
-                                        Box(
-                                            modifier = Modifier
-                                                .size(60.dp)
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(Color(0xFFF0F0F0))
-                                        ) {
-                                            AsyncImage(
-                                                model = url,
-                                                contentDescription = "Ảnh ${index + 1}",
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        }
-
-                                        // URL text
-                                        Text(
-                                            text = url,
-                                            fontSize = 11.sp,
-                                            maxLines = 2,
-                                            color = Color.DarkGray,
-                                            modifier = Modifier.weight(1f)
-                                        )
-
-                                        // Delete button
-                                        IconButton(
-                                            onClick = { imageUrls = imageUrls.filterIndexed { i, _ -> i != index } },
-                                            enabled = !isLoading
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = "Xóa",
-                                                tint = if (isLoading) Color.Gray else Color.Red,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
+                            // Button giảm (-)
+                            IconButton(
+                                onClick = {
+                                    if (numberOfCourts > 1) {
+                                        numberOfCourts--
                                     }
-                                }
+                                },
+                                enabled = !isLoading && numberOfCourts > 1,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        color = if (!isLoading && numberOfCourts > 1)
+                                            primaryColor.copy(alpha = 0.1f)
+                                        else
+                                            Color.Gray.copy(alpha = 0.1f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Remove,
+                                    contentDescription = "Giảm",
+                                    tint = if (!isLoading && numberOfCourts > 1)
+                                        primaryColor
+                                    else
+                                        Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            // Hiển thị số lượng
+                            Text(
+                                text = "$numberOfCourts sân",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+
+                            // Button tăng
+                            IconButton(
+                                onClick = {
+                                    numberOfCourts++
+                                },
+                                enabled = !isLoading,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        color = if (!isLoading)
+                                            primaryColor.copy(alpha = 0.1f)
+                                        else
+                                            Color.Gray.copy(alpha = 0.1f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Tăng",
+                                    tint = if (!isLoading) primaryColor else Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
-                    }
 
-                    // Add image button
-                    OutlinedButton(
-                        onClick = { showAddImageDialog = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = primaryColor
+                        Text(
+                            "Số lượng sân con (hiển thị cho khách hàng)",
+                            fontSize = 12.sp,
+                            color = Color.Gray
                         )
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Thêm ảnh", fontSize = 13.sp)
                     }
                 }
 
@@ -1638,7 +1603,6 @@ private fun EditVenueDialog(
                                 name = venueName.trim(),
                                 description = description.trim().takeIf { it.isNotEmpty() },
                                 phoneNumber = phoneNumber.trim().takeIf { it.isNotEmpty() },
-                                email = email.trim().takeIf { it.isNotEmpty() },
                                 address = venue.address.copy(
                                     provinceOrCity = provinceOrCity.trim(),
                                     district = district.trim(),
@@ -1647,9 +1611,8 @@ private fun EditVenueDialog(
                                 pricePerHour = pricePerHour.trim().toLongOrNull() ?: venue.pricePerHour,
                                 openingTime = String.format("%02d:%02d", openingHour, openingMinute),
                                 closingTime = String.format("%02d:%02d", closingHour, closingMinute),
-                                images = imageUrls.takeIf { it.isNotEmpty() },
-                                courtsCount = numberOfCourts.trim().toIntOrNull() ?: venue.courtsCount,
-                                numberOfCourt = numberOfCourts.trim().toIntOrNull() ?: venue.numberOfCourt
+                                courtsCount = numberOfCourts,
+                                numberOfCourt = numberOfCourts
                             )
                             onSave(updatedVenue)
                         },
@@ -1685,47 +1648,6 @@ private fun EditVenueDialog(
                 }
             }
         }
-    }
-
-    // Add Image Dialog
-    if (showAddImageDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddImageDialog = false },
-            title = { Text("Thêm URL hình ảnh", color = primaryColor, fontWeight = FontWeight.Bold) },
-            text = {
-                OutlinedTextField(
-                    value = newImageUrl,
-                    onValueChange = { newImageUrl = it },
-                    label = { Text("URL hình ảnh", fontSize = 14.sp) },
-                    placeholder = { Text("https://example.com/image.jpg", fontSize = 12.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                    )
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (newImageUrl.isNotBlank()) {
-                            imageUrls = imageUrls + newImageUrl.trim()
-                            newImageUrl = ""
-                            showAddImageDialog = false
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                ) {
-                    Text("Thêm")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showAddImageDialog = false }) {
-                    Text("Hủy", color = Color.Gray)
-                }
-            }
-        )
     }
 
     // Opening Time Picker Dialog

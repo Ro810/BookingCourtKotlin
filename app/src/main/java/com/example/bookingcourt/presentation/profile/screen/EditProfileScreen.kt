@@ -21,29 +21,70 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
+import com.example.bookingcourt.presentation.profile.viewmodel.EditProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     onNavigateBack: () -> Unit,
+    viewModel: EditProfileViewModel = hiltViewModel()
 ) {
-    // Mock user data - trong thực tế sẽ lấy từ ViewModel
-    var fullName by remember { mutableStateOf("Nguyễn Văn A") }
-    var phoneNumber by remember { mutableStateOf("0123456789") }
-    var email by remember { mutableStateOf("nguyen.van.a@example.com") }
+    val state by viewModel.state.collectAsState()
+
+    // Local state for form fields
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
 
-    var showSaveDialog by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
+    // Initialize form fields from current user
+    LaunchedEffect(state.currentUser) {
+        state.currentUser?.let { user ->
+            fullName = user.fullName
+            email = user.email
+            avatarUrl = user.avatar
+        }
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Show success message
+    LaunchedEffect(state.saveSuccess) {
+        if (state.saveSuccess) {
+            snackbarHostState.showSnackbar(
+                message = "Cập nhật thông tin thành công",
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearSaveSuccess()
+            // Navigate back after short delay
+            kotlinx.coroutines.delay(500)
+            onNavigateBack()
+        }
+    }
+
+    // Show error message
+    LaunchedEffect(state.error) {
+        state.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearError()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Chỉnh sửa hồ sơ") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        enabled = !state.isSaving
+                    ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Quay lại"
@@ -52,14 +93,27 @@ fun EditProfileScreen(
                 },
                 actions = {
                     TextButton(
-                        onClick = { showSaveDialog = true },
-                        enabled = !isLoading
+                        onClick = {
+                            viewModel.updateProfile(
+                                fullName = fullName.trim(),
+                                email = email.trim()
+                            )
+                        },
+                        enabled = !state.isSaving && fullName.isNotBlank()
                     ) {
-                        Text(
-                            "Lưu",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (state.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                "Lưu",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -176,27 +230,16 @@ fun EditProfileScreen(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
+                            enabled = !state.isSaving,
                         )
 
-                        // Phone Number
+                        // Phone Number (read-only)
                         OutlinedTextField(
-                            value = phoneNumber,
-                            onValueChange = { phoneNumber = it },
+                            value = state.currentUser?.phoneNumber ?: "",
+                            onValueChange = { },
                             label = { Text("Số điện thoại") },
                             leadingIcon = {
                                 Icon(Icons.Default.Phone, contentDescription = null)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                        )
-
-                        // Email (read-only)
-                        OutlinedTextField(
-                            value = email,
-                            onValueChange = { },
-                            label = { Text("Email") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Email, contentDescription = null)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
@@ -207,6 +250,19 @@ fun EditProfileScreen(
                                 disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ),
+                        )
+
+                        // Email
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Email, contentDescription = null)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            enabled = !state.isSaving,
                         )
                     }
                 }
@@ -247,44 +303,6 @@ fun EditProfileScreen(
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
-        }
-
-        // Save Confirmation Dialog
-        if (showSaveDialog) {
-            AlertDialog(
-                onDismissRequest = { showSaveDialog = false },
-                icon = {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                title = {
-                    Text("Lưu thay đổi")
-                },
-                text = {
-                    Text("Bạn có chắc chắn muốn lưu các thay đổi không?")
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            isLoading = true
-                            // TODO: Call ViewModel to save changes
-                            // For now, just simulate save and go back
-                            showSaveDialog = false
-                            onNavigateBack()
-                        },
-                    ) {
-                        Text("Lưu")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showSaveDialog = false }) {
-                        Text("Hủy")
-                    }
-                },
-            )
         }
     }
 }

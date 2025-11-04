@@ -23,6 +23,7 @@ interface VenueRepository {
         description: String?,
         phoneNumber: String,
         email: String,
+        numberOfCourt: Int? = null,
         provinceOrCity: String,
         district: String,
         detailAddress: String,

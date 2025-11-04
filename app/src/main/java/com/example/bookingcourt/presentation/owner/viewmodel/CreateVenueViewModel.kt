@@ -26,6 +26,7 @@ data class ValidationErrors(
     val provinceError: String? = null,
     val districtError: String? = null,
     val detailAddressError: String? = null,
+    val numberOfCourtsError: String? = null,
     val priceError: String? = null,
     val openingTimeError: String? = null,
     val closingTimeError: String? = null,
@@ -47,6 +48,7 @@ class CreateVenueViewModel @Inject constructor(
         provinceOrCity: String,
         district: String,
         detailAddress: String,
+        numberOfCourts: String,
         pricePerHour: String,
         openingTime: String,
         closingTime: String,
@@ -59,6 +61,7 @@ class CreateVenueViewModel @Inject constructor(
             provinceOrCity = provinceOrCity,
             district = district,
             detailAddress = detailAddress,
+            numberOfCourts = numberOfCourts,
             pricePerHour = pricePerHour,
             openingTime = openingTime,
             closingTime = closingTime
@@ -77,6 +80,7 @@ class CreateVenueViewModel @Inject constructor(
                 description = description.trim().takeIf { it.isNotEmpty() },
                 phoneNumber = phoneNumber.trim(),
                 email = email.trim(),
+                numberOfCourt = numberOfCourts.trim().toIntOrNull(),
                 provinceOrCity = provinceOrCity.trim(),
                 district = district.trim(),
                 detailAddress = detailAddress.trim(),
@@ -116,6 +120,7 @@ class CreateVenueViewModel @Inject constructor(
         provinceOrCity: String,
         district: String,
         detailAddress: String,
+        numberOfCourts: String,
         pricePerHour: String,
         openingTime: String,
         closingTime: String,
@@ -126,6 +131,7 @@ class CreateVenueViewModel @Inject constructor(
         var provinceError: String? = null
         var districtError: String? = null
         var detailAddressError: String? = null
+        var numberOfCourtsError: String? = null
         var priceError: String? = null
         var openingTimeError: String? = null
         var closingTimeError: String? = null
@@ -162,6 +168,18 @@ class CreateVenueViewModel @Inject constructor(
             detailAddressError = "Địa chỉ chi tiết không được để trống"
         }
 
+        // Validate number of courts
+        if (numberOfCourts.isBlank()) {
+            numberOfCourtsError = "Số lượng sân không được để trống"
+        } else {
+            val courts = numberOfCourts.toIntOrNull()
+            if (courts == null) {
+                numberOfCourtsError = "Số lượng sân không hợp lệ"
+            } else if (courts <= 0) {
+                numberOfCourtsError = "Số lượng sân phải lớn hơn 0"
+            }
+        }
+
         // Validate price per hour (optional but must be valid if provided)
         if (pricePerHour.isNotBlank()) {
             val price = pricePerHour.toDoubleOrNull()
@@ -193,6 +211,7 @@ class CreateVenueViewModel @Inject constructor(
             provinceError = provinceError,
             districtError = districtError,
             detailAddressError = detailAddressError,
+            numberOfCourtsError = numberOfCourtsError,
             priceError = priceError,
             openingTimeError = openingTimeError,
             closingTimeError = closingTimeError
@@ -219,6 +238,7 @@ private fun ValidationErrors.hasErrors(): Boolean {
             provinceError != null ||
             districtError != null ||
             detailAddressError != null ||
+            numberOfCourtsError != null ||
             priceError != null ||
             openingTimeError != null ||
             closingTimeError != null

@@ -31,6 +31,7 @@ fun CreateVenueScreen(
     var provinceOrCity by remember { mutableStateOf("") }
     var district by remember { mutableStateOf("") }
     var detailAddress by remember { mutableStateOf("") }
+    var numberOfCourts by remember { mutableStateOf("") }
     var pricePerHour by remember { mutableStateOf("") }
     var openingTime by remember { mutableStateOf("") }
     var closingTime by remember { mutableStateOf("") }
@@ -248,6 +249,26 @@ fun CreateVenueScreen(
                 singleLine = true,
             )
 
+            // Number of courts field
+            OutlinedTextField(
+                value = numberOfCourts,
+                onValueChange = {
+                    numberOfCourts = it
+                    viewModel.clearValidationErrors()
+                },
+                label = { Text("Số lượng sân *") },
+                placeholder = { Text("Ví dụ: 4") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = state.validationErrors.numberOfCourtsError != null,
+                supportingText = {
+                    state.validationErrors.numberOfCourtsError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                singleLine = true,
+            )
+
             // Opening time field
             OutlinedTextField(
                 value = openingTime,
@@ -299,6 +320,7 @@ fun CreateVenueScreen(
                         provinceOrCity = provinceOrCity,
                         district = district,
                         detailAddress = detailAddress,
+                        numberOfCourts = numberOfCourts,
                         pricePerHour = pricePerHour,
                         openingTime = openingTime,
                         closingTime = closingTime

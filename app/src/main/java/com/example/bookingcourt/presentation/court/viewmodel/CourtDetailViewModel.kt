@@ -3,8 +3,10 @@ package com.example.bookingcourt.presentation.court.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.core.common.UiEvent
-import com.example.bookingcourt.domain.model.Court
+import com.example.bookingcourt.domain.model.Venue
+import com.example.bookingcourt.domain.repository.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,15 +18,13 @@ import javax.inject.Inject
 
 data class CourtDetailState(
     val isLoading: Boolean = false,
-    val court: Court? = null,
-    val isBooked: Boolean = false,
+    val venue: Venue? = null,
     val error: String? = null,
     val todayRevenue: Long = 0,
-    val availableSlots: List<String> = emptyList(),
 )
 
 sealed interface CourtDetailIntent {
-    data class LoadCourt(val courtId: String) : CourtDetailIntent
+    data class LoadVenue(val venueId: String) : CourtDetailIntent
     object NavigateToBooking : CourtDetailIntent
     object NavigateBack : CourtDetailIntent
     data class CheckIn(val bookingId: String) : CourtDetailIntent
@@ -34,10 +34,10 @@ sealed interface CourtDetailIntent {
 @HiltViewModel
 class CourtDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    // TODO: Inject repositories when ready
+    private val venueRepository: VenueRepository,
 ) : ViewModel() {
 
-    private val courtId: String = savedStateHandle.get<String>("courtId") ?: ""
+    private val venueId: String = savedStateHandle.get<String>("courtId") ?: ""
 
     private val _state = MutableStateFlow(CourtDetailState())
     val state: StateFlow<CourtDetailState> = _state.asStateFlow()
@@ -46,14 +46,14 @@ class CourtDetailViewModel @Inject constructor(
     val uiEvent = _uiEvent.asSharedFlow()
 
     init {
-        if (courtId.isNotEmpty()) {
-            handleIntent(CourtDetailIntent.LoadCourt(courtId))
+        if (venueId.isNotEmpty()) {
+            handleIntent(CourtDetailIntent.LoadVenue(venueId))
         }
     }
 
     fun handleIntent(intent: CourtDetailIntent) {
         when (intent) {
-            is CourtDetailIntent.LoadCourt -> loadCourt(intent.courtId)
+            is CourtDetailIntent.LoadVenue -> loadVenue(intent.venueId)
             CourtDetailIntent.NavigateToBooking -> navigateToBooking()
             CourtDetailIntent.NavigateBack -> navigateBack()
             is CourtDetailIntent.CheckIn -> checkIn(intent.bookingId)
@@ -61,26 +61,44 @@ class CourtDetailViewModel @Inject constructor(
         }
     }
 
-    private fun loadCourt(courtId: String) {
+    private fun loadVenue(venueId: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
+            try {
+                _state.value = _state.value.copy(isLoading = true, error = null)
 
-            // TODO: Replace with actual repository call
-            // val result = courtRepository.getCourtById(courtId)
-
-            _state.value = _state.value.copy(
-                isLoading = false,
-                court = null, // Replace with actual data
-                todayRevenue = 2500000, // Mock data
-                availableSlots = generateAvailableSlots(),
-            )
+                venueRepository.getVenueById(venueId.toLongOrNull() ?: 0).collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                venue = result.data,
+                                error = null
+                            )
+                        }
+                        is Resource.Error -> {
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                error = result.message ?: "Đã xảy ra lỗi"
+                            )
+                        }
+                        is Resource.Loading -> {
+                            _state.value = _state.value.copy(isLoading = true)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Đã xảy ra lỗi"
+                )
+            }
         }
     }
 
     private fun navigateToBooking() {
         viewModelScope.launch {
-            _state.value.court?.let { court ->
-                _uiEvent.emit(UiEvent.NavigateTo("booking/${court.id}"))
+            _state.value.venue?.let { venue ->
+                _uiEvent.emit(UiEvent.NavigateTo("booking/${venue.id}"))
             }
         }
     }
@@ -99,13 +117,8 @@ class CourtDetailViewModel @Inject constructor(
     }
 
     private fun refresh() {
-        if (courtId.isNotEmpty()) {
-            handleIntent(CourtDetailIntent.LoadCourt(courtId))
+        if (venueId.isNotEmpty()) {
+            handleIntent(CourtDetailIntent.LoadVenue(venueId))
         }
-    }
-
-    private fun generateAvailableSlots(): List<String> {
-        // Mock available time slots
-        return listOf("14:00", "15:00", "16:00", "17:00", "18:00", "19:00")
     }
 }
