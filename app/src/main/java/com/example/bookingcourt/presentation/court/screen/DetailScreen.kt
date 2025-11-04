@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.Primary
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,14 +165,60 @@ fun DetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Trạng thái
-                val statusText = if (venue.courtsCount > 0) "Đang hoạt động" else "Chưa có sân"
-                val statusIcon = if (venue.courtsCount > 0) Icons.Default.CheckCircle else Icons.Default.Cancel
+                val isOpen = isVenueOpen(venue.openingTime, venue.closingTime)
+                val hasCourtAvailable = venue.courtsCount > 0
 
-                InfoCard(
-                    icon = statusIcon,
-                    title = "Trạng thái",
-                    value = statusText
-                )
+                val statusText = when {
+                    !hasCourtAvailable -> "Chưa có sân"
+                    !isOpen -> "Ngoài giờ hoạt động"
+                    else -> "Đang hoạt động"
+                }
+
+                val statusIcon = when {
+                    !hasCourtAvailable -> Icons.Default.Cancel
+                    !isOpen -> Icons.Default.Schedule
+                    else -> Icons.Default.CheckCircle
+                }
+
+                val statusColor = when {
+                    !hasCourtAvailable -> Color.Red
+                    !isOpen -> Color(0xFFFFA000) // Orange
+                    else -> Primary
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = statusIcon,
+                            contentDescription = "Trạng thái",
+                            tint = statusColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Trạng thái",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = statusText,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
             }
 
             HorizontalDivider(
@@ -493,6 +541,39 @@ fun ReviewsTabContent(venue: Venue) {
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
             )
         }
+    }
+}
+
+// Helper function to check if venue is currently open
+private fun isVenueOpen(openingTime: String?, closingTime: String?): Boolean {
+    if (openingTime == null || closingTime == null) return true // Assume open if no time specified
+
+    return try {
+        val currentTime = Calendar.getInstance()
+        val currentHour = currentTime.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = currentTime.get(Calendar.MINUTE)
+
+        val openParts = openingTime.split(":")
+        val closeParts = closingTime.split(":")
+
+        val openHour = openParts[0].toInt()
+        val openMinute = if (openParts.size > 1) openParts[1].toInt() else 0
+
+        val closeHour = closeParts[0].toInt()
+        val closeMinute = if (closeParts.size > 1) closeParts[1].toInt() else 0
+
+        val currentMinutes = currentHour * 60 + currentMinute
+        val openMinutes = openHour * 60 + openMinute
+        val closeMinutes = closeHour * 60 + closeMinute
+
+        // Handle case where closing time is after midnight
+        if (closeMinutes < openMinutes) {
+            currentMinutes >= openMinutes || currentMinutes < closeMinutes
+        } else {
+            currentMinutes in openMinutes..closeMinutes
+        }
+    } catch (_: Exception) {
+        true // If parsing fails, assume open
     }
 }
 
