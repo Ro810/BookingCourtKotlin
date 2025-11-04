@@ -30,6 +30,7 @@ import com.example.bookingcourt.presentation.filter.FilterScreen // Của User (
 import com.example.bookingcourt.presentation.payment.screen.PaymentScreen
 import com.example.bookingcourt.presentation.profile.screen.EditProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
+import com.example.bookingcourt.presentation.profile.screen.ChangePasswordScreen
 import com.example.bookingcourt.presentation.owner.screen.BecomeOwnerScreen
 import com.example.bookingcourt.presentation.owner.screen.CreateVenueScreen
 import com.example.bookingcourt.presentation.settings.screen.SettingsScreen
@@ -451,7 +452,7 @@ fun NavigationGraph(
                         navController.navigate(Screen.EditProfile.route)
                     },
                     onNavigateToChangePassword = {
-                        // TODO: Navigate to change password screen when implemented
+                        navController.navigate(Screen.ChangePassword.route)
                     },
                     onNavigateToBecomeOwner = {
                         // Kiểm tra xem user đã có bank info chưa
@@ -548,6 +549,12 @@ fun NavigationGraph(
 
             composable(route = Screen.EditProfile.route) {
                 EditProfileScreen(
+                    onNavigateBack = { navController.navigateUp() },
+                )
+            }
+
+            composable(route = Screen.ChangePassword.route) {
+                ChangePasswordScreen(
                     onNavigateBack = { navController.navigateUp() },
                 )
             }

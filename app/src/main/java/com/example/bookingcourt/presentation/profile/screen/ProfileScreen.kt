@@ -555,15 +555,6 @@ fun UserProfileHeader(
                         color = Color.Gray,
                     )
                 }
-
-                // Edit Button
-                IconButton(onClick = onEditClick) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Chỉnh sửa",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
 
             // User Role & Level

@@ -114,6 +114,10 @@ class OwnerHomeViewModel @Inject constructor(
         loadVenues()
     }
 
+    fun resetUpdateSuccess() {
+        _state.value = _state.value.copy(updateSuccess = false)
+    }
+
     fun updateVenue(
         venueId: Long,
         name: String,
@@ -148,12 +152,26 @@ class OwnerHomeViewModel @Inject constructor(
                 ).collect { result ->
                     when (result) {
                         is Resource.Success -> {
-                            _state.value = _state.value.copy(
-                                isUpdatingVenue = false,
-                                updateSuccess = true,
-                                error = null
-                            )
-                            // Refresh the venues list
+                            // Update the venue in the current list immediately
+                            val updatedVenue = result.data
+                            if (updatedVenue != null) {
+                                val updatedVenues = _state.value.venues.map { venue ->
+                                    if (venue.id == updatedVenue.id) updatedVenue else venue
+                                }
+                                _state.value = _state.value.copy(
+                                    isUpdatingVenue = false,
+                                    updateSuccess = true,
+                                    error = null,
+                                    venues = updatedVenues
+                                )
+                            } else {
+                                _state.value = _state.value.copy(
+                                    isUpdatingVenue = false,
+                                    updateSuccess = true,
+                                    error = null
+                                )
+                            }
+                            // Also refresh from API to ensure data consistency
                             loadVenues()
                         }
                         is Resource.Error -> {
