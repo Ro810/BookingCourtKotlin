@@ -17,103 +17,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.example.bookingcourt.domain.model.Amenity
-import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.CourtType
-import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.domain.model.Venue
+import com.example.bookingcourt.domain.model.Address
+import com.example.bookingcourt.presentation.court.viewmodel.CourtListViewModel
 import com.example.bookingcourt.presentation.theme.*
-import kotlinx.datetime.LocalTime
 import java.text.NumberFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CourtListScreen(
-    sportType: String?,
+    sportType: String?, // Deprecated parameter, không còn dùng
     onNavigateBack: () -> Unit,
     onNavigateToCourtDetail: (String) -> Unit,
+    viewModel: CourtListViewModel = hiltViewModel()
 ) {
-    // Mock data - Replace with ViewModel when ready
-    val courts = remember {
-        listOf(
-            Court(
-                id = "court_1",
-                name = "Star Club Badminton",
-                address = "123 Đường ABC, Quận 1, TP.HCM",
-                latitude = 10.762622,
-                longitude = 106.660172,
-                sportType = SportType.BADMINTON,
-                courtType = CourtType.INDOOR,
-                pricePerHour = 150000,
-                description = "Sân cầu lông chất lượng cao với hệ thống chiếu sáng hiện đại",
-                images = listOf("https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=400"),
-                rating = 4.5f,
-                totalReviews = 120,
-                openTime = LocalTime(6, 0),
-                closeTime = LocalTime(22, 0),
-                amenities = listOf(
-                    Amenity("1", "Wifi", "wifi"),
-                    Amenity("2", "Parking", "parking"),
-                    Amenity("3", "Shower", "shower"),
-                ),
-                rules = "Không hút thuốc trong sân",
-                ownerId = "owner_1",
-                isActive = true,
-                maxPlayers = 4,
-            ),
-            Court(
-                id = "court_2",
-                name = "Victory Badminton Center",
-                address = "456 Đường XYZ, Quận 3, TP.HCM",
-                latitude = 10.776889,
-                longitude = 106.695313,
-                sportType = SportType.BADMINTON,
-                courtType = CourtType.INDOOR,
-                pricePerHour = 200000,
-                description = "Sân cầu lông hiện đại với không gian rộng rãi",
-                images = listOf("https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400"),
-                rating = 4.8f,
-                totalReviews = 95,
-                openTime = LocalTime(6, 0),
-                closeTime = LocalTime(23, 0),
-                amenities = listOf(
-                    Amenity("1", "Wifi", "wifi"),
-                    Amenity("2", "Parking", "parking"),
-                    Amenity("3", "Shower", "shower"),
-                    Amenity("4", "Cafeteria", "cafeteria"),
-                ),
-                rules = "Vui lòng giữ gìn vệ sinh chung",
-                ownerId = "owner_2",
-                isActive = true,
-                maxPlayers = 4,
-            ),
-        )
-    }
-
-    val filteredCourts = remember(sportType) {
-        if (sportType != null) {
-            courts.filter { it.sportType.name == sportType }
-        } else {
-            courts
-        }
-    }
+    val state by viewModel.state.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = when (sportType) {
-                            SportType.BADMINTON.name -> "Sân Cầu Lông"
-                            SportType.TENNIS.name -> "Sân Tennis"
-                            SportType.FOOTBALL.name -> "Sân Bóng Đá"
-                            SportType.BASKETBALL.name -> "Sân Bóng Rổ"
-                            SportType.TABLE_TENNIS.name -> "Sân Bóng Bàn"
-                            SportType.VOLLEYBALL.name -> "Sân Bóng Chuyền"
-                            else -> "Danh Sách Sân"
-                        }
-                    )
+                    Text(text = "Danh Sách Sân")
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -128,43 +55,84 @@ fun CourtListScreen(
             )
         },
     ) { paddingValues ->
-        if (filteredCourts.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+        when {
+            state.isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.SearchOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = TextSecondary,
-                    )
-                    Text(
-                        text = "Không tìm thấy sân nào",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TextSecondary,
-                    )
+                    CircularProgressIndicator(color = Primary)
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                items(filteredCourts) { court ->
-                    CourtListItem(
-                        court = court,
-                        onClick = { onNavigateToCourtDetail(court.id) },
-                    )
+            state.error != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Color.Red,
+                        )
+                        Text(
+                            text = state.error ?: "Đã xảy ra lỗi",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TextSecondary,
+                        )
+                        Button(onClick = { viewModel.handleIntent(com.example.bookingcourt.presentation.court.viewmodel.CourtListIntent.Refresh) }) {
+                            Text("Thử lại")
+                        }
+                    }
+                }
+            }
+            state.filteredVenues.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SearchOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = TextSecondary,
+                        )
+                        Text(
+                            text = "Không tìm thấy sân nào",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TextSecondary,
+                        )
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    items(state.filteredVenues) { venue ->
+                        VenueListItem(
+                            venue = venue,
+                            onClick = { onNavigateToCourtDetail(venue.id.toString()) },
+                        )
+                    }
                 }
             }
         }
@@ -172,8 +140,8 @@ fun CourtListScreen(
 }
 
 @Composable
-private fun CourtListItem(
-    court: Court,
+private fun VenueListItem(
+    venue: Venue,
     onClick: () -> Unit,
 ) {
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("vi", "VN")) }
@@ -186,11 +154,11 @@ private fun CourtListItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column {
-            // Court Image
-            if (court.images.isNotEmpty()) {
+            // Venue Image
+            if (!venue.images.isNullOrEmpty()) {
                 AsyncImage(
-                    model = court.images.first(),
-                    contentDescription = court.name,
+                    model = venue.images.first(),
+                    contentDescription = venue.name,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
@@ -221,7 +189,7 @@ private fun CourtListItem(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = court.name,
+                    text = venue.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -237,12 +205,12 @@ private fun CourtListItem(
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = "${court.rating}",
+                        text = "${venue.averageRating}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        text = "(${court.totalReviews} đánh giá)",
+                        text = "(${venue.totalReviews} đánh giá)",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                     )
@@ -259,24 +227,45 @@ private fun CourtListItem(
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = court.address,
+                        text = venue.address.getFullAddress(),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                     )
                 }
 
+                // Show opening hours if available
+                if (venue.openingTime != null && venue.closingTime != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = Primary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = "${venue.openingTime} - ${venue.closingTime}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                    }
+                }
+
+                // Show number of courts
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Schedule,
+                        imageVector = Icons.Default.Place,
                         contentDescription = null,
                         tint = Primary,
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = "${court.openTime} - ${court.closeTime}",
+                        text = "Có ${venue.courtsCount} sân",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                     )
@@ -290,7 +279,7 @@ private fun CourtListItem(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "${currencyFormat.format(court.pricePerHour)}/giờ",
+                        text = "${currencyFormat.format(venue.pricePerHour)}/giờ",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Primary,

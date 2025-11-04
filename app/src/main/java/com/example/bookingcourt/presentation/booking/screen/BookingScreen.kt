@@ -25,16 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.core.common.Resource
-import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.CourtType
-import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.domain.model.Venue
+import com.example.bookingcourt.domain.model.Address
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.BookingData
 import com.example.bookingcourt.domain.model.CourtTimeSlot
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingViewModel
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
-import kotlinx.datetime.LocalTime
 import java.text.SimpleDateFormat
 import java.util.*
 import com.google.gson.Gson
@@ -44,46 +42,41 @@ import java.nio.charset.StandardCharsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingScreen(
-    courtId: String, // ⚠️ DEPRECATED: Tham số này thực ra là venueId
-    numberOfCourts: Int = 1, // Deprecated: sẽ sử dụng venue.numberOfCourt
-    // Optional: prefer providing full venue object and current user from caller
-    court: Court? = null, // ⚠️ DEPRECATED: Đây thực ra là Venue, không phải Court!
+    courtId: String, // Thực ra là venueId
+    numberOfCourts: Int = 1, // Deprecated parameter
+    court: Venue? = null, // Parameter giữ tên "court" để backward compatible, nhưng thực chất là Venue
     currentUser: User? = null,
     onNavigateBack: () -> Unit,
     onNavigateToPayment: (String) -> Unit,
     bookingViewModel: BookingViewModel = hiltViewModel()
 ) {
-    // ⚠️ LƯU Ý: Parameter "court" thực ra là VENUE theo thiết kế API
-    // Model Court hiện tại được thiết kế nhầm, nó chứa thông tin của Venue
-    val venue = court ?: Court(
-        id = courtId, // Thực ra đây là venueId
+    // Venue object - có thể null nếu không được truyền vào
+    val venue = court ?: Venue(
+        id = courtId.toLongOrNull() ?: 0L,
         name = "Sân Cầu Lông ABC",
         description = "Sân cầu lông chất lượng cao",
-        address = "123 Đường Lê Lợi, Quận 1, TP.HCM",
-        latitude = 10.7769,
-        longitude = 106.7009,
-        images = emptyList(),
-        sportType = SportType.BADMINTON,
-        courtType = CourtType.INDOOR,
-        pricePerHour = 150,
-        openTime = LocalTime(6, 0),
-        closeTime = LocalTime(22, 0),
-        amenities = emptyList(),
-        rules = "Không hút thuốc trong sân",
-        ownerId = "owner1",
-        rating = 4.5f,
+        numberOfCourt = 3,
+        address = Address(
+            id = 1L,
+            provinceOrCity = "TP.HCM",
+            district = "Quận 1",
+            detailAddress = "123 Đường Lê Lợi"
+        ),
+        courtsCount = 3,
+        pricePerHour = 150000,
+        averageRating = 4.5f,
         totalReviews = 120,
-        isActive = true,
-        maxPlayers = 4,
-        courtsCount = 3
+        openingTime = "06:00:00",
+        closingTime = "22:00:00",
+        phoneNumber = "0123456789",
+        email = "contact@abc.com"
     )
 
     // Số lượng sân con trong venue này
     val actualNumberOfCourts = venue.courtsCount
 
     var selectedDate by remember { mutableStateOf("") }
-    var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) } // Lưu các ô đã chọn
-    // Initialize player info from provided currentUser when available
+    var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
     var playerName by remember(currentUser) { mutableStateOf(currentUser?.fullName ?: "") }
     var phoneNumber by remember(currentUser) { mutableStateOf(currentUser?.phoneNumber ?: "") }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -99,19 +92,29 @@ fun BookingScreen(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
 
-    // Tạo danh sách khung giờ dựa trên openTime và closeTime từ API - mỗi 30 phút
-    val timeSlots = remember(venue.openTime, venue.closeTime) {
-        val slots = mutableListOf<String>()
-        var currentHour = venue.openTime.hour
-        var currentMinute = venue.openTime.minute
+    // Parse opening and closing time from venue
+    val openingTime = venue.openingTime?.split(":")?.let { parts ->
+        if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 6, parts[1].toIntOrNull() ?: 0)
+        else Pair(6, 0)
+    } ?: Pair(6, 0)
 
-        val closeHour = venue.closeTime.hour
-        val closeMinute = venue.closeTime.minute
+    val closingTime = venue.closingTime?.split(":")?.let { parts ->
+        if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 22, parts[1].toIntOrNull() ?: 0)
+        else Pair(22, 0)
+    } ?: Pair(22, 0)
+
+    // Tạo danh sách khung giờ - mỗi 30 phút
+    val timeSlots = remember(openingTime, closingTime) {
+        val slots = mutableListOf<String>()
+        var currentHour = openingTime.first
+        var currentMinute = openingTime.second
+
+        val closeHour = closingTime.first
+        val closeMinute = closingTime.second
 
         while (currentHour < closeHour || (currentHour == closeHour && currentMinute < closeMinute)) {
             slots.add(String.format("%02d:%02d", currentHour, currentMinute))
 
-            // Tăng 30 phút
             currentMinute += 30
             if (currentMinute >= 60) {
                 currentMinute = 0
@@ -132,7 +135,7 @@ fun BookingScreen(
                     val bookingData = BookingData(
                         courtId = bookingWithBankInfo.court.id,
                         courtName = "${bookingWithBankInfo.venue.name} - ${bookingWithBankInfo.court.description}",
-                        courtAddress = venue.address,
+                        courtAddress = venue.address.getFullAddress(),
                         selectedDate = selectedDate.ifEmpty {
                             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                         },
@@ -231,7 +234,7 @@ fun BookingScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Court Info (thực ra là Venue Info)
+            // Venue Info Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.1f))
@@ -245,7 +248,7 @@ fun BookingScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = venue.address,
+                        text = venue.address.getFullAddress(),
                         fontSize = 14.sp,
                         color = Color.Black
                     )
@@ -313,9 +316,9 @@ fun BookingScreen(
                 Row(
                     modifier = Modifier.padding(8.dp)
                 ) {
-                    // Fixed Column - Tên sân (cố định, không cuộn)
+                    // Fixed Column - Tên sân
                     Column {
-                        // Header cell - "Sân"
+                        // Header cell
                         Box(
                             modifier = Modifier
                                 .width(70.dp)
@@ -333,7 +336,7 @@ fun BookingScreen(
                             )
                         }
 
-                        // Các hàng tên sân
+                        // Court rows
                         for (courtNum in 1..actualNumberOfCourts) {
                             Box(
                                 modifier = Modifier
@@ -354,11 +357,11 @@ fun BookingScreen(
                         }
                     }
 
-                    // Scrollable Column - Các khung giờ (có thể cuộn ngang)
+                    // Scrollable Column - Time slots
                     Column(
                         modifier = Modifier.horizontalScroll(rememberScrollState())
                     ) {
-                        // Header Row - Các khung giờ
+                        // Header Row
                         Row {
                             timeSlots.forEach { time ->
                                 Box(
@@ -380,7 +383,7 @@ fun BookingScreen(
                             }
                         }
 
-                        // Data Rows - Các ô chọn giờ
+                        // Data Rows
                         for (courtNum in 1..actualNumberOfCourts) {
                             Row {
                                 timeSlots.forEach { time ->
@@ -423,7 +426,7 @@ fun BookingScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Thông tin đã chọn
+            // Selected slots info
             if (selectedSlots.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -541,18 +544,16 @@ fun BookingScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Confirm Button - CẬP NHẬT: Gọi API với courtId thực
+            // Confirm Button
             Button(
                 onClick = {
                     if (selectedSlots.isNotEmpty()) {
-                        // Lấy court đầu tiên được chọn
                         val firstSlot = selectedSlots.first()
                         val courtNumber = firstSlot.courtNumber
 
                         // ⚠️ TẠM THỜI: Giả định courtId = "venueId_courtNumber"
                         val realCourtId = "${venue.id}_$courtNumber"
 
-                        // Format start time và end time
                         val selectedDateFormatted = selectedDate.ifEmpty {
                             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                         }
@@ -562,36 +563,27 @@ fun BookingScreen(
                         val calendar = Calendar.getInstance()
                         calendar.time = dateForApi ?: Date()
 
-                        // Lấy thời gian đầu tiên và cuối cùng
                         val sortedSlots = selectedSlots.sortedBy { it.timeSlot }
                         val firstTimeSlot = sortedSlots.first().timeSlot
                         val lastTimeSlot = sortedSlots.last().timeSlot
 
-                        // Parse giờ từ timeSlot
                         val firstTimeParts = firstTimeSlot.split(":")
                         val firstHour = firstTimeParts[0].toInt()
                         val firstMinute = firstTimeParts[1].toInt()
 
-                        // Set giờ cho startTime
                         calendar.set(Calendar.HOUR_OF_DAY, firstHour)
                         calendar.set(Calendar.MINUTE, firstMinute)
                         calendar.set(Calendar.SECOND, 0)
 
-                        // Kiểm tra nếu thời gian đã qua, tự động chuyển sang ngày mai
                         val now = Calendar.getInstance()
                         if (calendar.before(now)) {
-                            // Nếu thời gian đã qua, thêm 1 ngày
                             calendar.add(Calendar.DAY_OF_MONTH, 1)
-
-                            // Hiển thị thông báo cho user
                             Log.w("BookingScreen", "Thời gian đã qua, tự động chuyển sang ngày mai")
                         }
 
-                        // Format startTime
                         val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
                         val startTime = apiDateFormat.format(calendar.time)
 
-                        // Calculate endTime (thêm 30 phút cho mỗi slot)
                         val endTimeSlot = calculateEndTime(lastTimeSlot)
                         val endTimeParts = endTimeSlot.split(":")
                         val endHour = endTimeParts[0].toInt()
@@ -601,7 +593,6 @@ fun BookingScreen(
                         calendar.set(Calendar.MINUTE, endMinute)
                         val endTime = apiDateFormat.format(calendar.time)
 
-                        // Gọi API tạo booking với courtId thực
                         bookingViewModel.createBooking(
                             courtId = realCourtId,
                             startTime = startTime,
@@ -651,7 +642,7 @@ private fun calculateEndTime(timeSlot: String): String {
 fun BookingScreenPreview() {
     BookingCourtTheme {
         BookingScreen(
-            courtId = "VN001",
+            courtId = "1",
             numberOfCourts = 3,
             onNavigateBack = {},
             onNavigateToPayment = {}

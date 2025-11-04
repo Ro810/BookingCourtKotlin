@@ -14,7 +14,7 @@ data class User(
     val updatedAt: LocalDateTime,
     val favoriteCourtIds: List<String> = emptyList(),
     val playingLevel: PlayingLevel? = null,
-    val preferredSports: List<SportType> = emptyList(),
+//    val preferredSports: List<SportType> = emptyList(),
     val bankName: String? = null,
     val bankAccountNumber: String? = null,
     val bankAccountName: String? = null,

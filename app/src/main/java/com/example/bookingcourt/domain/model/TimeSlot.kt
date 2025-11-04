@@ -16,7 +16,7 @@ data class TimeSlot(
 data class TimeSlotFilter(
     val courtId: String,
     val date: LocalDateTime,
-    val sportType: SportType? = null,
+//    val sportType: SportType? = null,
     val minPrice: Long? = null,
     val maxPrice: Long? = null,
 )

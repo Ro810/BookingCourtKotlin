@@ -4,9 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.core.common.UiEvent
-import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.CourtType
-import com.example.bookingcourt.domain.model.SportType
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.domain.repository.AuthRepository
@@ -18,29 +15,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
 data class HomeState(
     val isLoading: Boolean = false,
     val user: User? = null,
-    val featuredCourts: List<Court> = emptyList(),
-    val nearbyCourts: List<Court> = emptyList(),
-    val recommendedCourts: List<Court> = emptyList(),
-    val popularSports: List<SportType> = listOf(
-        SportType.BADMINTON,
-        SportType.TENNIS,
-        SportType.FOOTBALL,
-        SportType.BASKETBALL,
-    ),
+    val featuredVenues: List<Venue> = emptyList(),
+    val nearbyVenues: List<Venue> = emptyList(),
+    val recommendedVenues: List<Venue> = emptyList(),
     val recentBookings: List<Any> = emptyList(), // TODO: Add Booking model
     val error: String? = null,
 )
 
 sealed interface HomeIntent {
     object LoadHomeData : HomeIntent
-    data class NavigateToSport(val sportType: SportType) : HomeIntent
-    data class NavigateToCourt(val courtId: String) : HomeIntent
+    data class NavigateToVenue(val venueId: Long) : HomeIntent
     object NavigateToSearch : HomeIntent
     object NavigateToProfile : HomeIntent
     object NavigateToBookings : HomeIntent
@@ -66,8 +55,7 @@ class HomeViewModel @Inject constructor(
     fun handleIntent(intent: HomeIntent) {
         when (intent) {
             HomeIntent.LoadHomeData -> loadHomeData()
-            is HomeIntent.NavigateToSport -> navigateToSport(intent.sportType)
-            is HomeIntent.NavigateToCourt -> navigateToCourt(intent.courtId)
+            is HomeIntent.NavigateToVenue -> navigateToVenue(intent.venueId)
             HomeIntent.NavigateToSearch -> navigateToSearch()
             HomeIntent.NavigateToProfile -> navigateToProfile()
             HomeIntent.NavigateToBookings -> navigateToBookings()
@@ -88,7 +76,6 @@ class HomeViewModel @Inject constructor(
                             userData = resource.data
                         }
                         is Resource.Error -> {
-                            // Nếu lỗi khi lấy user, có thể token hết hạn
                             _state.value = _state.value.copy(
                                 isLoading = false,
                                 error = resource.message,
@@ -100,49 +87,42 @@ class HomeViewModel @Inject constructor(
                             // Đang tải
                         }
                     }
-                    return@collect // Take only the first emission
+                    return@collect
                 }
 
-                // Cập nhật user vào state ngay lập tức
                 _state.value = _state.value.copy(user = userData)
 
                 if (userData == null) {
-                    // Chưa có user - yêu cầu đăng nhập
                     _state.value = _state.value.copy(
                         isLoading = false,
                         error = null,
-                        featuredCourts = emptyList(),
-                        recommendedCourts = emptyList()
+                        featuredVenues = emptyList(),
+                        recommendedVenues = emptyList()
                     )
                     return@launch
                 }
 
-                // Đã đăng nhập - lấy tất cả venues từ backend /api/venues
+                // Lấy tất cả venues từ backend
                 venueRepository.getVenues().collect { result ->
                     when (result) {
                         is Resource.Success -> {
                             val allVenues = result.data ?: emptyList()
 
-                            // Convert Venues to Courts for UI compatibility
-                            val courts = allVenues.mapIndexed { index, venue ->
-                                venue.toCourt(index)
-                            }
-
-                            // Featured courts: Venues có nhiều sân nhất
-                            val featuredCourts = courts
-                                .sortedByDescending { it.description.contains("sân") }
+                            // Featured venues: Venues có rating cao
+                            val featuredVenues = allVenues
+                                .sortedByDescending { it.averageRating }
                                 .take(5)
 
-                            // Recommended courts: Các venues còn lại
-                            val recommendedCourts = courts
-                                .drop(5)
+                            // Recommended venues: Các venues có nhiều sân
+                            val recommendedVenues = allVenues
+                                .sortedByDescending { it.courtsCount }
                                 .take(5)
 
                             _state.value = _state.value.copy(
                                 isLoading = false,
-                                featuredCourts = featuredCourts,
-                                recommendedCourts = recommendedCourts,
-                                nearbyCourts = emptyList(),
+                                featuredVenues = featuredVenues,
+                                recommendedVenues = recommendedVenues,
+                                nearbyVenues = emptyList(),
                                 error = null
                             )
                         }
@@ -181,11 +161,10 @@ class HomeViewModel @Inject constructor(
                 when (result) {
                     is Resource.Success -> {
                         val venues = result.data ?: emptyList()
-                        val courts = venues.mapIndexed { index, venue -> venue.toCourt(index) }
 
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            featuredCourts = courts,
+                            featuredVenues = venues,
                             error = null
                         )
                     }
@@ -203,68 +182,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Convert Venue to Court for UI compatibility
-     *
-     * VENUE (Địa điểm sân): Sân bóng ABC - có 5 sân
-     *   → Hiển thị như 1 Court card trên UI
-     *   → Khi click vào sẽ mở danh sách các Courts bên trong
-     */
-    private fun Venue.toCourt(index: Int): Court {
-        // Parse openingTime và closingTime từ string "HH:mm:ss" sang LocalTime
-        val openTime = try {
-            openingTime?.let {
-                val parts = it.split(":")
-                LocalTime(parts[0].toInt(), parts[1].toInt())
-            } ?: LocalTime(6, 0)
-        } catch (e: Exception) {
-            LocalTime(6, 0)
-        }
-
-        val closeTime = try {
-            closingTime?.let {
-                val parts = it.split(":")
-                LocalTime(parts[0].toInt(), parts[1].toInt())
-            } ?: LocalTime(22, 0)
-        } catch (e: Exception) {
-            LocalTime(22, 0)
-        }
-
-        return Court(
-            id = id.toString(),
-            name = name, // Tên venue: "Sân bóng ABC"
-            description = "Có $numberOfCourt sân - $courtsCount sân đang hoạt động", // Mô tả số lượng sân
-            address = address.getFullAddress(), // Địa chỉ đầy đủ
-            latitude = 21.0 + (index * 0.01), // Mock coordinates - TODO: thêm vào backend
-            longitude = 105.8 + (index * 0.01),
-            images = emptyList(), // TODO: thêm images vào backend
-            sportType = SportType.BADMINTON, // Default
-            courtType = CourtType.INDOOR, // Default
-            pricePerHour = pricePerHour, // Sử dụng giá từ API
-            openTime = openTime, // Parse từ API
-            closeTime = closeTime, // Parse từ API
-            amenities = emptyList(),
-            rules = null,
-            ownerId = id.toString(),
-            rating = averageRating, // Sử dụng rating từ API
-            totalReviews = totalReviews, // Sử dụng totalReviews từ API
-            isActive = numberOfCourt > 0, // Active nếu có ít nhất 1 sân
-            maxPlayers = 4,
-            courtsCount = courtsCount, // Số lượng sân từ API
-        )
-    }
-
-    private fun navigateToSport(sportType: SportType) {
+    private fun navigateToVenue(venueId: Long) {
         viewModelScope.launch {
-            _uiEvent.emit(UiEvent.NavigateTo("court_list?sportType=${sportType.name}"))
-        }
-    }
-
-    private fun navigateToCourt(courtId: String) {
-        viewModelScope.launch {
-            // courtId ở đây là venueId
-            // Navigate đến màn hình chi tiết venue, hiển thị danh sách courts bên trong
-            _uiEvent.emit(UiEvent.NavigateTo("venue_detail/$courtId"))
+            _uiEvent.emit(UiEvent.NavigateTo("venue_detail/$venueId"))
         }
     }
 

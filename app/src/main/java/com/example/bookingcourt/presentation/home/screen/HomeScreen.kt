@@ -18,18 +18,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.bookingcourt.domain.model.Court
+import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.*
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onCourtClick: (Court) -> Unit,
+    onVenueClick: (Venue) -> Unit,
     onSearchClick: () -> Unit,
     onFilterClick: () -> Unit,
     onProfileClick: () -> Unit = {},
@@ -39,13 +40,11 @@ fun HomeScreen(
 
     var searchQuery by remember { mutableStateOf("") }
 
-    // Lấy tên user từ state, nếu null thì dùng tên mặc định
     val userName = state.user?.fullName ?: "Người dùng"
 
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
-            // Bottom Navigation
             NavigationBar(
                 containerColor = Color.White,
                 tonalElevation = 8.dp,
@@ -62,8 +61,8 @@ fun HomeScreen(
                     selected = true,
                     onClick = { },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color(0xFF123E62), // DarkBlue
-                        selectedTextColor = Color(0xFF123E62), // DarkBlue
+                        selectedIconColor = Color(0xFF123E62),
+                        selectedTextColor = Color(0xFF123E62),
                         indicatorColor = Color.Transparent,
                     ),
                 )
@@ -91,8 +90,8 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
-                        0.0f to Color(0xFF8BB1F6), // Mid Blue
-                        0.4f to Color(0xFFE3F2FD), // Light Blue tint
+                        0.0f to Color(0xFF8BB1F6),
+                        0.4f to Color(0xFFE3F2FD),
                         1.0f to Color.White,
                     ),
                 ),
@@ -102,7 +101,6 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Header Section
                 item {
                     HeaderSection(
                         userName = userName,
@@ -112,18 +110,15 @@ fun HomeScreen(
                     )
                 }
 
-                // Category Chips
                 item {
                     CategoryChips()
                 }
 
-                // Filter Section
                 item {
                     FilterSection(onFilterClick = onFilterClick)
                 }
 
-                // Loading State
-                if (state.isLoading && state.featuredCourts.isEmpty()) {
+                if (state.isLoading && state.featuredVenues.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -136,7 +131,6 @@ fun HomeScreen(
                     }
                 }
 
-                // Error Message
                 state.error?.let { error ->
                     item {
                         Card(
@@ -154,9 +148,8 @@ fun HomeScreen(
                     }
                 }
 
-                // Featured Courts Section - hiển thị tất cả các sân
-                val allCourts = state.featuredCourts + state.recommendedCourts + state.nearbyCourts
-                if (allCourts.isNotEmpty()) {
+                val allVenues = state.featuredVenues + state.recommendedVenues + state.nearbyVenues
+                if (allVenues.isNotEmpty()) {
                     item {
                         Text(
                             text = "Sân nổi bật",
@@ -166,10 +159,10 @@ fun HomeScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
-                    items(allCourts) { court ->
-                        CourtCard(
-                            court = court,
-                            onCourtClick = { onCourtClick(court) }
+                    items(allVenues) { venue ->
+                        VenueCard(
+                            venue = venue,
+                            onVenueClick = { onVenueClick(venue) }
                         )
                     }
                 }
@@ -191,14 +184,12 @@ fun HeaderSection(
             .statusBarsPadding()
             .padding(start = 16.dp, end = 18.dp, top = 8.dp, bottom = 16.dp)
     ) {
-        // Avatar and Name Section
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -218,7 +209,6 @@ fun HeaderSection(
                 }
             }
 
-            // Notification Icon
             IconButton(
                 onClick = { },
                 modifier = Modifier
@@ -235,7 +225,6 @@ fun HeaderSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Search Bar
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -328,39 +317,33 @@ fun FilterSection(onFilterClick: () -> Unit) {
 }
 
 @Composable
-fun CourtCard(
-    court: Court,
-    onCourtClick: () -> Unit
+fun VenueCard(
+    venue: Venue,
+    onVenueClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onCourtClick() },
+            .clickable { onVenueClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Surface)
     ) {
         Column {
-            // Image Section
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
                     .background(Primary.copy(alpha = 0.2f))
-            ) {
-                // TODO: Add image loading with Coil
-                // AsyncImage(model = court.images.firstOrNull(), ...)
-            }
+            )
 
-            // Info Section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Logo/Avatar
                 Box(
                     modifier = Modifier
                         .size(50.dp)
@@ -372,17 +355,18 @@ fun CourtCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = court.name,
+                        text = venue.name,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = TextPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = court.address,
+                        text = venue.address.getFullAddress(),
                         fontSize = 12.sp,
                         color = TextSecondary,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -394,13 +378,13 @@ fun CourtCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${court.rating} (${court.totalReviews})",
+                            text = "${venue.averageRating} (${venue.totalReviews})",
                             fontSize = 12.sp,
                             color = TextSecondary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "• ${court.pricePerHour / 1000}k/giờ",
+                            text = "• ${venue.pricePerHour / 1000}k/giờ",
                             fontSize = 12.sp,
                             color = Primary,
                             fontWeight = FontWeight.Medium
@@ -417,7 +401,7 @@ fun CourtCard(
                         )
                     }
                     Button(
-                        onClick = onCourtClick,
+                        onClick = onVenueClick,
                         colors = ButtonDefaults.buttonColors(containerColor = Primary),
                         modifier = Modifier.height(36.dp)
                     ) {
@@ -435,7 +419,7 @@ fun HomeScreenPreview() {
     BookingCourtTheme {
         Surface {
             HomeScreen(
-                onCourtClick = { },
+                onVenueClick = { },
                 onSearchClick = { },
                 onFilterClick = { }
             )

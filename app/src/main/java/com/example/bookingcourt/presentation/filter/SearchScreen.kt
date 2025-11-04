@@ -20,37 +20,34 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.SportType
-import com.example.bookingcourt.domain.model.CourtType
+import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.Primary
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
-import kotlinx.datetime.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onBackClick: () -> Unit,
-    onCourtClick: (Court) -> Unit,
+    onCourtClick: (Venue) -> Unit, // Đổi từ Court -> Venue
     viewModel: HomeViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val homeState by viewModel.state.collectAsState()
 
-    // Combine all courts from different lists
-    val allCourts = remember(homeState) {
-        homeState.featuredCourts + homeState.nearbyCourts + homeState.recommendedCourts
+    // Combine all venues from different lists
+    val allVenues = remember(homeState) {
+        homeState.featuredVenues + homeState.nearbyVenues + homeState.recommendedVenues
     }
 
-    val filteredCourts = remember(searchQuery, allCourts) {
+    val filteredVenues = remember(searchQuery, allVenues) {
         if (searchQuery.isEmpty()) {
-            allCourts
+            allVenues
         } else {
-            allCourts.filter {
+            allVenues.filter {
                 it.name.contains(searchQuery, ignoreCase = true) ||
-                    it.address.contains(searchQuery, ignoreCase = true) ||
-                    it.description.contains(searchQuery, ignoreCase = true)
+                    it.address.getFullAddress().contains(searchQuery, ignoreCase = true) ||
+                    (it.description?.contains(searchQuery, ignoreCase = true) ?: false)
             }
         }
     }
@@ -100,35 +97,31 @@ fun SearchScreen(
             )
 
             // Results
-            if (filteredCourts.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.SearchOff,
-                            contentDescription = "No results",
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Không tìm thấy kết quả",
-                            color = Color.Gray,
-                            fontSize = 16.sp
-                        )
-                    }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(filteredVenues) { venue ->
+                    VenueSearchCard(
+                        venue = venue,
+                        onClick = { onCourtClick(venue) }
+                    )
                 }
-            } else {
-                LazyColumn {
-                    items(filteredCourts) { court ->
-                        SearchResultItem(
-                            court = court,
-                            onCourtClick = { onCourtClick(court) }
-                        )
+
+                if (filteredVenues.isEmpty() && searchQuery.isNotEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Không tìm thấy kết quả",
+                                color = Color.Gray
+                            )
+                        }
                     }
                 }
             }
@@ -137,52 +130,83 @@ fun SearchScreen(
 }
 
 @Composable
-fun SearchResultItem(
-    court: Court,
-    onCourtClick: () -> Unit
+fun VenueSearchCard(
+    venue: Venue,
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onCourtClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Venue icon/image placeholder
             Box(
                 modifier = Modifier
-                    .size(50.dp)
-                    .background(Primary.copy(alpha = 0.3f), CircleShape)
+                    .size(60.dp)
+                    .background(Primary.copy(alpha = 0.2f), CircleShape)
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            // Venue info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = court.name,
+                    text = venue.name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = court.address,
+                    text = venue.address.getFullAddress(),
                     fontSize = 12.sp,
+                    color = Color.Gray,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${venue.averageRating}",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "• ${venue.courtsCount} sân",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            // Price
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${venue.pricePerHour / 1000}k",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Primary
+                )
+                Text(
+                    text = "/giờ",
+                    fontSize = 10.sp,
                     color = Color.Gray
                 )
             }
-
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Go",
-                tint = Color.Gray
-            )
         }
     }
 }
@@ -200,31 +224,26 @@ fun SearchScreenPreview() {
 
 @Preview(showBackground = true)
 @Composable
-fun SearchResultItemPreview() {
+fun VenueSearchCardPreview() {
     BookingCourtTheme {
-        SearchResultItem(
-            court = Court(
-                id = "preview1",
-                name = "Star Club Badminton",
-                description = "Sân cầu lông chất lượng cao với thiết bị hiện đại",
-                address = "Số 181 P. Cầu Cốc, Tây Mỗ, Nam Từ Liêm, Hà Nội",
-                latitude = 21.0159,
-                longitude = 105.7447,
-                images = emptyList(),
-                sportType = SportType.BADMINTON,
-                courtType = CourtType.INDOOR,
-                pricePerHour = 150,
-                openTime = LocalTime(5, 0),
-                closeTime = LocalTime(23, 0),
-                amenities = emptyList(),
-                rules = "Không hút thuốc trong sân",
-                ownerId = "owner1",
-                rating = 4.5f,
-                totalReviews = 128,
-                isActive = true,
-                maxPlayers = 4,
+        VenueSearchCard(
+            venue = Venue(
+                id = 1L,
+                name = "Sân bóng đá ABC",
+                description = "Sân bóng đá mini chất lượng cao",
+                numberOfCourt = 3,
+                address = com.example.bookingcourt.domain.model.Address(
+                    id = 1L,
+                    provinceOrCity = "TP. HCM",
+                    district = "Quận 1",
+                    detailAddress = "123 Đường XYZ"
+                ),
+                courtsCount = 3,
+                pricePerHour = 200000,
+                averageRating = 4.5f,
+                totalReviews = 100
             ),
-            onCourtClick = {}
+            onClick = {}
         )
     }
 }

@@ -144,9 +144,9 @@ fun NavigationGraph(
             // 1. HomeScreen (USER - Code của ThuyTien)
             composable(route = Screen.Home.route) {
                 HomeScreen(
-                    onCourtClick = { court -> // Thay thế onNavigateToCourtDetail
+                    onVenueClick = { venue -> // Đã đổi từ onCourtClick -> onVenueClick
                         navController.navigate(
-                            Screen.CourtDetail.createRoute(court.id),
+                            Screen.CourtDetail.createRoute(venue.id.toString()),
                         )
                     },
                     onSearchClick = { // Tính năng mới của ThuyTien
@@ -167,9 +167,9 @@ fun NavigationGraph(
                     onBackClick = {
                         navController.navigateUp()
                     },
-                    onCourtClick = { court ->
+                    onCourtClick = { venue -> // Lambda nhận Venue, không phải Court
                         navController.navigate(
-                            Screen.CourtDetail.createRoute(court.id),
+                            Screen.CourtDetail.createRoute(venue.id.toString()),
                         )
                     },
                 )
@@ -271,17 +271,18 @@ fun NavigationGraph(
             }
 
             // 5. CourtDetail (USER/OWNER - Code của ThuyTien)
+            // Hiển thị chi tiết Venue và danh sách Courts bên trong
             composable(
                 route = Screen.CourtDetail.route,
                 arguments = listOf(
-                    navArgument("courtId") {
+                    navArgument("courtId") { // Thực chất là venueId
                         type = NavType.StringType
                     },
                 ),
             ) { backStackEntry ->
-                val courtId = backStackEntry.arguments?.getString("courtId") ?: ""
+                val venueId = backStackEntry.arguments?.getString("courtId") ?: "" // courtId ở đây thực chất là venueId
 
-                // Logic sử dụng ViewModel và DetailScreen (Code của ThuyTien)
+                // Lấy venue từ HomeViewModel state để tránh gọi API lại
                 val parentEntry = remember(backStackEntry) {
                     try {
                         navController.getBackStackEntry(Screen.Search.route)
@@ -295,18 +296,18 @@ fun NavigationGraph(
                 }
                 val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
                 val state by homeViewModel.state.collectAsState()
-                val court = remember(courtId, state) {
-                    state.featuredCourts.find { it.id == courtId }
-                        ?: state.recommendedCourts.find { it.id == courtId }
-                        ?: state.nearbyCourts.find { it.id == courtId }
+                val venue = remember(venueId, state) {
+                    state.featuredVenues.find { it.id.toString() == venueId }
+                        ?: state.recommendedVenues.find { it.id.toString() == venueId }
+                        ?: state.nearbyVenues.find { it.id.toString() == venueId }
                 }
-                court?.let {
+                venue?.let {
                     DetailScreen(
-                        court = it,
+                        venue = it, // Sửa từ court -> venue
                         onBackClick = { navController.navigateUp() },
-                        onBookClick = { selectedCourt ->
+                        onBookClick = { selectedVenue -> // Lambda nhận Venue
                             navController.navigate(
-                                Screen.Booking.createRoute(selectedCourt.id),
+                                Screen.Booking.createRoute(selectedVenue.id.toString()),
                             )
                         }
                     )
@@ -316,14 +317,14 @@ fun NavigationGraph(
             composable(
                 route = Screen.Booking.route,
                 arguments = listOf(
-                    navArgument("courtId") {
+                    navArgument("courtId") { // Thực chất là venueId
                         type = NavType.StringType
                     },
                 ),
             ) { backStackEntry ->
-                val courtId = backStackEntry.arguments?.getString("courtId") ?: ""
+                val venueId = backStackEntry.arguments?.getString("courtId") ?: "" // courtId ở đây thực chất là venueId
 
-                // Try to resolve court object from HomeViewModel state (reuse existing logic from CourtDetail)
+                // Lấy venue từ HomeViewModel state
                 val parentEntry = remember(backStackEntry) {
                     try {
                         navController.getBackStackEntry(Screen.Search.route)
@@ -337,10 +338,10 @@ fun NavigationGraph(
                 }
                 val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
                 val homeState by homeViewModel.state.collectAsState()
-                val resolvedCourt = remember(courtId, homeState) {
-                    homeState.featuredCourts.find { it.id == courtId }
-                        ?: homeState.recommendedCourts.find { it.id == courtId }
-                        ?: homeState.nearbyCourts.find { it.id == courtId }
+                val resolvedVenue = remember(venueId, homeState) {
+                    homeState.featuredVenues.find { it.id.toString() == venueId }
+                        ?: homeState.recommendedVenues.find { it.id.toString() == venueId }
+                        ?: homeState.nearbyVenues.find { it.id.toString() == venueId }
                 }
 
                 // Get current user from ProfileViewModel so BookingScreen can prefill name/phone
@@ -348,8 +349,8 @@ fun NavigationGraph(
                 val profileState by profileViewModel.state.collectAsState()
 
                 BookingScreen(
-                    courtId = courtId,
-                    court = resolvedCourt,
+                    courtId = venueId,
+                    court = resolvedVenue, // BookingScreen vẫn nhận tham số tên "court" nhưng thực chất là Venue
                     currentUser = profileState.currentUser,
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToPayment = { bookingId ->

@@ -2,9 +2,10 @@ package com.example.bookingcourt.presentation.court.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.core.common.UiEvent
-import com.example.bookingcourt.domain.model.Court
-import com.example.bookingcourt.domain.model.SportType
+import com.example.bookingcourt.domain.model.Venue
+import com.example.bookingcourt.domain.repository.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,24 +17,22 @@ import javax.inject.Inject
 
 data class CourtListState(
     val isLoading: Boolean = false,
-    val courts: List<Court> = emptyList(),
-    val filteredCourts: List<Court> = emptyList(),
+    val venues: List<Venue> = emptyList(),
+    val filteredVenues: List<Venue> = emptyList(),
     val searchQuery: String = "",
-    val selectedSportType: SportType? = null,
     val error: String? = null,
 )
 
 sealed interface CourtListIntent {
-    data class LoadCourts(val sportType: SportType? = null) : CourtListIntent
-    data class SearchCourts(val query: String) : CourtListIntent
-    data class FilterBySportType(val sportType: SportType?) : CourtListIntent
-    data class NavigateToDetail(val courtId: String) : CourtListIntent
+    object LoadVenues : CourtListIntent
+    data class SearchVenues(val query: String) : CourtListIntent
+    data class NavigateToDetail(val venueId: Long) : CourtListIntent
     object Refresh : CourtListIntent
 }
 
 @HiltViewModel
 class CourtListViewModel @Inject constructor(
-    // TODO: Inject repositories when ready
+    private val venueRepository: VenueRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CourtListState())
@@ -43,85 +42,70 @@ class CourtListViewModel @Inject constructor(
     val uiEvent = _uiEvent.asSharedFlow()
 
     init {
-        handleIntent(CourtListIntent.LoadCourts())
+        handleIntent(CourtListIntent.LoadVenues)
     }
 
     fun handleIntent(intent: CourtListIntent) {
         when (intent) {
-            is CourtListIntent.LoadCourts -> loadCourts(intent.sportType)
-            is CourtListIntent.SearchCourts -> searchCourts(intent.query)
-            is CourtListIntent.FilterBySportType -> filterBySportType(intent.sportType)
-            is CourtListIntent.NavigateToDetail -> navigateToDetail(intent.courtId)
+            is CourtListIntent.LoadVenues -> loadVenues()
+            is CourtListIntent.SearchVenues -> searchVenues(intent.query)
+            is CourtListIntent.NavigateToDetail -> navigateToDetail(intent.venueId)
             CourtListIntent.Refresh -> refresh()
         }
     }
 
-    private fun loadCourts(sportType: SportType?) {
+    private fun loadVenues() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(
-                isLoading = true,
-                selectedSportType = sportType,
-            )
+            _state.value = _state.value.copy(isLoading = true)
 
-            // TODO: Replace with actual repository call
-            val mockCourts = getMockCourts()
-
-            _state.value = _state.value.copy(
-                isLoading = false,
-                courts = mockCourts,
-                filteredCourts = filterCourts(mockCourts, _state.value.searchQuery, sportType),
-            )
+            venueRepository.getVenues().collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        val venues = result.data ?: emptyList()
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            venues = venues,
+                            filteredVenues = filterVenues(venues, _state.value.searchQuery),
+                            error = null
+                        )
+                    }
+                    is Resource.Error -> {
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            error = result.message ?: "Không thể tải danh sách"
+                        )
+                    }
+                    is Resource.Loading -> {
+                        _state.value = _state.value.copy(isLoading = true)
+                    }
+                }
+            }
         }
     }
 
-    private fun searchCourts(query: String) {
+    private fun searchVenues(query: String) {
         _state.value = _state.value.copy(
             searchQuery = query,
-            filteredCourts = filterCourts(
-                _state.value.courts,
-                query,
-                _state.value.selectedSportType,
-            ),
+            filteredVenues = filterVenues(_state.value.venues, query),
         )
     }
 
-    private fun filterBySportType(sportType: SportType?) {
-        _state.value = _state.value.copy(
-            selectedSportType = sportType,
-            filteredCourts = filterCourts(
-                _state.value.courts,
-                _state.value.searchQuery,
-                sportType,
-            ),
-        )
-    }
+    private fun filterVenues(venues: List<Venue>, query: String): List<Venue> {
+        if (query.isBlank()) return venues
 
-    private fun filterCourts(
-        courts: List<Court>,
-        query: String,
-        sportType: SportType?,
-    ): List<Court> {
-        return courts.filter { court ->
-            (
-                query.isEmpty() || court.name.contains(query, ignoreCase = true) ||
-                    court.address.contains(query, ignoreCase = true)
-                ) &&
-                (sportType == null || court.sportType == sportType)
+        return venues.filter { venue ->
+            venue.name.contains(query, ignoreCase = true) ||
+            venue.address.getFullAddress().contains(query, ignoreCase = true)
         }
     }
 
-    private fun navigateToDetail(courtId: String) {
+    private fun navigateToDetail(venueId: Long) {
         viewModelScope.launch {
-            _uiEvent.emit(UiEvent.NavigateTo("court_detail/$courtId"))
+            _uiEvent.emit(UiEvent.NavigateTo("venue_detail/$venueId"))
         }
     }
 
     private fun refresh() {
-        handleIntent(CourtListIntent.LoadCourts(_state.value.selectedSportType))
-    }
-
-    private fun getMockCourts(): List<Court> {
-        // TODO: Remove when repository is ready
-        return emptyList()
+        handleIntent(CourtListIntent.LoadVenues)
     }
 }
