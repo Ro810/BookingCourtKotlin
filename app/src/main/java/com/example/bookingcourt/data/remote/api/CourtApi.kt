@@ -1,9 +1,15 @@
 package com.example.bookingcourt.data.remote.api
 
+<<<<<<< Updated upstream
 import com.example.bookingcourt.data.remote.dto.ApiResponse
 import com.example.bookingcourt.data.remote.dto.CourtAvailabilityResponse
 import com.example.bookingcourt.data.remote.dto.CourtDetailDto
 import com.example.bookingcourt.data.remote.dto.CourtRequest
+=======
+import com.example.bookingcourt.data.remote.dto.CourtAvailabilityDto
+import com.example.bookingcourt.data.remote.dto.CourtDetailDto
+import com.example.bookingcourt.data.remote.dto.ApiResponse
+>>>>>>> Stashed changes
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -13,7 +19,11 @@ import retrofit2.http.Query
 
 /**
  * Court API - Lấy danh sách các sân cụ thể
+<<<<<<< Updated upstream
  * Based on HUONG_DAN_FRONTEND_API.md and CourtController.java
+=======
+ * Based on HUONG_DAN_FRONTEND_API.md and backend docs
+>>>>>>> Stashed changes
  */
 interface CourtApi {
     /**
@@ -33,6 +43,7 @@ interface CourtApi {
     suspend fun getCourtById(
         @Path("id") courtId: Long
     ): Response<CourtDetailDto>
+<<<<<<< Updated upstream
 
     /**
      * Kiểm tra lịch trống của sân trong khoảng thời gian
@@ -62,4 +73,26 @@ interface CourtApi {
         @Body request: CourtRequest
     ): Response<ApiResponse<CourtDetailDto>>
 }
+=======
+>>>>>>> Stashed changes
 
+    /**
+     * Lấy danh sách courts của một venue
+     * GET /api/venues/{venueId}/courts
+     */
+    @GET("venues/{venueId}/courts")
+    suspend fun getCourtsByVenue(
+        @Path("venueId") venueId: Long
+    ): Response<ApiResponse<List<CourtDetailDto>>>
+
+    /**
+     * Kiểm tra khả dụng của court trong khoảng thời gian
+     * GET /api/courts/{id}/availability?startTime=...&endTime=...
+     */
+    @GET("courts/{id}/availability")
+    suspend fun getCourtAvailability(
+        @Path("id") courtId: Long,
+        @Query("startTime") startTime: String,
+        @Query("endTime") endTime: String
+    ): Response<CourtAvailabilityDto>
+}

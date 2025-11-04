@@ -78,24 +78,49 @@ class CourtRepositoryImpl @Inject constructor(
         try {
             emit(Resource.Loading())
 
-            // Get all courts and filter by venueId
-            val response = courtApi.getAllCourts()
+            // Call dedicated endpoint to get courts by venue
+            val response = courtApi.getCourtsByVenue(venueId)
 
             if (response.isSuccessful) {
-                val courtsDto = response.body() ?: emptyList()
-                val filteredCourts = courtsDto
-                    .filter { it.venue.id == venueId }
-                    .map { it.toDomain() }
+                val body = response.body()
+                val courtsDto = body?.data ?: emptyList()
+                val filteredCourts = courtsDto.map { it.toDomain() }
 
-                Log.d(TAG, "Found ${filteredCourts.size} courts for venue $venueId")
+                Log.d(TAG, "Found ${filteredCourts.size} courts for venue $venueId (via /venues/{venueId}/courts)")
                 emit(Resource.Success(filteredCourts))
             } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "API error when fetching courts by venue: ${response.code()} - $errorBody")
                 emit(Resource.Error("Lỗi tải danh sách sân: ${response.code()}"))
             }
 
         } catch (e: Exception) {
             Log.e(TAG, "Exception fetching courts for venue: $venueId", e)
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
+    override suspend fun checkCourtAvailability(
+        courtId: Long,
+        startTime: String,
+        endTime: String
+    ): Flow<Resource<Boolean>> = flow {
+        try {
+            emit(Resource.Loading())
+            val response = courtApi.getCourtAvailability(courtId, startTime, endTime)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null) {
+                    emit(Resource.Success(body.available))
+                } else {
+                    emit(Resource.Error("Không nhận được dữ liệu khả dụng"))
+                }
+            } else {
+                emit(Resource.Error("Lỗi kiểm tra khả dụng: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception checking availability for court $courtId", e)
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi khi kiểm tra khả dụng"))
         }
     }
 

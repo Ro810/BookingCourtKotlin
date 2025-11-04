@@ -161,3 +161,12 @@ data class VenueInfoDto(
     @SerializedName("name")
     val name: String
 )
+
+data class ApiResponse<T>(
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("data")
+    val data: T?
+)

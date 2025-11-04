@@ -7,6 +7,8 @@ import com.example.bookingcourt.core.network.AuthInterceptor
 import com.example.bookingcourt.core.network.NetworkMonitor
 import com.example.bookingcourt.core.utils.Constants
 import com.example.bookingcourt.data.local.datastore.UserPreferencesDataStore
+import com.example.bookingcourt.data.remote.api.NotificationApi
+import com.example.bookingcourt.data.remote.api.ReviewApi
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -111,6 +113,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
+<<<<<<< Updated upstream
     fun provideReviewApi(retrofit: Retrofit): com.example.bookingcourt.data.remote.api.ReviewApi =
         retrofit.create(com.example.bookingcourt.data.remote.api.ReviewApi::class.java)
 
@@ -118,4 +121,13 @@ object NetworkModule {
     @Singleton
     fun provideNotificationApi(retrofit: Retrofit): com.example.bookingcourt.data.remote.api.NotificationApi =
         retrofit.create(com.example.bookingcourt.data.remote.api.NotificationApi::class.java)
+=======
+    fun provideNotificationApi(retrofit: Retrofit): NotificationApi =
+        retrofit.create(NotificationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideReviewApi(retrofit: Retrofit): ReviewApi =
+        retrofit.create(ReviewApi::class.java)
+>>>>>>> Stashed changes
 }

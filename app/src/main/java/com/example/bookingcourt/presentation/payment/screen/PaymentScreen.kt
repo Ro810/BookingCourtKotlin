@@ -8,7 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,6 +24,10 @@ import com.example.bookingcourt.presentation.theme.Primary
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import com.google.gson.Gson
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.bookingcourt.core.common.Resource
+import com.example.bookingcourt.presentation.payment.viewmodel.PaymentViewModel
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,16 +35,15 @@ fun PaymentScreen(
     bookingId: String,
     onNavigateBack: () -> Unit,
     onPaymentSuccess: () -> Unit,
+    viewModel: PaymentViewModel = hiltViewModel()
 ) {
-    // Decode URL-encoded JSON string and deserialize BookingData
     val gson = Gson()
     val bookingData = try {
-        // Decode URL-encoded string first
         val decodedJson = URLDecoder.decode(bookingId, StandardCharsets.UTF_8.toString())
         gson.fromJson(decodedJson, BookingData::class.java)
     } catch (e: Exception) {
-        // Fallback to dummy data if deserialization fails
         BookingData(
+            id = 0L,
             courtId = "error",
             courtName = "Lỗi tải dữ liệu",
             courtAddress = "Vui lòng thử lại",
@@ -53,10 +56,60 @@ fun PaymentScreen(
         )
     }
 
+    val uploadState by viewModel.uploadState.collectAsState()
+    val confirmState by viewModel.confirmState.collectAsState()
+    var paymentProofFile by remember { mutableStateOf<File?>(null) }
+    var paymentProofUrl by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Handle upload state
+    LaunchedEffect(uploadState) {
+        when (val state = uploadState) {
+            is Resource.Success -> {
+                paymentProofUrl = state.data?.paymentProofUrl
+                snackbarHostState.showSnackbar("Đã upload ảnh thành công")
+            }
+            is Resource.Error -> {
+                snackbarHostState.showSnackbar(state.message ?: "Lỗi upload")
+            }
+            else -> {}
+        }
+    }
+
+    // Handle confirm state
+    LaunchedEffect(confirmState) {
+        when (val state = confirmState) {
+            is Resource.Success -> {
+                snackbarHostState.showSnackbar("Đã gửi xác nhận thanh toán. Chờ chủ sân duyệt.")
+                onPaymentSuccess()
+            }
+            is Resource.Error -> {
+                snackbarHostState.showSnackbar(state.message ?: "Lỗi xác nhận")
+            }
+            else -> {}
+        }
+    }
+
     BookingConfirmationScreenContent(
         bookingData = bookingData,
         onNavigateBack = onNavigateBack,
-        onConfirmPayment = onPaymentSuccess
+        onConfirmPayment = {
+            val id = bookingData.id
+            val url = paymentProofUrl
+            if (id != null && id > 0 && !url.isNullOrBlank()) {
+                viewModel.confirmPayment(id, url)
+            }
+        },
+        snackbarHostState = snackbarHostState,
+        onPickImage = { file ->
+            paymentProofFile = file
+            val id = bookingData.id
+            if (id != null && id > 0) {
+                viewModel.uploadPaymentProof(id, file)
+            }
+        },
+        isUploading = uploadState is Resource.Loading,
+        isConfirming = confirmState is Resource.Loading
     )
 }
 
@@ -65,7 +118,11 @@ fun PaymentScreen(
 fun BookingConfirmationScreenContent(
     bookingData: BookingData,
     onNavigateBack: () -> Unit,
-    onConfirmPayment: () -> Unit
+    onConfirmPayment: () -> Unit,
+    snackbarHostState: SnackbarHostState? = null,
+    onPickImage: (File) -> Unit = {},
+    isUploading: Boolean = false,
+    isConfirming: Boolean = false,
 ) {
     Scaffold(
         topBar = {
@@ -86,7 +143,8 @@ fun BookingConfirmationScreenContent(
                     navigationIconContentColor = Color.Black
                 )
             )
-        }
+        },
+        snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -390,6 +448,77 @@ fun BookingConfirmationScreenContent(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Upload payment proof section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Ảnh chứng minh chuyển khoản",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Vui lòng tải ảnh hóa đơn/chuyển khoản trong vòng 5 phút để xác nhận đặt sân.",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                // TODO: integrate image picker; here we call onPickImage with a placeholder path
+                                // You should integrate an image picker (ActivityResultContracts.GetContent)
+                                // For now this is a no-op
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isUploading
+                        ) {
+                            if (isUploading) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Đang tải ảnh...")
+                            } else {
+                                Icon(Icons.Default.Upload, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Tải ảnh")
+                            }
+                        }
+
+                        Button(
+                            onClick = onConfirmPayment,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isConfirming,
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) {
+                            if (isConfirming) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Đang gửi...")
+                            } else {
+                                Icon(Icons.Default.Payment, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Xác nhận thanh toán", color = Color.White)
+                            }
+                        }
+                    }
                 }
             }
 

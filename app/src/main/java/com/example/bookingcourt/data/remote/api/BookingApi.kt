@@ -3,6 +3,7 @@ package com.example.bookingcourt.data.remote.api
 import com.example.bookingcourt.data.remote.dto.ApiResponse
 import com.example.bookingcourt.data.remote.dto.BookingResponseDto
 import com.example.bookingcourt.data.remote.dto.CreateBookingRequestDto
+<<<<<<< Updated upstream
 import com.example.bookingcourt.data.remote.dto.PaymentProofRequestDto
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -13,6 +14,12 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
+=======
+import com.example.bookingcourt.data.remote.dto.CreateBookingResponseDto
+import okhttp3.MultipartBody
+import retrofit2.Response
+import retrofit2.http.*
+>>>>>>> Stashed changes
 
 /**
  * Booking API - Match backend BookingController endpoints
@@ -29,6 +36,7 @@ interface BookingApi {
         @Body request: CreateBookingRequestDto
     ): Response<ApiResponse<BookingResponseDto>>
 
+<<<<<<< Updated upstream
     /**
      * Lấy danh sách booking của user hiện tại
      * GET /api/bookings/my-bookings
@@ -36,6 +44,15 @@ interface BookingApi {
      */
     @GET("bookings/my-bookings")
     suspend fun getMyBookings(): Response<ApiResponse<List<BookingResponseDto>>>
+=======
+    // Existing paged user bookings (keep for compatibility)
+    @GET("bookings")
+    suspend fun getUserBookings(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+        @Query("status") status: String? = null,
+    ): BookingListResponseDto
+>>>>>>> Stashed changes
 
     /**
      * Lấy chi tiết booking theo ID
@@ -111,6 +128,7 @@ interface BookingApi {
         @Path("venueId") venueId: Long
     ): Response<ApiResponse<List<BookingResponseDto>>>
 
+<<<<<<< Updated upstream
     /**
      * Lấy danh sách booking chờ xác nhận (Owner only)
      * GET /api/bookings/pending
@@ -118,6 +136,50 @@ interface BookingApi {
      */
     @GET("bookings/pending")
     suspend fun getPendingBookings(): Response<ApiResponse<List<BookingResponseDto>>>
+=======
+    // Backend: POST /bookings/{id}/upload-payment-proof (multipart)
+    @Multipart
+    @POST("bookings/{id}/upload-payment-proof")
+    suspend fun uploadPaymentProof(
+        @Path("id") bookingId: Long,
+        @Part file: MultipartBody.Part
+    ): Response<ApiResponse<CreateBookingResponseDto>>
+
+    // Backend: PUT /bookings/{id}/confirm-payment
+    @PUT("bookings/{id}/confirm-payment")
+    suspend fun confirmPayment(
+        @Path("id") bookingId: Long,
+        @Body body: Map<String, String>
+    ): Response<ApiResponse<CreateBookingResponseDto>>
+
+    // Owner actions
+    @PUT("bookings/{id}/accept")
+    suspend fun acceptBooking(@Path("id") bookingId: Long): Response<ApiResponse<CreateBookingResponseDto>>
+
+    @PUT("bookings/{id}/reject")
+    suspend fun rejectBooking(
+        @Path("id") bookingId: Long,
+        @Body body: Map<String, String>
+    ): Response<ApiResponse<CreateBookingResponseDto>>
+
+    // Backend: GET /bookings/my-bookings
+    @GET("bookings/my-bookings")
+    suspend fun getMyBookings(): Response<ApiResponse<List<CreateBookingResponseDto>>>
+
+    // Backend: GET /bookings/pending (owner)
+    @GET("bookings/pending")
+    suspend fun getPendingBookings(): Response<ApiResponse<List<CreateBookingResponseDto>>>
+
+    // Backend: GET /bookings/venue/{venueId} (owner)
+    @GET("bookings/venue/{venueId}")
+    suspend fun getVenueBookings(
+        @Path("venueId") venueId: Long
+    ): Response<ApiResponse<List<CreateBookingResponseDto>>>
+
+    // Legacy confirm (keep to avoid breaking existing implementation)
+    @PUT("bookings/{id}/confirm")
+    suspend fun confirmBooking(@Path("id") bookingId: String): BookingDto
+>>>>>>> Stashed changes
 
     /**
      * Lấy tất cả booking của owner

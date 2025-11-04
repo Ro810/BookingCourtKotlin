@@ -27,6 +27,33 @@ class BookingViewModel @Inject constructor(
     private val _bookingDetailState = MutableStateFlow<Resource<Booking>?>(null)
     val bookingDetailState: StateFlow<Resource<Booking>?> = _bookingDetailState.asStateFlow()
 
+<<<<<<< Updated upstream
+=======
+    private val _courtsState = MutableStateFlow<Resource<List<CourtDetail>>?>(null)
+    val courtsState: StateFlow<Resource<List<CourtDetail>>?> = _courtsState.asStateFlow()
+
+    private val _availabilityState = MutableStateFlow<Resource<Boolean>?>(null)
+    val availabilityState: StateFlow<Resource<Boolean>?> = _availabilityState.asStateFlow()
+
+    /**
+     * Kiểm tra tính khả dụng của sân
+     */
+    fun checkAvailability(courtId: Long, startTime: String, endTime: String) {
+        viewModelScope.launch {
+            courtRepository.checkCourtAvailability(courtId, startTime, endTime).collect { result ->
+                _availabilityState.value = result
+            }
+        }
+    }
+
+    /**
+     * Reset state kiểm tra tính khả dụng
+     */
+    fun resetAvailability() {
+        _availabilityState.value = null
+    }
+
+>>>>>>> Stashed changes
     /**
      * Tạo booking mới - trả về thông tin booking kèm thông tin ngân hàng của chủ sân
      * @param courtId: ID của court (CHÚ Ý: đây là courtId, không phải venueId)

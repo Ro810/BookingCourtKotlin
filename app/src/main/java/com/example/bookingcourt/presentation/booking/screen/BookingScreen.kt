@@ -133,6 +133,7 @@ fun BookingScreen(
                 if (bookingWithBankInfo != null) {
                     // Truyền thông tin booking + bank info sang PaymentScreen
                     val bookingData = BookingData(
+                        id = bookingWithBankInfo.id.toLongOrNull(),
                         courtId = bookingWithBankInfo.court.id,
                         courtName = "${bookingWithBankInfo.venue.name} - ${bookingWithBankInfo.court.description}",
                         courtAddress = venue.address.getFullAddress(),

@@ -66,6 +66,9 @@ sealed class Screen(val route: String) {
     data object PaymentSuccess : Screen("payment_success/{bookingId}") {
         fun createRoute(bookingId: String) = "payment_success/$bookingId"
     }
+
+    // Notification Screens
+    data object Notifications : Screen("notifications")
 }
 
 object Route {

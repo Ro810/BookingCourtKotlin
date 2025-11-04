@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.bookingcourt.presentation.notification.screen.NotificationsScreen
 
 @Composable
 fun NavigationGraph(
@@ -369,162 +370,11 @@ fun NavigationGraph(
                 )
             }
 
-            // ...
-            composable(route = Screen.Profile.route) {
-                val profileViewModel: ProfileViewModel = hiltViewModel()
-                val profileState by profileViewModel.state.collectAsState()
-
-                var showMessage by remember { mutableStateOf<String?>(null) }
-
-                // Lắng nghe events từ ViewModel
-                LaunchedEffect(Unit) {
-                    profileViewModel.event.collect { event ->
-                        when (event) {
-                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.NavigateToLogin -> {
-                                // Navigate to login and clear all back stack
-                                navController.navigate(Route.AUTH) {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
-                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.NavigateToHomeScreen -> {
-                                // Chuyển sang màn hình HomeScreen (khách đặt sân)
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(Screen.Profile.route) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            }
-                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.NavigateToOwnerHomeScreen -> {
-                                // Chuyển sang màn hình OwnerHomeScreen (quản lý sân)
-                                navController.navigate(Screen.OwnerHome.route) {
-                                    popUpTo(Screen.Profile.route) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            }
-                            is com.example.bookingcourt.presentation.profile.viewmodel.ProfileEvent.ShowMessage -> {
-                                showMessage = event.message
-                            }
-                        }
-                    }
-                }
-
-                ProfileScreen(
-                    onNavigateBack = { navController.navigateUp() },
-                    onNavigateToEditProfile = {
-                        navController.navigate(Screen.EditProfile.route)
-                    },
-                    onNavigateToChangePassword = {
-                        navController.navigate(Screen.ChangePassword.route)
-                    },
-                    onNavigateToBecomeOwner = {
-                        // Kiểm tra xem user đã có bank info chưa
-                        val user = profileState.currentUser
-                        val hasBankInfo = user?.bankName != null &&
-                                         user?.bankAccountNumber != null &&
-                                         user?.bankAccountName != null
-
-                        if (hasBankInfo) {
-                            // Đã có bank info -> chỉ cần switch mode
-                            profileViewModel.switchToOwnerMode()
-                        } else {
-                            // Chưa có bank info -> navigate đến form đăng ký
-                            navController.navigate(Screen.BecomeOwner.route)
-                        }
-                    },
-                    onNavigateToBecomeCustomer = {
-                        // Chuyển từ OWNER về USER mode
-                        profileViewModel.switchToUserMode()
-                    },
-                    onLogout = {
-                        navController.navigate(Route.AUTH) {
-                            popUpTo(Route.MAIN) { inclusive = true }
-                        }
-                    },
-                    viewModel = profileViewModel,
-                )
-
-                // Hiển thị message nếu có
-                showMessage?.let { message ->
-                    AlertDialog(
-                        onDismissRequest = { showMessage = null },
-                        title = { Text("Thông báo") },
-                        text = { Text(message) },
-                        confirmButton = {
-                            TextButton(onClick = { showMessage = null }) {
-                                Text("OK")
-                            }
-                        }
-                    )
-                }
-            }
-            // Become Owner Screen - Form to fill bank information
-            composable(route = Screen.BecomeOwner.route) {
-                // Get BecomeOwnerViewModel at composable level
-                val becomeOwnerViewModel: BecomeOwnerViewModel = hiltViewModel()
-                val state by becomeOwnerViewModel.state.collectAsState()
-
-                // Check if we're still determining bank info status
-                when (state.hasBankInfo) {
-                    null -> {
-                        // Still checking, show loading
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    true -> {
-                        // User already has bank info, directly request owner role
-                        LaunchedEffect(Unit) {
-                            becomeOwnerViewModel.requestOwnerRoleDirectly()
-                        }
-
-                        // Show loading while requesting
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CircularProgressIndicator()
-                                Text("Đang yêu cầu nâng cấp lên chủ sân...")
-                            }
-                        }
-                    }
-                    false -> {
-                        // User doesn't have bank info, show the form
-                        BecomeOwnerScreen(
-                            onNavigateBack = { navController.navigateUp() },
-                            onNavigateToLogin = {
-                                // Navigate to login screen and clear all back stack
-                                navController.navigate(Route.AUTH) {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-
-            composable(route = Screen.EditProfile.route) {
-                EditProfileScreen(
-                    onNavigateBack = { navController.navigateUp() },
+            // Notifications
+            composable(route = Screen.Notifications.route) {
+                NotificationsScreen(
+                    onNavigateBack = { navController.navigateUp() }
                 )
             }
 
-            composable(route = Screen.ChangePassword.route) {
-                ChangePasswordScreen(
-                    onNavigateBack = { navController.navigateUp() },
-                )
-            }
-
-            composable(route = Screen.Settings.route) {
-                SettingsScreen(
-                    onNavigateBack = { navController.navigateUp() },
-                )
-            }
-        }
-    }
-}
+            // ...existing code...

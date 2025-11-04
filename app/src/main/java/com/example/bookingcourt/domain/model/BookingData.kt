@@ -5,6 +5,7 @@ package com.example.bookingcourt.domain.model
  * This is used to pass data between screens before creating the final Booking
  */
 data class BookingData(
+    val id: Long? = null, // Backend booking ID (from POST /bookings)
     val courtId: String,
     val courtName: String,
     val courtAddress: String,
@@ -22,4 +23,3 @@ data class CourtTimeSlot(
     val courtNumber: Int,
     val timeSlot: String
 )
-
