@@ -385,7 +385,7 @@ fun BookingConfirmationScreenContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Thanh toán",
+                        "Xác nhận",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
