@@ -167,6 +167,9 @@ fun BookingScreen(
             is Resource.Success -> {
                 val bookingWithBankInfo = state.data
                 if (bookingWithBankInfo != null) {
+                    // Tính giá ở frontend dựa trên venue.pricePerHour và số slots đã chọn
+                    val calculatedTotalPrice = (venue.pricePerHour * selectedSlots.size * 0.5).toLong()
+
                     // Truyền thông tin booking + bank info sang PaymentScreen
                     val bookingData = BookingData(
                         courtId = bookingWithBankInfo.court.id,
@@ -179,7 +182,7 @@ fun BookingScreen(
                         playerName = playerName,
                         phoneNumber = phoneNumber,
                         pricePerHour = venue.pricePerHour,
-                        totalPrice = bookingWithBankInfo.totalPrice,
+                        totalPrice = calculatedTotalPrice, // Sử dụng giá tính ở frontend
                         ownerBankInfo = bookingWithBankInfo.ownerBankInfo,
                         expireTime = bookingWithBankInfo.expireTime.toString()
                     )
@@ -559,7 +562,7 @@ fun BookingScreen(
                                 text = "${(venue.pricePerHour * selectedSlots.size * 0.5).toLong() / 1000}.000 VNĐ",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Black
+                                color = Primary
                             )
                         }
                     }
