@@ -148,7 +148,8 @@ fun HomeScreen(
                     }
                 }
 
-                val allVenues = state.featuredVenues + state.recommendedVenues + state.nearbyVenues
+                val allVenues = (state.featuredVenues + state.recommendedVenues + state.nearbyVenues)
+                    .distinctBy { it.id }
                 if (allVenues.isNotEmpty()) {
                     item {
                         Text(

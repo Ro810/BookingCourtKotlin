@@ -168,7 +168,7 @@ fun NavigationGraph(
                     onBackClick = {
                         navController.navigateUp()
                     },
-                    onCourtClick = { venue -> // Lambda nhận Venue, không phải Court
+                    onVenueClick = { venue -> // Lambda nhận Venue, không phải Court
                         navController.navigate(
                             Screen.CourtDetail.createRoute(venue.id.toString()),
                         )

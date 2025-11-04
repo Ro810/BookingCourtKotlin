@@ -29,7 +29,7 @@ import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
 @Composable
 fun SearchScreen(
     onBackClick: () -> Unit,
-    onCourtClick: (Venue) -> Unit, // Đổi từ Court -> Venue
+    onVenueClick: (Venue) -> Unit, // Đổi từ onCourtClick -> onVenueClick
     viewModel: HomeViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -105,7 +105,7 @@ fun SearchScreen(
                 items(filteredVenues) { venue ->
                     VenueSearchCard(
                         venue = venue,
-                        onClick = { onCourtClick(venue) }
+                        onClick = { onVenueClick(venue) }
                     )
                 }
 
@@ -217,7 +217,7 @@ fun SearchScreenPreview() {
     BookingCourtTheme {
         SearchScreen(
             onBackClick = {},
-            onCourtClick = {}
+            onVenueClick = {}
         )
     }
 }
