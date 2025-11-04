@@ -252,17 +252,48 @@ fun NavigationGraph(
             ) { backStackEntry ->
                 val venueId = backStackEntry.arguments?.getString("courtId") ?: ""
 
-                // ✅ SỬA: Gọi DetailScreen với venueId, không cần lấy venue từ cache
-                // DetailScreen sẽ tự gọi API GET /venues/{id}
-                DetailScreen(
-                    venueId = venueId,
-                    onBackClick = { navController.navigateUp() },
-                    onBookClick = { venue ->
-                        navController.navigate(
-                            Screen.Booking.createRoute(venue.id.toString()),
-                        )
+                // Lấy venue từ HomeViewModel state
+                val parentEntry = remember(backStackEntry) {
+                    try {
+                        navController.getBackStackEntry(Screen.Home.route)
+                    } catch (_: Exception) {
+                        backStackEntry
                     }
-                )
+                }
+                val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
+                val homeState by homeViewModel.state.collectAsState()
+                val resolvedVenue = remember(venueId, homeState) {
+                    homeState.featuredVenues.find { it.id.toString() == venueId }
+                        ?: homeState.recommendedVenues.find { it.id.toString() == venueId }
+                        ?: homeState.nearbyVenues.find { it.id.toString() == venueId }
+                }
+
+                // Hiển thị DetailScreen nếu tìm thấy venue
+                if (resolvedVenue != null) {
+                    DetailScreen(
+                        venue = resolvedVenue,
+                        onBackClick = { navController.navigateUp() },
+                        onBookClick = { venue ->
+                            navController.navigate(
+                                Screen.Booking.createRoute(venue.id.toString()),
+                            )
+                        }
+                    )
+                } else {
+                    // Hiển thị loading hoặc error nếu không tìm thấy venue
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text("Đang tải thông tin sân...")
+                        }
+                    }
+                }
             }
 
             composable(

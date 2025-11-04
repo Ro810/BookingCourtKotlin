@@ -1,6 +1,5 @@
 package com.example.bookingcourt.presentation.court.screen
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,35 +15,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.Primary
-import com.example.bookingcourt.presentation.venue.viewmodel.VenueDetailViewModel
-import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
-    venueId: String,
+    venue: Venue,
     onBackClick: () -> Unit,
-    onBookClick: (Venue) -> Unit,
-    viewModel: VenueDetailViewModel = hiltViewModel()
+    onBookClick: (Venue) -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Mô tả", "Hình ảnh", "Đánh giá")
-
-    // ✅ Gọi API GET /venues/{id} khi screen load
-    LaunchedEffect(venueId) {
-        viewModel.loadVenueDetail(venueId.toLongOrNull() ?: 0L)
-    }
 
     Scaffold(
         topBar = {
@@ -75,15 +63,13 @@ fun DetailScreen(
                         )
                     }
 
-                    // Book Button - chỉ hiển thị khi đã load xong venue
-                    if (state.venue != null) {
-                        Button(
-                            onClick = { state.venue?.let { onBookClick(it) } },
-                            modifier = Modifier.height(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                        ) {
-                            Text("Đặt sân", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        }
+                    // Book Button
+                    Button(
+                        onClick = { onBookClick(venue) },
+                        modifier = Modifier.height(40.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                    ) {
+                        Text("Đặt sân", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -94,54 +80,12 @@ fun DetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                // Loading state
-                state.isLoading -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator(color = Primary)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Đang tải thông tin sân...", color = Color.Gray)
-                    }
-                }
-
-                // Error state
-                state.error != null -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "⚠️ ${state.error}",
-                            color = Color.Red,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel.retry(venueId.toLongOrNull() ?: 0L) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                        ) {
-                            Text("Thử lại")
-                        }
-                    }
-                }
-
-                // Success state - hiển thị venue details
-                state.venue != null -> {
-                    DetailScreenContent(
-                        venue = state.venue!!,
-                        selectedTab = selectedTab,
-                        tabs = tabs,
-                        onTabSelected = { selectedTab = it }
-                    )
-                }
-            }
+            DetailScreenContent(
+                venue = venue,
+                selectedTab = selectedTab,
+                tabs = tabs,
+                onTabSelected = { selectedTab = it }
+            )
         }
     }
 }
@@ -681,10 +625,11 @@ class SampleVenueProvider : PreviewParameterProvider<Venue> {
 
 @Preview(showBackground = true)
 @Composable
-fun DetailScreenPreview() {
-    // Preview không thể gọi API thực, nên để venueId = "1" cho demo
+fun DetailScreenPreview(
+    @PreviewParameter(SampleVenueProvider::class) venue: Venue
+) {
     DetailScreen(
-        venueId = "1",
+        venue = venue,
         onBackClick = {},
         onBookClick = {}
     )
