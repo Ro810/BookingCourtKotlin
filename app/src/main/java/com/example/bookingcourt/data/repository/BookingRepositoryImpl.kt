@@ -382,7 +382,7 @@ private fun CreateBookingResponseDto.toBookingWithBankInfo(): BookingWithBankInf
             description = this.courtName?.takeIf { it.isNotBlank() } ?: "Sân"
         ),
         venue = BookingVenueInfo(
-            id = "0",
+            id = this.venueId?.toString() ?: "0",  // ✅ Dùng venueId từ API thay vì hardcode
             name = this.venuesName?.takeIf { it.isNotBlank() } ?: "Venue"
         ),
         startTime = parseDateTime(this.startTime),

@@ -107,6 +107,8 @@ data class CreateBookingResponseDto(
     val courtId: Long,
     @SerializedName("courtName")
     val courtName: String?, // Nullable để xử lý trường hợp server không trả về
+    @SerializedName("venueId")
+    val venueId: Long?,  // ✅ THÊM field này để parse từ API (nếu có)
     @SerializedName("venuesName")
     val venuesName: String?, // Nullable để xử lý trường hợp server không trả về
     @SerializedName("startTime")
