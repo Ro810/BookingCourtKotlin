@@ -1177,48 +1177,34 @@ private fun VenueCardFromVenue(
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF5F9FF) // Màu nền xanh nhạt
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Box chứa hình nền và các nút
-            Box(
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Nội dung chính
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(cardColor, cardColor.copy(alpha = 0.8f)),
-                        ),
-                        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                    ) // Dấu ')' của background ở đây
-                // Khối lệnh lambda cho nội dung Box phải bắt đầu ở đây
-            ) { // <- Dấu '{' bị thiếu đã được thêm vào đúng vị trí
-                Row(
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    IconButton(onClick = onEditClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Edit, "Chỉnh sửa", tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = { showDeleteDialog = true }, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Delete, "Xóa", tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
-                }
-            } // <- Dấu '}' đóng Box
-
-            // Phần nội dung bên dưới
-            Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                    .padding(16.dp)
+            ) {
                 // Logo và tên sân
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(50.dp)
+                            .size(56.dp)
                             .background(
-                                color = Color(0xFF123E62).copy(alpha = 0.1f),
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFF123E62),
+                                        Color(0xFF1E5A8E)
+                                    )
+                                ),
                                 shape = CircleShape,
                             ),
                         contentAlignment = Alignment.Center,
@@ -1226,29 +1212,31 @@ private fun VenueCardFromVenue(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Logo sân",
-                            tint = Color(0xFF123E62),
-                            modifier = Modifier.size(30.dp),
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp),
                         )
                     }
 
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = venue.name,
-                            fontSize = 20.sp,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = Color(0xFF123E62),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
 
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Số sân: ${venue.courtsCount}",
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             color = Color.Gray,
                             fontWeight = FontWeight.Medium,
                         )
                     }
-                } // Đóng Row logo và tên
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -1256,49 +1244,104 @@ private fun VenueCardFromVenue(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    // Địa chỉ
-                    Row(verticalAlignment = Alignment.Top) {
-                        Icon(Icons.Default.LocationOn, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(venue.address.getFullAddress(), fontSize = 14.sp, color = Color.DarkGray, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-
                     // Số điện thoại (ưu tiên ownerPhone, fallback về phoneNumber)
                     val displayPhone = venue.ownerPhone ?: venue.phoneNumber
                     if (!displayPhone.isNullOrBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Phone, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Phone, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(displayPhone, fontSize = 14.sp, color = Color.DarkGray)
+                            Text(
+                                text = displayPhone,
+                                fontSize = 14.sp,
+                                color = Color(0xFF2C2C2C),
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
 
-                    // Email
-                    if (!venue.email.isNullOrBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Email, null, tint = Color(0xFF123E62), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(venue.email, fontSize = 14.sp, color = Color.DarkGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
+                    // Địa chỉ
+                    Row(verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Default.LocationOn, null, tint = Color(0xFFFF6F3C), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = venue.address.getFullAddress(),
+                            fontSize = 14.sp,
+                            color = Color(0xFF2C2C2C),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                } // Đóng Column thông tin chi tiết
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Thông tin trạng thái (Giả định luôn hoạt động)
+                // Thông tin trạng thái
+                val isOpen = isVenueOpen(venue.openingTime, venue.closingTime)
                 Row(
                     modifier = Modifier
-                        .background(Color(0xFF4CAF50).copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(16.dp)) // Đổi icon
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Đang hoạt động", fontSize = 13.sp, color = Color(0xFF4CAF50), fontWeight = FontWeight.Medium)
-                } // Đóng Row trạng thái
-            } // Đóng Column nội dung chính
-        } // Đóng Column trong Card
-    } // Đóng Card
+                    Row(
+                        modifier = Modifier
+                            .background(
+                                color = if (isOpen) Color(0xFF4CAF50).copy(alpha = 0.15f) else Color(0xFFFF9800).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = if (isOpen) Icons.Default.CheckCircle else Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = if (isOpen) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isOpen) "Đang mở" else "Đã đóng",
+                            fontSize = 12.sp,
+                            color = if (isOpen) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Text(
+                        text = "${venue.pricePerHour / 1000}k/giờ",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF6F3C)
+                    )
+                }
+            }
+
+            // Nút Edit và Delete ở góc trên phải
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                IconButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color.White.copy(alpha = 0.9f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Edit, "Chỉnh sửa", tint = Color(0xFF123E62), modifier = Modifier.size(20.dp))
+                }
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color.White.copy(alpha = 0.9f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Delete, "Xóa", tint = Color(0xFFEF5350), modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+    }
 
     // Dialog xác nhận xóa
     if (showDeleteDialog) {
@@ -1914,6 +1957,35 @@ private fun TimePickerDialog(
             }
         }
     )
+}
+
+// Helper function to check if venue is currently open
+private fun isVenueOpen(openingTime: String?, closingTime: String?): Boolean {
+    if (openingTime == null || closingTime == null) return true
+
+    return try {
+        val calendar = java.util.Calendar.getInstance()
+        val currentHour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+        val currentMinute = calendar.get(java.util.Calendar.MINUTE)
+        val currentTimeInMinutes = currentHour * 60 + currentMinute
+
+        // Parse opening time
+        val openParts = openingTime.split(":")
+        val openHour = openParts.getOrNull(0)?.toIntOrNull() ?: 0
+        val openMinute = openParts.getOrNull(1)?.toIntOrNull() ?: 0
+        val openTimeInMinutes = openHour * 60 + openMinute
+
+        // Parse closing time
+        val closeParts = closingTime.split(":")
+        val closeHour = closeParts.getOrNull(0)?.toIntOrNull() ?: 23
+        val closeMinute = closeParts.getOrNull(1)?.toIntOrNull() ?: 59
+        val closeTimeInMinutes = closeHour * 60 + closeMinute
+
+        // Check if current time is within opening hours
+        currentTimeInMinutes in openTimeInMinutes..closeTimeInMinutes
+    } catch (e: Exception) {
+        true // Default to open if parsing fails
+    }
 }
 
 // Helper function to get greeting message based on time of day

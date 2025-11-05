@@ -9,6 +9,7 @@ import com.example.bookingcourt.domain.model.CourtDetail // <-- Lấy từ tệp
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.domain.repository.CourtRepository // <-- Lấy từ tệp bên trái
 import com.example.bookingcourt.domain.repository.VenueRepository
+import com.example.bookingcourt.domain.repository.BookingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ data class CourtDetailState(
     val courts: List<CourtDetail> = emptyList(), // Lấy từ bên trái
     val error: String? = null,
     val todayRevenue: Long = 0, // Lấy từ bên phải
+    val bookedSlots: List<com.example.bookingcourt.domain.model.BookedSlot> = emptyList(),
 )
 
 sealed interface CourtDetailIntent {
@@ -39,7 +41,7 @@ class CourtDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val venueRepository: VenueRepository,
     private val courtRepository: CourtRepository, // Thêm dòng này từ bên trái
-
+    private val bookingRepository: BookingRepository
 ) : ViewModel() {
 
     private val venueId: String = savedStateHandle.get<String>("venueId") ?: ""
@@ -136,6 +138,34 @@ class CourtDetailViewModel @Inject constructor(
     private fun refresh() {
        if (venueId.isNotEmpty()) {
             handleIntent(CourtDetailIntent.LoadVenueDetail(venueId.toLongOrNull() ?: 0))
+        }
+    }
+
+    /**
+     * Lấy các time slots đã được đặt cho venue trong ngày cụ thể
+     * @param venueId ID của venue
+     * @param date Ngày cần kiểm tra (format: yyyy-MM-dd)
+     */
+    fun getBookedSlots(venueId: Long, date: String) {
+        viewModelScope.launch {
+            bookingRepository.getBookedSlots(venueId, date).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        _state.value = _state.value.copy(
+                            bookedSlots = result.data ?: emptyList()
+                        )
+                    }
+                    is Resource.Error -> {
+                        // Xử lý lỗi nếu cần
+                        _state.value = _state.value.copy(
+                            bookedSlots = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        // Không làm gì
+                    }
+                }
+            }
         }
     }
 }

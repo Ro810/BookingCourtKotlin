@@ -4,9 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,17 +16,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import coil.compose.AsyncImage
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import java.text.NumberFormat
 import java.util.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.text.style.TextAlign
+import com.example.bookingcourt.domain.model.CourtTimeSlot
+import java.text.SimpleDateFormat
+import android.util.Log
+import kotlinx.coroutines.launch
 
 data class CheckInSchedule(
     val bookingId: String,
@@ -37,12 +40,6 @@ data class CheckInSchedule(
     val customerName: String,
     val time: String,
     val duration: String,
-)
-
-data class CourtStatus(
-    val courtNumber: Int,
-    val isAvailable: Boolean,
-    val currentBooking: String? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +60,72 @@ fun CourtDetailScreen(
     val actualVenueName = venue?.name ?: venueName
     val actualCourtCount = venue?.courtsCount ?: courtCount
 
+    // State cho booking grid
+    var selectedDate by remember { mutableStateOf("") }
+    var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis()
+    )
+
+    // Fetch booked slots khi selectedDate thay đổi
+    LaunchedEffect(selectedDate, venue?.id) {
+        if (selectedDate.isNotEmpty() && venue != null) {
+            // Convert date from dd/MM/yyyy to yyyy-MM-dd for API
+            val parts = selectedDate.split("/")
+            if (parts.size == 3) {
+                val apiDate = "${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}"
+                Log.d("CourtDetailScreen", "🔍 Fetching booked slots for venue ${venue.id} on $apiDate")
+                viewModel.getBookedSlots(venue.id, apiDate)
+            }
+        }
+    }
+
+    // Parse opening and closing time from venue
+    val openingTime = remember(venue?.openingTime) {
+        venue?.openingTime?.split(":")?.let { parts ->
+            if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 6, parts[1].toIntOrNull() ?: 0)
+            else Pair(6, 0)
+        } ?: Pair(6, 0)
+    }
+
+    val closingTime = remember(venue?.closingTime) {
+        venue?.closingTime?.split(":")?.let { parts ->
+            if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 22, parts[1].toIntOrNull() ?: 0)
+            else Pair(22, 0)
+        } ?: Pair(22, 0)
+    }
+
+    // Tạo danh sách khung giờ - mỗi 30 phút
+    val timeSlots = remember(openingTime, closingTime) {
+        val slots = mutableListOf<String>()
+        var currentHour = openingTime.first
+        var currentMinute = openingTime.second
+
+        var closeHour = closingTime.first
+        var closeMinute = closingTime.second
+
+        // Special case: Nếu thời gian là 00:00 - 00:00 → Hiểu là mở cả ngày (00:00 - 23:59)
+        if (currentHour == 0 && currentMinute == 0 && closeHour == 0 && closeMinute == 0) {
+            closeHour = 23
+            closeMinute = 59
+        }
+
+        while (currentHour < closeHour || (currentHour == closeHour && currentMinute < closeMinute)) {
+            slots.add(String.format("%02d:%02d", currentHour, currentMinute))
+
+            currentMinute += 30
+            if (currentMinute >= 60) {
+                currentMinute = 0
+                currentHour++
+            }
+        }
+
+        slots
+    }
+
     val checkInSchedules = remember {
         listOf(
             CheckInSchedule("booking_1", 1, "Nguyễn Văn A", "14:00", "1 giờ"),
@@ -72,26 +135,32 @@ fun CourtDetailScreen(
         )
     }
 
-    val courtStatuses = remember(actualCourtCount) {
-        (1..actualCourtCount).map { courtNum ->
-            CourtStatus(
-                courtNumber = courtNum,
-                isAvailable = courtNum % 3 != 0,
-                currentBooking = if (courtNum % 3 == 0) "Đã đặt: 14:00 - 16:00" else null,
-            )
+    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("vi", "VN")) }
+
+    // DatePickerDialog
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                        selectedDate = dateFormat.format(Date(millis))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Hủy")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
-
-    val courtImages = venue?.images?.takeIf { it.isNotEmpty() } ?: listOf(
-        "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=400",
-        "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400",
-        "https://images.unsplash.com/photo-1609710228159-0fa9bd7c0827?w=400",
-        "https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=400",
-    )
-
-    var selectedImage by remember { mutableStateOf<String?>(null) }
-
-    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("vi", "VN")) }
 
     Scaffold(
         topBar = {
@@ -185,7 +254,7 @@ fun CourtDetailScreen(
                 }
             }
 
-            // Court Images Card
+            // Date Selection
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -197,36 +266,41 @@ fun CourtDetailScreen(
                             .padding(16.dp),
                     ) {
                         Text(
-                            "Hình ảnh sân",
+                            "Chọn ngày xem tình trạng sân",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            modifier = Modifier.heightIn(max = 500.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            items(courtImages) { imageUrl ->
-                                AsyncImage(
-                                    model = imageUrl,
-                                    contentDescription = "Hình ảnh sân",
-                                    modifier = Modifier
-                                        .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { selectedImage = imageUrl }
-                                        .background(Color.LightGray),
-                                    contentScale = ContentScale.Crop,
-                                )
-                            }
-                        }
+                        OutlinedTextField(
+                            value = selectedDate.ifEmpty { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) },
+                            onValueChange = {},
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Date")
+                            },
+                            placeholder = { Text("Chọn ngày") },
+                            readOnly = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            interactionSource = remember { MutableInteractionSource() }
+                                .also { interactionSource ->
+                                    LaunchedEffect(interactionSource) {
+                                        interactionSource.interactions.collect {
+                                            if (it is PressInteraction.Release) {
+                                                showDatePicker = true
+                                            }
+                                        }
+                                    }
+                                }
+                        )
                     }
                 }
             }
 
-            // Court Status Grid
+            // Booking Grid Table
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -238,28 +312,138 @@ fun CourtDetailScreen(
                             .padding(16.dp),
                     ) {
                         Text(
-                            "Tình trạng sân",
+                            "Tình trạng sân và giờ",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        // Court grid
-                        val chunkedCourts = courtStatuses.chunked(4)
-                        chunkedCourts.forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                            ) {
-                                row.forEach { court ->
-                                    CourtStatusItem(court)
+                        // Grid Table
+                        Row(
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            // Fixed Column - Tên sân
+                            Column {
+                                // Header cell
+                                Box(
+                                    modifier = Modifier
+                                        .width(70.dp)
+                                        .height(50.dp)
+                                        .border(1.dp, Color.Gray)
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Sân",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        color = Color.Black
+                                    )
                                 }
-                                // Fill empty spaces
-                                repeat(4 - row.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
+
+                                // Court rows
+                                for (courtNum in 1..actualCourtCount) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(70.dp)
+                                            .height(45.dp)
+                                            .border(1.dp, Color.Gray)
+                                            .background(Color(0xFFF5F5F5)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Sân $courtNum",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            textAlign = TextAlign.Center,
+                                            color = Color.Black
+                                        )
+                                    }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Scrollable Column - Time slots
+                            Column(
+                                modifier = Modifier.horizontalScroll(rememberScrollState())
+                            ) {
+                                // Header Row
+                                Row {
+                                    timeSlots.forEach { time ->
+                                        Box(
+                                            modifier = Modifier
+                                                .width(80.dp)
+                                                .height(50.dp)
+                                                .border(1.dp, Color.Gray)
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = time,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                textAlign = TextAlign.Center,
+                                                color = Color.Black
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Data Rows
+                                for (courtNum in 1..actualCourtCount) {
+                                    Row {
+                                        timeSlots.forEach { time ->
+                                            val slot = CourtTimeSlot(courtNum, time)
+
+                                            // Kiểm tra slot đã đặt
+                                            val isBooked = state.bookedSlots.any { bookedSlot ->
+                                                if (bookedSlot.courtNumber != courtNum) {
+                                                    false
+                                                } else {
+                                                    val slotStartTime = timeSlotToStartTime(time)
+                                                    val slotEndTime = timeSlotToEndTime(time)
+
+                                                    // Extract HH:mm:ss from ISO datetime if needed
+                                                    val bookedStart = if (bookedSlot.startTime.contains("T")) {
+                                                        bookedSlot.startTime.substring(11, 19)
+                                                    } else {
+                                                        bookedSlot.startTime
+                                                    }
+
+                                                    val bookedEnd = if (bookedSlot.endTime.contains("T")) {
+                                                        bookedSlot.endTime.substring(11, 19)
+                                                    } else {
+                                                        bookedSlot.endTime
+                                                    }
+
+                                                    slotStartTime == bookedStart && slotEndTime == bookedEnd
+                                                }
+                                            }
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(80.dp)
+                                                    .height(45.dp)
+                                                    .border(1.dp, Color.Gray)
+                                                    .background(
+                                                        if (isBooked) Color(0xFFFFCDD2) else Color.White
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                if (isBooked) {
+                                                    Text(
+                                                        text = "Đã đặt",
+                                                        color = Color.Black,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -309,47 +493,34 @@ fun CourtDetailScreen(
             }
                 }
             }
-
-            // Image Preview Dialog
-            selectedImage?.let { imageUrl ->
-                ImagePreviewDialog(
-                    imageUrl = imageUrl,
-                    onDismiss = { selectedImage = null },
-                )
-            }
         }
     }
 }
 
-@Composable
-fun CourtStatusItem(court: CourtStatus) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(4.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(60.dp)
-                .background(
-                    color = if (court.isAvailable) Color(0xFF4CAF50) else Color(0xFFFF5252),
-                    shape = RoundedCornerShape(8.dp),
-                ),
-        ) {
-            Text(
-                text = "Sân ${court.courtNumber}",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = if (court.isAvailable) "Trống" else "Đã đặt",
-            fontSize = 12.sp,
-            color = if (court.isAvailable) Color(0xFF4CAF50) else Color(0xFFFF5252),
-        )
-    }
+// Helper function để chuyển đổi time slot thành start time cho booked slot
+private fun timeSlotToStartTime(timeSlot: String): String {
+    val parts = timeSlot.split(":")
+    if (parts.size != 2) return timeSlot
+
+    val hour = parts[0].toIntOrNull() ?: return timeSlot
+    val minute = parts[1].toIntOrNull() ?: return timeSlot
+
+    return String.format("%02d:%02d:00", hour, minute)
+}
+
+// Helper function để chuyển đổi time slot thành end time cho booked slot
+private fun timeSlotToEndTime(timeSlot: String): String {
+    val parts = timeSlot.split(":")
+    if (parts.size != 2) return timeSlot
+
+    val hour = parts[0].toIntOrNull() ?: return timeSlot
+    val minute = parts[1].toIntOrNull() ?: return timeSlot
+
+    val totalMinutes = hour * 60 + minute + 30
+    val endHour = (totalMinutes / 60) % 24
+    val endMinute = totalMinutes % 60
+
+    return String.format("%02d:%02d:00", endHour, endMinute)
 }
 
 @Composable
@@ -443,56 +614,6 @@ fun QuickActionButton(
     }
 }
 
-@Composable
-fun ImagePreviewDialog(
-    imageUrl: String,
-    onDismiss: () -> Unit,
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-        ),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.9f))
-                .clickable { onDismiss() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Preview hình ảnh",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Fit,
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                IconButton(
-                    onClick = onDismiss,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f),
-                    ),
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Đóng",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Preview(showBackground = true)
 @Composable
