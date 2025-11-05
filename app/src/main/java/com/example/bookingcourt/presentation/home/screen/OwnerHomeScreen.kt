@@ -1843,14 +1843,17 @@ private fun EditVenueDialog(
 private fun parseTime(timeString: String): Pair<Int, Int> {
     return try {
         val parts = timeString.split(":")
-        if (parts.size == 2) {
+        if (parts.size >= 2) {
+            // Xử lý cả format "HH:MM" và "HH:MM:SS"
             val hour = parts[0].toIntOrNull() ?: 0
             val minute = parts[1].toIntOrNull() ?: 0
             Pair(hour, minute)
-        } else {
+        } else if (parts.size == 1) {
             // Chỉ có giờ, không có phút
-            val hour = timeString.toIntOrNull() ?: 0
+            val hour = parts[0].toIntOrNull() ?: 0
             Pair(hour, 0)
+        } else {
+            Pair(0, 0)
         }
     } catch (e: Exception) {
         Pair(0, 0)

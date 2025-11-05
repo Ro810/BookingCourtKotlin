@@ -53,24 +53,24 @@ class OwnerHomeViewModel @Inject constructor(
             try {
                 _state.value = _state.value.copy(isLoading = true)
 
-                val userResult = authRepository.getCurrentUser().first()
-
-                when (userResult) {
-                    is Resource.Success -> {
-                        _state.value = _state.value.copy(
-                            isLoading = false,
-                            currentUser = userResult.data,
-                            error = null
-                        )
-                    }
-                    is Resource.Error -> {
-                        _state.value = _state.value.copy(
-                            isLoading = false,
-                            error = userResult.message
-                        )
-                    }
-                    is Resource.Loading -> {
-                        _state.value = _state.value.copy(isLoading = true)
+                authRepository.getCurrentUser().collect { userResult ->
+                    when (userResult) {
+                        is Resource.Success -> {
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                currentUser = userResult.data,
+                                error = null
+                            )
+                        }
+                        is Resource.Error -> {
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                error = userResult.message
+                            )
+                        }
+                        is Resource.Loading -> {
+                            _state.value = _state.value.copy(isLoading = true)
+                        }
                     }
                 }
             } catch (e: Exception) {
