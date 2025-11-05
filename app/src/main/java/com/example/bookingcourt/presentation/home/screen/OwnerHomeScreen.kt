@@ -157,10 +157,10 @@ private fun OwnerHomeContent(
     // Lấy venues từ ViewModel thay vì hardcode
     val venues = state.venues
 
-    // Show success message when update succeeds
-    LaunchedEffect(state.updateSuccess) {
-        if (state.updateSuccess) {
-            // Show success and hide dialog
+    // Show success message when update succeeds and venues reloaded
+    LaunchedEffect(state.updateSuccess, state.isLoadingVenues) {
+        if (state.updateSuccess && !state.isLoadingVenues) {
+            // ✅ Update thành công VÀ venues đã reload xong → Đóng dialog
             showEditDialog = false
             venueToEdit = null
             viewModel.clearUpdateSuccess()
@@ -396,6 +396,7 @@ private fun OwnerHomeContent(
                     description = updatedVenue.description,
                     phoneNumber = updatedVenue.phoneNumber ?: "",
                     email = updatedVenue.email ?: "",
+                    numberOfCourt = updatedVenue.numberOfCourt,
                     provinceOrCity = updatedVenue.address.provinceOrCity,
                     district = updatedVenue.address.district,
                     detailAddress = updatedVenue.address.detailAddress,
@@ -1234,26 +1235,30 @@ private fun EditVenueDialog(
     onDismiss: () -> Unit,
     onSave: (Venue) -> Unit,
 ) {
-    var venueName by remember { mutableStateOf(venue.name) }
-    var description by remember { mutableStateOf(venue.description ?: "") }
-    var phoneNumber by remember { mutableStateOf(venue.phoneNumber ?: venue.ownerPhone ?: currentUser?.phoneNumber ?: "") }
-    var provinceOrCity by remember { mutableStateOf(venue.address.provinceOrCity) }
-    var district by remember { mutableStateOf(venue.address.district) }
-    var detailAddress by remember { mutableStateOf(venue.address.detailAddress) }
-    var pricePerHour by remember { mutableStateOf(venue.pricePerHour.toString()) }
+    var venueName by remember(venue) { mutableStateOf(venue.name) }
+    var description by remember(venue) { mutableStateOf(venue.description ?: "") }
+    var phoneNumber by remember(venue) { mutableStateOf(venue.phoneNumber ?: venue.ownerPhone ?: currentUser?.phoneNumber ?: "") }
+    var provinceOrCity by remember(venue) { mutableStateOf(venue.address.provinceOrCity) }
+    var district by remember(venue) { mutableStateOf(venue.address.district) }
+    var detailAddress by remember(venue) { mutableStateOf(venue.address.detailAddress) }
+    var pricePerHour by remember(venue) { mutableStateOf(venue.pricePerHour.toString()) }
 
     // Parse opening/closing time để lấy giờ và phút
-    val (openHour, openMinute) = parseTime(venue.openingTime ?: "06:00")
-    val (closeHour, closeMinute) = parseTime(venue.closingTime ?: "23:00")
+    val (openHour, openMinute) = remember(venue.openingTime) {
+        parseTime(venue.openingTime ?: "06:00")
+    }
+    val (closeHour, closeMinute) = remember(venue.closingTime) {
+        parseTime(venue.closingTime ?: "23:00")
+    }
 
-    var openingHour by remember { mutableStateOf(openHour) }
-    var openingMinute by remember { mutableStateOf(openMinute) }
-    var closingHour by remember { mutableStateOf(closeHour) }
-    var closingMinute by remember { mutableStateOf(closeMinute) }
+    var openingHour by remember(venue.openingTime) { mutableStateOf(openHour) }
+    var openingMinute by remember(venue.openingTime) { mutableStateOf(openMinute) }
+    var closingHour by remember(venue.closingTime) { mutableStateOf(closeHour) }
+    var closingMinute by remember(venue.closingTime) { mutableStateOf(closeMinute) }
     var showOpeningTimePicker by remember { mutableStateOf(false) }
     var showClosingTimePicker by remember { mutableStateOf(false) }
 
-    var numberOfCourts by remember { mutableStateOf(venue.courtsCount) }
+    var numberOfCourts by remember(venue) { mutableStateOf(venue.courtsCount) }
 
     val primaryColor = Color(0xFF123E62)
 
@@ -1672,8 +1677,8 @@ private fun EditVenueDialog(
                                     detailAddress = detailAddress.trim()
                                 ),
                                 pricePerHour = pricePerHour.trim().toLongOrNull() ?: venue.pricePerHour,
-                                openingTime = String.format("%02d:%02d", openingHour, openingMinute),
-                                closingTime = String.format("%02d:%02d", closingHour, closingMinute),
+                                openingTime = String.format("%02d:%02d:00", openingHour, openingMinute),
+                                closingTime = String.format("%02d:%02d:00", closingHour, closingMinute),
                                 courtsCount = numberOfCourts,
                                 numberOfCourt = numberOfCourts
                             )

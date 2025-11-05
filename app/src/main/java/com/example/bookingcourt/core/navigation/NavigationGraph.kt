@@ -1,6 +1,7 @@
 package com.example.bookingcourt.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -36,13 +37,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
 import com.example.bookingcourt.presentation.profile.viewmodel.ProfileViewModel
 import com.example.bookingcourt.presentation.owner.viewmodel.BecomeOwnerViewModel
-import com.example.bookingcourt.domain.model.UserRole
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -306,7 +305,8 @@ fun NavigationGraph(
             ) { backStackEntry ->
                 val venueId = backStackEntry.arguments?.getString("courtId") ?: ""
 
-                // Lấy venue từ HomeViewModel state
+                // ✅ Fetch venue from API để đảm bảo dữ liệu mới nhất
+                // (Quan trọng: sau khi owner cập nhật venue, cần lấy data mới)
                 val parentEntry = remember(backStackEntry) {
                     try {
                         navController.getBackStackEntry(Screen.Home.route)
@@ -316,10 +316,21 @@ fun NavigationGraph(
                 }
                 val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
                 val homeState by homeViewModel.state.collectAsState()
+
+                // Fetch fresh venue data from API when screen opens
+                LaunchedEffect(venueId) {
+                    venueId.toLongOrNull()?.let { id ->
+                        homeViewModel.fetchVenueById(id)
+                    }
+                }
+
+                // Try to find venue in current state first (for instant display)
+                // then update when fresh data arrives
                 val resolvedVenue = remember(venueId, homeState) {
                     homeState.featuredVenues.find { it.id.toString() == venueId }
                         ?: homeState.recommendedVenues.find { it.id.toString() == venueId }
                         ?: homeState.nearbyVenues.find { it.id.toString() == venueId }
+                        ?: homeState.selectedVenue // ✅ Venue vừa fetch từ API
                 }
 
                 // Get current user from ProfileViewModel so BookingScreen can prefill name/phone

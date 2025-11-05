@@ -37,3 +37,33 @@ data class VenueSimpleDto(
     @SerializedName("numberOfCourt")
     val numberOfCourt: Int? = null // Optional, chỉ có khi create/update court
 )
+
+/**
+ * Request DTO for creating a new court
+ * POST /courts
+ */
+data class CreateCourtRequest(
+    @SerializedName("description")
+    val description: String,
+
+    @SerializedName("venues")
+    val venues: VenueIdDto
+)
+
+/**
+ * Request DTO for updating a court
+ * PUT /courts/{id}
+ */
+data class UpdateCourtRequest(
+    @SerializedName("description")
+    val description: String
+)
+
+/**
+ * Simple venue ID wrapper for requests
+ */
+data class VenueIdDto(
+    @SerializedName("id")
+    val id: Long
+)
+

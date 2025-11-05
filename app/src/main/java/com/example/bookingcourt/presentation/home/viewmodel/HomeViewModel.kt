@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * HomeState - State cho HomeScreen
+ * selectedVenue: Venue được fetch riêng khi navigate vào BookingScreen để đảm bảo data mới nhất
+ */
 data class HomeState(
     val isLoading: Boolean = false,
     val user: User? = null,
@@ -28,6 +32,7 @@ data class HomeState(
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val searchResults: List<Venue> = emptyList(),
+    val selectedVenue: Venue? = null, // ✅ Venue được fetch riêng (cho BookingScreen)
 )
 
 sealed interface HomeIntent {
@@ -248,6 +253,55 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiEvent.emit(UiEvent.NavigateTo("bookings"))
         }
+    }
+
+    /**
+     * Fetch venue by ID - dùng để lấy dữ liệu mới nhất khi mở BookingScreen
+     * Quan trọng: Sau khi owner update venue, cần fetch lại để có dữ liệu mới
+     */
+    fun fetchVenueById(venueId: Long) {
+        viewModelScope.launch {
+            venueRepository.getVenueById(venueId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        val venue = result.data
+                        if (venue != null) {
+                            // Update selectedVenue
+                            // Also update venue in existing lists để đảm bảo consistency
+                            val updatedFeatured = _state.value.featuredVenues.map {
+                                if (it.id == venue.id) venue else it
+                            }
+                            val updatedRecommended = _state.value.recommendedVenues.map {
+                                if (it.id == venue.id) venue else it
+                            }
+                            val updatedNearby = _state.value.nearbyVenues.map {
+                                if (it.id == venue.id) venue else it
+                            }
+
+                            _state.value = _state.value.copy(
+                                selectedVenue = venue,
+                                featuredVenues = updatedFeatured,
+                                recommendedVenues = updatedRecommended,
+                                nearbyVenues = updatedNearby
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        // Không làm gì, giữ nguyên selectedVenue cũ hoặc null
+                    }
+                    is Resource.Loading -> {
+                        // Loading state
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Clear selected venue khi navigate away
+     */
+    fun clearSelectedVenue() {
+        _state.value = _state.value.copy(selectedVenue = null)
     }
 
     private fun refresh() {

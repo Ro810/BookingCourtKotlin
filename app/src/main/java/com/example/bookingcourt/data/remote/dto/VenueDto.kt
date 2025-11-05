@@ -145,6 +145,9 @@ data class UpdateVenueRequest(
     @SerializedName("email")
     val email: String,
 
+    @SerializedName("numberOfCourt")
+    val numberOfCourt: Int? = null,
+
     @SerializedName("address")
     val address: CreateAddressRequest,
 

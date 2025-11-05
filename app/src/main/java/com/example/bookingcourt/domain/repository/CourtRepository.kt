@@ -19,4 +19,25 @@ interface CourtRepository {
      * Lấy courts theo venue ID (filter local)
      */
     suspend fun getCourtsByVenueId(venueId: Long): Flow<Resource<List<CourtDetail>>>
+
+    /**
+     * Tạo court mới
+     */
+    suspend fun createCourt(
+        description: String,
+        venueId: Long
+    ): Flow<Resource<CourtDetail>>
+
+    /**
+     * Cập nhật court
+     */
+    suspend fun updateCourt(
+        courtId: Long,
+        description: String
+    ): Flow<Resource<CourtDetail>>
+
+    /**
+     * Xóa court
+     */
+    suspend fun deleteCourt(courtId: Long): Flow<Resource<Unit>>
 }

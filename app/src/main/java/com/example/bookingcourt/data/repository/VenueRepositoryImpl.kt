@@ -274,6 +274,7 @@ class VenueRepositoryImpl @Inject constructor(
         description: String?,
         phoneNumber: String,
         email: String,
+        numberOfCourt: Int?,
         provinceOrCity: String,
         district: String,
         detailAddress: String,
@@ -289,6 +290,7 @@ class VenueRepositoryImpl @Inject constructor(
             Log.d(TAG, "Venue ID: $venueId")
             Log.d(TAG, "Venue name: $name")
             Log.d(TAG, "Phone: $phoneNumber, Email: $email")
+            Log.d(TAG, "Number of courts: $numberOfCourt")
             Log.d(TAG, "Address: $detailAddress, $district, $provinceOrCity")
             Log.d(TAG, "Price/hour: $pricePerHour, Time: $openingTime - $closingTime")
             Log.d(TAG, "Images: ${images?.size ?: 0} items")
@@ -298,6 +300,7 @@ class VenueRepositoryImpl @Inject constructor(
                 description = description,
                 phoneNumber = phoneNumber,
                 email = email,
+                numberOfCourt = numberOfCourt,
                 address = CreateAddressRequest(
                     provinceOrCity = provinceOrCity,
                     district = district,

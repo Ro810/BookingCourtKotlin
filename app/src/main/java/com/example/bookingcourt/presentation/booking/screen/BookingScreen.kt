@@ -52,27 +52,29 @@ fun BookingScreen(
     onNavigateToPayment: (String) -> Unit,
     bookingViewModel: BookingViewModel = hiltViewModel()
 ) {
-    // Venue object - có thể null nếu không được truyền vào
-    val venue = court ?: Venue(
-        id = courtId.toLongOrNull() ?: 0L,
-        name = "Sân Cầu Lông ABC",
-        description = "Sân cầu lông chất lượng cao",
-        numberOfCourt = 3,
-        address = Address(
-            id = 1L,
-            provinceOrCity = "TP.HCM",
-            district = "Quận 1",
-            detailAddress = "123 Đường Lê Lợi"
-        ),
-        courtsCount = 3,
-        pricePerHour = 150000,
-        averageRating = 4.5f,
-        totalReviews = 120,
-        openingTime = "06:00:00",
-        closingTime = "22:00:00",
-        phoneNumber = "0123456789",
-        email = "contact@abc.com"
-    )
+    // ✅ Venue object - reactive to court parameter changes
+    val venue = remember(court, courtId) {
+        court ?: Venue(
+            id = courtId.toLongOrNull() ?: 0L,
+            name = "Sân Cầu Lông ABC",
+            description = "Sân cầu lông chất lượng cao",
+            numberOfCourt = 3,
+            address = Address(
+                id = 1L,
+                provinceOrCity = "TP.HCM",
+                district = "Quận 1",
+                detailAddress = "123 Đường Lê Lợi"
+            ),
+            courtsCount = 3,
+            pricePerHour = 150000,
+            averageRating = 4.5f,
+            totalReviews = 120,
+            openingTime = "06:00:00",
+            closingTime = "22:00:00",
+            phoneNumber = "0123456789",
+            email = "contact@abc.com"
+        )
+    }
 
     // Fetch real courts for this venue
     val courtsState by bookingViewModel.courtsState.collectAsState()
@@ -109,10 +111,12 @@ fun BookingScreen(
     }
 
     // Số lượng sân con trong venue này - sử dụng số sân thực tế từ API hoặc fallback
-    val actualNumberOfCourts = if (realCourts.value.isNotEmpty()) {
-        realCourts.value.size
-    } else {
-        venue.courtsCount
+    val actualNumberOfCourts = remember(realCourts.value.size, venue.courtsCount) {
+        if (realCourts.value.isNotEmpty()) {
+            realCourts.value.size
+        } else {
+            venue.courtsCount
+        }
     }
 
     var selectedDate by remember { mutableStateOf("") }
@@ -133,15 +137,23 @@ fun BookingScreen(
     )
 
     // Parse opening and closing time from venue
-    val openingTime = venue.openingTime?.split(":")?.let { parts ->
-        if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 6, parts[1].toIntOrNull() ?: 0)
-        else Pair(6, 0)
-    } ?: Pair(6, 0)
+    val openingTime = remember(venue.openingTime) {
+        val result = venue.openingTime?.split(":")?.let { parts ->
+            if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 6, parts[1].toIntOrNull() ?: 0)
+            else Pair(6, 0)
+        } ?: Pair(6, 0)
+        Log.d("BookingScreen", "📍 Opening time: ${venue.openingTime} → Parsed: ${result.first}:${result.second}")
+        result
+    }
 
-    val closingTime = venue.closingTime?.split(":")?.let { parts ->
-        if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 22, parts[1].toIntOrNull() ?: 0)
-        else Pair(22, 0)
-    } ?: Pair(22, 0)
+    val closingTime = remember(venue.closingTime) {
+        val result = venue.closingTime?.split(":")?.let { parts ->
+            if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 22, parts[1].toIntOrNull() ?: 0)
+            else Pair(22, 0)
+        } ?: Pair(22, 0)
+        Log.d("BookingScreen", "📍 Closing time: ${venue.closingTime} → Parsed: ${result.first}:${result.second}")
+        result
+    }
 
     // Tạo danh sách khung giờ - mỗi 30 phút
     val timeSlots = remember(openingTime, closingTime) {
@@ -149,8 +161,17 @@ fun BookingScreen(
         var currentHour = openingTime.first
         var currentMinute = openingTime.second
 
-        val closeHour = closingTime.first
-        val closeMinute = closingTime.second
+        var closeHour = closingTime.first
+        var closeMinute = closingTime.second
+
+        // ✅ Special case: Nếu thời gian là 00:00 - 00:00 → Hiểu là mở cả ngày (00:00 - 23:59)
+        if (currentHour == 0 && currentMinute == 0 && closeHour == 0 && closeMinute == 0) {
+            Log.d("BookingScreen", "📍 Detected 00:00 - 00:00 → Treating as FULL DAY (00:00 - 23:59)")
+            closeHour = 23
+            closeMinute = 59
+        }
+
+        Log.d("BookingScreen", "📍 Generating time slots from ${currentHour}:${currentMinute} to ${closeHour}:${closeMinute}")
 
         while (currentHour < closeHour || (currentHour == closeHour && currentMinute < closeMinute)) {
             slots.add(String.format("%02d:%02d", currentHour, currentMinute))
@@ -162,7 +183,21 @@ fun BookingScreen(
             }
         }
 
+        Log.d("BookingScreen", "📍 Generated ${slots.size} time slots: ${slots.take(5)}...")
         slots
+    }
+
+    // Log venue and court info
+    LaunchedEffect(venue, actualNumberOfCourts) {
+        Log.d("BookingScreen", "========== BOOKING SCREEN DEBUG ==========")
+        Log.d("BookingScreen", "📍 Venue: ${venue.name} (ID: ${venue.id})")
+        Log.d("BookingScreen", "📍 Venue courtsCount: ${venue.courtsCount}")
+        Log.d("BookingScreen", "📍 Venue numberOfCourt: ${venue.numberOfCourt}")
+        Log.d("BookingScreen", "📍 Actual number of courts: $actualNumberOfCourts")
+        Log.d("BookingScreen", "📍 Opening time: ${venue.openingTime}")
+        Log.d("BookingScreen", "📍 Closing time: ${venue.closingTime}")
+        Log.d("BookingScreen", "📍 Time slots count: ${timeSlots.size}")
+        Log.d("BookingScreen", "==========================================")
     }
 
     // Handle create booking state
