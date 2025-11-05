@@ -26,6 +26,7 @@ data class CourtDetailState(
     val error: String? = null,
     val todayRevenue: Long = 0, // Lấy từ bên phải
     val bookedSlots: List<com.example.bookingcourt.domain.model.BookedSlot> = emptyList(),
+    val selectedDateRevenue: Long = 0, // Doanh thu của ngày được chọn
 )
 
 sealed interface CourtDetailIntent {
@@ -84,9 +85,11 @@ class CourtDetailViewModel @Inject constructor(
                                     _state.value = _state.value.copy(
                                         isLoading = false,
                                         courts = courtsResult.data ?: emptyList(),
-                                        error = null
+                                        error = null,
                                         // TODO: Thêm logic gọi repo lấy todayRevenue ở đây
                                         // todayRevenue = ...
+                                        // Khởi tạo selectedDateRevenue với todayRevenue
+                                        selectedDateRevenue = _state.value.todayRevenue
                                     )
                                 }
                                 is Resource.Error -> {
@@ -166,6 +169,28 @@ class CourtDetailViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Cập nhật doanh thu cho ngày được chọn
+     * Tạm thời: nếu ngày được chọn là hôm nay thì hiển thị todayRevenue,
+     * nếu là ngày khác thì hiển thị 0 (cần API backend để lấy doanh thu theo ngày)
+     * @param selectedDate Ngày được chọn (format: dd/MM/yyyy)
+     */
+    fun updateSelectedDateRevenue(selectedDate: String) {
+        viewModelScope.launch {
+            // So sánh ngày được chọn với ngày hôm nay
+            val today = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date())
+
+            val revenue = if (selectedDate == today) {
+                _state.value.todayRevenue
+            } else {
+                // TODO: Gọi API để lấy doanh thu theo ngày khi backend có sẵn
+                0L
+            }
+
+            _state.value = _state.value.copy(selectedDateRevenue = revenue)
         }
     }
 }

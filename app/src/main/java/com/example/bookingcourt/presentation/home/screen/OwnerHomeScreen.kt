@@ -229,8 +229,16 @@ private fun OwnerHomeContent(
                                 modifier = Modifier
                                     .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.3f))
-                            )
+                                    .background(Color.White.copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = getInitials(state.currentUser?.fullName),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF123E62)
+                                )
+                            }
 
                             Spacer(modifier = Modifier.width(12.dp))
 
@@ -1957,6 +1965,21 @@ private fun TimePickerDialog(
             }
         }
     )
+}
+
+// Helper function to get user initials
+private fun getInitials(fullName: String?): String {
+    if (fullName.isNullOrBlank()) return "U"
+
+    val words = fullName.trim().split(" ").filter { it.isNotEmpty() }
+    return when {
+        words.isEmpty() -> "U"
+        words.size == 1 -> words[0].take(2).uppercase()
+        else -> {
+            // Lấy chữ cái đầu của từ đầu và từ cuối
+            "${words.first().first()}${words.last().first()}".uppercase()
+        }
+    }
 }
 
 // Helper function to check if venue is currently open

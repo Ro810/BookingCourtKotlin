@@ -70,15 +70,24 @@ fun CourtDetailScreen(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
 
-    // Fetch booked slots khi selectedDate thay đổi
+    // Fetch booked slots và cập nhật doanh thu khi selectedDate thay đổi
     LaunchedEffect(selectedDate, venue?.id) {
-        if (selectedDate.isNotEmpty() && venue != null) {
+        if (venue != null) {
+            val currentDate = if (selectedDate.isNotEmpty()) {
+                selectedDate
+            } else {
+                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+            }
+
             // Convert date from dd/MM/yyyy to yyyy-MM-dd for API
-            val parts = selectedDate.split("/")
+            val parts = currentDate.split("/")
             if (parts.size == 3) {
                 val apiDate = "${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}"
                 Log.d("CourtDetailScreen", "🔍 Fetching booked slots for venue ${venue.id} on $apiDate")
                 viewModel.getBookedSlots(venue.id, apiDate)
+
+                // Cập nhật doanh thu theo ngày được chọn
+                viewModel.updateSelectedDateRevenue(currentDate)
             }
         }
     }
@@ -214,46 +223,6 @@ fun CourtDetailScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-            // Revenue Card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(
-                                "Doanh thu hôm nay",
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 14.sp,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                currencyFormat.format(todayRevenue),
-                                color = Color.White,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                        Icon(
-                            Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp),
-                        )
-                    }
-                }
-            }
-
             // Date Selection
             item {
                 Card(
@@ -295,6 +264,49 @@ fun CourtDetailScreen(
                                         }
                                     }
                                 }
+                        )
+                    }
+                }
+            }
+
+            // Revenue Card
+            item {
+                val displayDate = selectedDate.ifEmpty { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
+                val revenueAmount = state.selectedDateRevenue
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                "Doanh thu ngày $displayDate",
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 14.sp,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                currencyFormat.format(revenueAmount),
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(48.dp),
                         )
                     }
                 }
