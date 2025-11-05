@@ -80,12 +80,44 @@ fun BookingScreen(
     val courtsState by bookingViewModel.courtsState.collectAsState()
     val realCourts = remember { mutableStateOf<List<CourtDetail>>(emptyList()) }
 
+    // ✅ State cho booked slots
+    val bookedSlotsState by bookingViewModel.bookedSlotsState.collectAsState()
+    val bookedSlots = remember { mutableStateOf<List<com.example.bookingcourt.domain.model.BookedSlot>>(emptyList()) }
+
     // ✅ Thêm coroutineScope để gọi suspend functions
     val coroutineScope = rememberCoroutineScope()
+
+    // ✅ Khai báo selectedDate sớm hơn để dùng trong LaunchedEffect
+    var selectedDate by remember { mutableStateOf("") }
+    var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
+    var playerName by remember(currentUser) { mutableStateOf(currentUser?.fullName ?: "") }
+    var phoneNumber by remember(currentUser) { mutableStateOf(currentUser?.phoneNumber ?: "") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    // State để hiển thị error message
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis()
+    )
 
     // Fetch courts when screen is first composed
     LaunchedEffect(venue.id) {
         bookingViewModel.getCourtsByVenueId(venue.id)
+    }
+
+    // ✅ Fetch booked slots khi selectedDate thay đổi
+    LaunchedEffect(selectedDate, venue.id) {
+        if (selectedDate.isNotEmpty()) {
+            // Convert date from dd/MM/yyyy to yyyy-MM-dd for API
+            val parts = selectedDate.split("/")
+            if (parts.size == 3) {
+                val apiDate = "${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}"
+                Log.d("BookingScreen", "🔍 Fetching booked slots for venue ${venue.id} on $apiDate")
+                bookingViewModel.getBookedSlots(venue.id, apiDate)
+            }
+        }
     }
 
     // Update realCourts when courtsState changes
@@ -94,9 +126,13 @@ fun BookingScreen(
             is Resource.Success -> {
                 realCourts.value = (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
                 Log.d("BookingScreen", "✅ Loaded ${realCourts.value.size} real courts for venue ${venue.id}")
+
+                // ✅ DETAILED LOG: Show all courts with their IDs
+                Log.d("BookingScreen", "========== AVAILABLE COURTS FOR VENUE ${venue.id} ==========")
                 realCourts.value.forEachIndexed { index, court ->
-                    Log.d("BookingScreen", "  Court ${index + 1}: ID=${court.id}, Description=${court.description}")
+                    Log.d("BookingScreen", "  Court ${index + 1}: ID=${court.id}, Description='${court.description}'")
                 }
+                Log.d("BookingScreen", "=========================================================")
             }
             is Resource.Error -> {
                 Log.e("BookingScreen", "❌ Error loading courts: ${(courtsState as Resource.Error).message}")
@@ -110,6 +146,26 @@ fun BookingScreen(
         }
     }
 
+    // ✅ Update booked slots khi bookedSlotsState thay đổi
+    LaunchedEffect(bookedSlotsState) {
+        when (bookedSlotsState) {
+            is Resource.Success -> {
+                bookedSlots.value = (bookedSlotsState as Resource.Success<List<com.example.bookingcourt.domain.model.BookedSlot>>).data ?: emptyList()
+                Log.d("BookingScreen", "✅ Loaded ${bookedSlots.value.size} booked slots")
+                bookedSlots.value.forEach { slot ->
+                    Log.d("BookingScreen", "  📅 Slot: Court ${slot.courtNumber}, ${slot.startTime} - ${slot.endTime}, Status: ${slot.status}")
+                }
+            }
+            is Resource.Error -> {
+                Log.e("BookingScreen", "❌ Error loading booked slots: ${(bookedSlotsState as Resource.Error).message}")
+            }
+            is Resource.Loading -> {
+                Log.d("BookingScreen", "⏳ Loading booked slots...")
+            }
+            else -> {}
+        }
+    }
+
     // Số lượng sân con trong venue này - sử dụng số sân thực tế từ API hoặc fallback
     val actualNumberOfCourts = remember(realCourts.value.size, venue.courtsCount) {
         if (realCourts.value.isNotEmpty()) {
@@ -118,23 +174,6 @@ fun BookingScreen(
             venue.courtsCount
         }
     }
-
-    var selectedDate by remember { mutableStateOf("") }
-    var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
-    var playerName by remember(currentUser) { mutableStateOf(currentUser?.fullName ?: "") }
-    var phoneNumber by remember(currentUser) { mutableStateOf(currentUser?.phoneNumber ?: "") }
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    // State để hiển thị error message
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    // ⚠️ QUAN TRỌNG: State để observe kết quả tạo booking với thông tin ngân hàng
-    val createBookingState by bookingViewModel.createBookingState.collectAsState()
-
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
-    )
 
     // Parse opening and closing time from venue
     val openingTime = remember(venue.openingTime) {
@@ -198,56 +237,6 @@ fun BookingScreen(
         Log.d("BookingScreen", "📍 Closing time: ${venue.closingTime}")
         Log.d("BookingScreen", "📍 Time slots count: ${timeSlots.size}")
         Log.d("BookingScreen", "==========================================")
-    }
-
-    // Handle create booking state
-    LaunchedEffect(createBookingState) {
-        when (val state = createBookingState) {
-            is Resource.Success -> {
-                val bookingWithBankInfo = state.data
-                if (bookingWithBankInfo != null) {
-                    // Tính giá ở frontend dựa trên venue.pricePerHour và số slots đã chọn
-                    val calculatedTotalPrice = (venue.pricePerHour * selectedSlots.size * 0.5).toLong()
-
-                    // Truyền thông tin booking + bank info sang PaymentScreen
-                    val bookingData = BookingData(
-                        courtId = bookingWithBankInfo.court.id,
-                        courtName = "${bookingWithBankInfo.venue.name} - ${bookingWithBankInfo.court.description}",
-                        courtAddress = venue.address.getFullAddress(),
-                        selectedDate = selectedDate.ifEmpty {
-                            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-                        },
-                        selectedSlots = selectedSlots,
-                        playerName = playerName,
-                        phoneNumber = phoneNumber,
-                        pricePerHour = venue.pricePerHour,
-                        totalPrice = calculatedTotalPrice, // Sử dụng giá tính ở frontend
-                        ownerBankInfo = bookingWithBankInfo.ownerBankInfo,
-                        expireTime = bookingWithBankInfo.expireTime.toString()
-                    )
-
-                    // Serialize to JSON for navigation
-                    val gson = Gson()
-                    val bookingDataJson = gson.toJson(bookingData)
-                    val encodedJson = URLEncoder.encode(bookingDataJson, StandardCharsets.UTF_8.toString())
-
-                    // Reset state trước khi navigate
-                    bookingViewModel.resetCreateBookingState()
-
-                    onNavigateToPayment(encodedJson)
-                }
-            }
-            is Resource.Error -> {
-                // Hiển thị error message
-                errorMessage = state.message ?: "Đã xảy ra lỗi khi tạo booking"
-                snackbarHostState.showSnackbar(
-                    message = errorMessage ?: "Đã xảy ra lỗi",
-                    duration = SnackbarDuration.Long
-                )
-                bookingViewModel.resetCreateBookingState()
-            }
-            else -> { /* Loading or null */ }
-        }
     }
 
     // DatePickerDialog
@@ -456,20 +445,65 @@ fun BookingScreen(
                                     val slot = CourtTimeSlot(courtNum, time)
                                     val isSelected = selectedSlots.contains(slot)
 
+                                    // ✅ Cải thiện logic kiểm tra slot đã đặt
+                                    val isBooked = bookedSlots.value.any { bookedSlot ->
+                                        if (bookedSlot.courtNumber != courtNum) {
+                                            false
+                                        } else {
+                                            // So sánh startTime và endTime với format chính xác
+                                            val slotStartTime = timeSlotToStartTime(time)
+                                            val slotEndTime = timeSlotToEndTime(time)
+
+                                            // Extract HH:mm:ss from ISO datetime if needed
+                                            val bookedStart = if (bookedSlot.startTime.contains("T")) {
+                                                bookedSlot.startTime.substring(11, 19) // "HH:mm:ss"
+                                            } else {
+                                                bookedSlot.startTime
+                                            }
+
+                                            val bookedEnd = if (bookedSlot.endTime.contains("T")) {
+                                                bookedSlot.endTime.substring(11, 19) // "HH:mm:ss"
+                                            } else {
+                                                bookedSlot.endTime
+                                            }
+
+                                            val matches = (slotStartTime == bookedStart && slotEndTime == bookedEnd)
+
+                                            if (matches) {
+                                                Log.d("BookingScreen", "🔒 Slot blocked: Court $courtNum, Time $time ($slotStartTime-$slotEndTime) matches booked slot ($bookedStart-$bookedEnd)")
+                                            }
+
+                                            matches
+                                        }
+                                    }
+
                                     Box(
                                         modifier = Modifier
                                             .width(80.dp)
                                             .height(45.dp)
                                             .border(1.dp, Color.Gray)
                                             .background(
-                                                if (isSelected) Primary
-                                                else Color.White
+                                                when {
+                                                    isSelected -> Primary
+                                                    isBooked -> Color(0xFFFFCDD2) // Màu đỏ nhạt cho slot đã đặt
+                                                    else -> Color.White
+                                                }
                                             )
                                             .clickable {
-                                                selectedSlots = if (isSelected) {
-                                                    selectedSlots - slot
+                                                if (!isBooked) {
+                                                    selectedSlots = if (isSelected) {
+                                                        selectedSlots - slot
+                                                    } else {
+                                                        selectedSlots + slot
+                                                    }
                                                 } else {
-                                                    selectedSlots + slot
+                                                    // ✅ Thông báo khi click vào slot đã đặt
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar(
+                                                            message = "Khung giờ này đã có người đặt",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+                                                    }
                                                 }
                                             },
                                         contentAlignment = Alignment.Center
@@ -480,6 +514,14 @@ fun BookingScreen(
                                                 color = Color.White,
                                                 fontSize = 18.sp,
                                                 fontWeight = FontWeight.Bold
+                                            )
+                                        } else if (isBooked) {
+                                            Text(
+                                                text = "Đã đặt",
+                                                color = Color.Black,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = TextAlign.Center
                                             )
                                         }
                                     }
@@ -619,21 +661,37 @@ fun BookingScreen(
 
                         // Xác định court ID để gửi
                         val realCourtId = if (realCourts.value.isNotEmpty()) {
-                            // ✅ Có courts từ API → Sử dụng court ID thực
+                            // ✅ CÁCH MỚI: Tìm court theo courtNumber một cách chính xác hơn
+                            // Sử dụng Regex để extract số đầu tiên từ description
+                            val sortedCourts = realCourts.value.sortedBy { court ->
+                                // Extract chỉ SỐ ĐẦU TIÊN từ description
+                                // "Sân số 1" -> 1, "Sân 2 VIP" -> 2, "Sân A" -> MAX_VALUE (đẩy xuống cuối)
+                                val numberMatch = Regex("""\d+""").find(court.description)
+                                numberMatch?.value?.toIntOrNull() ?: Int.MAX_VALUE
+                            }
+
+                            // Debug: Hiển thị danh sách courts sau khi sort
+                            Log.d("BookingScreen", "📋 Sorted Courts List:")
+                            sortedCourts.forEachIndexed { index, court ->
+                                Log.d("BookingScreen", "  [$index] ID=${court.id}, Description='${court.description}'")
+                            }
+
                             val courtIndex = courtNumber - 1
-                            if (courtIndex < realCourts.value.size) {
-                                val actualCourtId = realCourts.value[courtIndex].id
+                            if (courtIndex >= 0 && courtIndex < sortedCourts.size) {
+                                val actualCourt = sortedCourts[courtIndex]
+                                val actualCourtId = actualCourt.id
                                 val combinedId = "${venue.id}_$actualCourtId"
 
                                 Log.d("BookingScreen", "✅ Using real court ID from API")
-                                Log.d("BookingScreen", "  Court Number (UI): $courtNumber")
-                                Log.d("BookingScreen", "  Actual Court ID: $actualCourtId")
-                                Log.d("BookingScreen", "  Venue ID: ${venue.id}")
-                                Log.d("BookingScreen", "  Combined ID: $combinedId")
+                                Log.d("BookingScreen", "  🎯 Court Number (UI): $courtNumber")
+                                Log.d("BookingScreen", "  📝 Court Description: ${actualCourt.description}")
+                                Log.d("BookingScreen", "  🔑 Actual Court ID: $actualCourtId")
+                                Log.d("BookingScreen", "  🏢 Venue ID: ${venue.id}")
+                                Log.d("BookingScreen", "  📦 Combined ID: $combinedId")
 
                                 combinedId
                             } else {
-                                Log.e("BookingScreen", "❌ Invalid court index: $courtIndex, size: ${realCourts.value.size}")
+                                Log.e("BookingScreen", "❌ Invalid court index: $courtIndex, sorted size: ${sortedCourts.size}")
                                 // Fallback: Sử dụng số thứ tự
                                 "${venue.id}_$courtNumber"
                             }
@@ -690,13 +748,30 @@ fun BookingScreen(
                         Log.d("BookingScreen", "  Start: $startTime")
                         Log.d("BookingScreen", "  End: $endTime")
 
-                        bookingViewModel.createBooking(
+                        // Chỉ chuẩn bị dữ liệu và navigate sang PaymentScreen
+                        val bookingData = BookingData(
                             courtId = realCourtId,
-                            startTime = startTime,
-                            endTime = endTime,
-                            notes = null,
-                            paymentMethod = "BANK_TRANSFER"
+                            courtName = "${venue.name} - Sân $courtNumber",
+                            courtAddress = venue.address.getFullAddress(),
+                            selectedDate = selectedDateFormatted,
+                            selectedSlots = selectedSlots,
+                            playerName = playerName,
+                            phoneNumber = phoneNumber,
+                            pricePerHour = venue.pricePerHour,
+                            totalPrice = (venue.pricePerHour * selectedSlots.size * 0.5).toLong(),
+                            ownerBankInfo = null, // Sẽ nhận được từ API khi gọi ở PaymentScreen
+                            expireTime = null, // Sẽ nhận được từ API khi gọi ở PaymentScreen
+                            startTime = startTime, // Thêm startTime cho API
+                            endTime = endTime // Thêm endTime cho API
                         )
+
+                        // Serialize to JSON for navigation
+                        val gson = Gson()
+                        val bookingDataJson = gson.toJson(bookingData)
+                        val encodedJson = URLEncoder.encode(bookingDataJson, StandardCharsets.UTF_8.toString())
+
+                        // Navigate to PaymentScreen
+                        onNavigateToPayment(encodedJson)
                     }
                 },
                 modifier = Modifier
@@ -705,43 +780,9 @@ fun BookingScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = Primary),
                 enabled = selectedSlots.isNotEmpty() &&
                          playerName.isNotEmpty() &&
-                         phoneNumber.isNotEmpty() &&
-                         createBookingState !is Resource.Loading
-                // ✅ Đã bỏ điều kiện realCourts.value.isNotEmpty() để cho phép đặt sân với fallback
+                         phoneNumber.isNotEmpty()
             ) {
-                if (createBookingState is Resource.Loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Xác nhận đặt sân", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                }
-            }
-        }
-
-        // Show loading overlay when creating booking - ĐẶT SAU Column để che đúng
-        if (createBookingState is Resource.Loading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(Color.Black.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CircularProgressIndicator(color = Color.White)
-                    Text(
-                        text = "Đang tạo booking...",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text("Xác nhận đặt sân", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
     }
@@ -773,4 +814,30 @@ fun BookingScreenPreview() {
             onNavigateToPayment = {}
         )
     }
+}
+
+// Helper function để chuyển đổi time slot thành start time cho booked slot
+private fun timeSlotToStartTime(timeSlot: String): String {
+    val parts = timeSlot.split(":")
+    if (parts.size != 2) return timeSlot
+
+    val hour = parts[0].toIntOrNull() ?: return timeSlot
+    val minute = parts[1].toIntOrNull() ?: return timeSlot
+
+    return String.format("%02d:%02d:00", hour, minute)
+}
+
+// Helper function để chuyển đổi time slot thành end time cho booked slot
+private fun timeSlotToEndTime(timeSlot: String): String {
+    val parts = timeSlot.split(":")
+    if (parts.size != 2) return timeSlot
+
+    val hour = parts[0].toIntOrNull() ?: return timeSlot
+    val minute = parts[1].toIntOrNull() ?: return timeSlot
+
+    val totalMinutes = hour * 60 + minute + 30
+    val endHour = (totalMinutes / 60) % 24
+    val endMinute = totalMinutes % 60
+
+    return String.format("%02d:%02d:00", endHour, endMinute)
 }

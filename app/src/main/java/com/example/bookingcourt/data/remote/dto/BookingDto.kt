@@ -154,3 +154,63 @@ data class VenueInfoDto(
     @SerializedName("name")
     val name: String
 )
+
+/**
+ * Request DTO cho confirm payment
+ */
+data class ConfirmPaymentRequestDto(
+    @SerializedName("paymentProofUrl")
+    val paymentProofUrl: String
+)
+
+/**
+ * Request DTO cho reject booking
+ */
+data class RejectBookingRequestDto(
+    @SerializedName("rejectionReason")
+    val rejectionReason: String
+)
+
+/**
+ * Response DTO chi tiết booking - dùng cho cả GET /bookings/{id} và các API payment
+ */
+data class BookingDetailResponseDto(
+    @SerializedName("id")
+    val id: Long,
+    @SerializedName("userId")
+    val userId: Long,
+    @SerializedName("userName")
+    val userName: String?,
+    @SerializedName("userPhone")
+    val userPhone: String?,
+    @SerializedName("courtId")
+    val courtId: Long,
+    @SerializedName("courtName")
+    val courtName: String?,
+    @SerializedName("venueId")
+    val venueId: Long?,
+    @SerializedName("venuesName")
+    val venuesName: String?,
+    @SerializedName("venueAddress")
+    val venueAddress: String?,
+    @SerializedName("startTime")
+    val startTime: String,
+    @SerializedName("endTime")
+    val endTime: String,
+    @SerializedName("totalPrice")
+    val totalPrice: Double,
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("paymentProofUploaded")
+    val paymentProofUploaded: Boolean,
+    @SerializedName("paymentProofUrl")
+    val paymentProofUrl: String?,
+    @SerializedName("paymentProofUploadedAt")
+    val paymentProofUploadedAt: String?,
+    @SerializedName("rejectionReason")
+    val rejectionReason: String?,
+    @SerializedName("expireTime")
+    val expireTime: String?,
+    @SerializedName("ownerBankInfo")
+    val ownerBankInfo: BankInfoDto?
+)

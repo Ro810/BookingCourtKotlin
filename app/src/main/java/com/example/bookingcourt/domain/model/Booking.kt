@@ -24,7 +24,10 @@ data class Booking(
 
 enum class BookingStatus {
     PENDING,
+    PENDING_PAYMENT,
+    PAYMENT_UPLOADED,
     CONFIRMED,
+    REJECTED,
     CANCELLED,
     COMPLETED,
     NO_SHOW,
@@ -75,4 +78,26 @@ data class BookingCourtInfo(
 data class BookingVenueInfo(
     val id: String,
     val name: String // Giữ non-null, sẽ dùng default value nếu null
+)
+
+/**
+ * Model chi tiết booking cho payment flow
+ * Bao gồm tất cả thông tin cần thiết cho user và owner
+ */
+data class BookingDetail(
+    val id: String,
+    val user: BookingUserInfo,
+    val court: BookingCourtInfo,
+    val venue: BookingVenueInfo,
+    val venueAddress: String?,
+    val startTime: LocalDateTime,
+    val endTime: LocalDateTime,
+    val totalPrice: Long,
+    val status: BookingStatus,
+    val paymentProofUploaded: Boolean,
+    val paymentProofUrl: String?,
+    val paymentProofUploadedAt: String?,
+    val rejectionReason: String?,
+    val expireTime: LocalDateTime?,
+    val ownerBankInfo: BankInfo?
 )

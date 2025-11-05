@@ -406,7 +406,10 @@ fun InfoRow(
 fun getBookingStatusName(status: BookingStatus): String {
     return when (status) {
         BookingStatus.PENDING -> "Chờ xác nhận"
+        BookingStatus.PENDING_PAYMENT -> "Chờ thanh toán"
+        BookingStatus.PAYMENT_UPLOADED -> "Đã gửi chứng minh"
         BookingStatus.CONFIRMED -> "Đã xác nhận"
+        BookingStatus.REJECTED -> "Bị từ chối"
         BookingStatus.CANCELLED -> "Đã hủy"
         BookingStatus.COMPLETED -> "Hoàn thành"
         BookingStatus.NO_SHOW -> "Không đến"
@@ -416,7 +419,10 @@ fun getBookingStatusName(status: BookingStatus): String {
 fun getBookingStatusColor(status: BookingStatus): Color {
     return when (status) {
         BookingStatus.PENDING -> Color(0xFFFFA500)
+        BookingStatus.PENDING_PAYMENT -> Color(0xFFFFA500)
+        BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800)
         BookingStatus.CONFIRMED -> Color(0xFF4CAF50)
+        BookingStatus.REJECTED -> Color(0xFFFF5252)
         BookingStatus.CANCELLED -> Color(0xFFFF5252)
         BookingStatus.COMPLETED -> Color(0xFF2196F3)
         BookingStatus.NO_SHOW -> Color(0xFF9E9E9E)
@@ -426,7 +432,10 @@ fun getBookingStatusColor(status: BookingStatus): Color {
 fun getBookingStatusIcon(status: BookingStatus): ImageVector {
     return when (status) {
         BookingStatus.PENDING -> Icons.Default.DateRange
+        BookingStatus.PENDING_PAYMENT -> Icons.Default.DateRange
+        BookingStatus.PAYMENT_UPLOADED -> Icons.Default.Info
         BookingStatus.CONFIRMED -> Icons.Default.CheckCircle
+        BookingStatus.REJECTED -> Icons.Default.Close
         BookingStatus.CANCELLED -> Icons.Default.Close
         BookingStatus.COMPLETED -> Icons.Default.Check
         BookingStatus.NO_SHOW -> Icons.Default.Clear

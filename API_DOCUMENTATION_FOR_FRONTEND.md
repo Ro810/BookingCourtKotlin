@@ -1,251 +1,37 @@
-# API Documentation for Frontend Development
+# API DOCUMENTATION - PHẦN BỔ SUNG
 
-## Base URL
-```
-http://localhost:8080/api
-```
-
-## Authentication
-Hầu hết các API yêu cầu JWT token. Sau khi đăng nhập, thêm token vào header:
-```
-Authorization: Bearer {your_jwt_token}
-```
+> **Thêm các endpoint còn thiếu vào tài liệu chính**
 
 ---
 
-## 📋 Table of Contents
-1. [Authentication APIs](#authentication-apis)
-2. [User Management APIs](#user-management-apis)
-3. [Venues APIs](#venues-apis)
-4. [Court APIs](#court-apis)
-5. [Price Rules APIs](#price-rules-apis)
-6. [Booking APIs](#booking-apis)
-7. [Notification APIs](#notification-apis)
-8. [Review APIs](#review-apis)
-9. [File APIs](#file-apis)
-10. [Address APIs](#address-apis)
+## 🆕 **ENDPOINT MỚI THÊM**
+
+### ⭐ GET /venues/{venueId}/courts - LẤY DANH SÁCH COURTS ĐơN GIẢN
+
+**Vị trí thêm vào:** Đặt **TRƯỚC** section "17. Get Courts with Availability"
 
 ---
 
-## Authentication APIs
-
-### 1. Login
-**POST** `/auth/login`
-
-**Authentication Required:** ❌ No
-
-**Request Body:**
-```json
-{
-  "phone": "0123456789",
-  "password": "password123"
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "id": 1,
-    "phone": "0123456789",
-    "roles": ["ROLE_USER"]
-  },
-  "message": "Login success",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
-**Response Error (401):**
-```json
-{
-  "success": false,
-  "message": "Số điện thoại hoặc mật khẩu không đúng",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
----
-
-### 2. Register
-**POST** `/auth/register`
-
-**Authentication Required:** ❌ No
-
-**Request Body:**
-```json
-{
-  "fullname": "Nguyen Van A",
-  "phone": "0123456789",
-  "email": "nguyenvana@example.com",
-  "password": "password123",
-  "confirmPassword": "password123"
-}
-```
-
-**Validation Rules:**
-- `fullname`: 2-100 ký tự
-- `phone`: 8-15 số
-- `email`: Phải là email hợp lệ
-- `password`: Tối thiểu 6 ký tự
-- `confirmPassword`: Phải khớp với password
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": "User registered successfully",
-  "message": "Registered",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
-**Response Error (400):**
-```json
-{
-  "success": false,
-  "message": "Phone is already in use",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
----
-
-## User Management APIs
-
-### 3. Get Current User Info
-**GET** `/users/me`
+### 16.1. Get Courts by Venue ⭐ **ENDPOINT ĐƠN GIẢN - KHÔNG CẦN startTime/endTime**
+**GET** `/venues/{venueId}/courts`
 
 **Authentication Required:** ✅ Yes (Any authenticated user)
 
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "fullname": "Nguyen Van A",
-    "phone": "0123456789",
-    "email": "nguyenvana@example.com",
-    "roles": ["ROLE_USER"],
-    "bankName": null,
-    "bankAccountNumber": null,
-    "bankAccountName": null
-  },
-  "message": "Success",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
+**🎯 Use Case:** Lấy danh sách courts của một venue cụ thể - KHÔNG CẦN truyền thời gian
 
----
+**💡 Khi nào dùng API này:**
+- ✅ Khi cần hiển thị danh sách sân của venue (VD: "Venue này có 5 sân")
+- ✅ Khi build dropdown/picker chọn sân
+- ✅ Khi chỉ cần thông tin cơ bản của courts, không cần biết slot nào đã đặt
+- ✅ Khi user mới vào trang venue detail (chưa chọn ngày)
 
-### 4. Update Current User Info
-**PUT** `/users/me`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Request Body:**
-```json
-{
-  "fullname": "Nguyen Van A Updated",
-  "email": "newemail@example.com",
-  "bankName": "Vietcombank",
-  "bankAccountNumber": "1234567890",
-  "bankAccountName": "NGUYEN VAN A"
-}
-```
-
-**Note:** Tất cả các field đều optional. Chỉ gửi những field cần update.
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "fullname": "Nguyen Van A Updated",
-    "phone": "0123456789",
-    "email": "newemail@example.com",
-    "roles": ["ROLE_USER"],
-    "bankName": "Vietcombank",
-    "bankAccountNumber": "1234567890",
-    "bankAccountName": "NGUYEN VAN A"
-  },
-  "message": "Cập nhật thông tin thành công",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
----
-
-### 5. Request Owner Role (Trở thành chủ sân)
-**POST** `/users/me/request-owner-role`
-
-**Authentication Required:** ✅ Yes (ROLE_USER only)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": "Đã nâng cấp thành chủ sân thành công! Vui lòng đăng nhập l��i để cập nhật quyền.",
-  "message": "Success",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
-**Note:** Sau khi gọi API này thành công, user cần đăng nhập lại để nhận role mới.
-
----
-
-## Venues APIs
-
-### 6. Get All Venues
-**GET** `/venues`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Sân bóng ABC",
-      "numberOfCourt": 3,
-      "address": {
-        "id": 1,
-        "provinceOrCity": "Hà Nội",
-        "district": "Cầu Giấy",
-        "detailAddress": "123 Đường ABC"
-      },
-      "courtsCount": 3
-    }
-  ],
-  "message": "List venues",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
----
-
-### 7. Search Venues
-**GET** `/venues/search`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Query Parameters:**
-- `name` (optional): Tên venue
-- `province` (optional): Tỉnh/Thành phố
-- `district` (optional): Quận/Huyện
-- `detail` (optional): Địa chỉ chi tiết
+**💡 KHÔNG nên dùng khi:**
+- ❌ Cần biết slot nào đã đặt → Dùng `/venues/{venueId}/courts/availability`
+- ❌ Đang ở màn hình booking calendar → Dùng API availability
 
 **Example:**
 ```
-GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
+GET /venues/1/courts
 ```
 
 **Response Success (200):**
@@ -255,312 +41,350 @@ GET /venues/search?name=ABC&province=Hà Nội&district=Cầu Giấy
   "data": [
     {
       "id": 1,
-      "name": "Sân bóng ABC",
-      "numberOfCourt": 3,
-      "address": {
+      "description": "Sân số 1",
+      "venues": {
         "id": 1,
-        "provinceOrCity": "Hà Nội",
-        "district": "Cầu Giấy",
-        "detailAddress": "123 Đường ABC"
-      },
-      "courtsCount": 3
+        "name": "Sân bóng ABC"
+      }
+    },
+    {
+      "id": 2,
+      "description": "Sân số 2",
+      "venues": {
+        "id": 1,
+        "name": "Sân bóng ABC"
+      }
+    },
+    {
+      "id": 3,
+      "description": "Sân số 3",
+      "venues": {
+        "id": 1,
+        "name": "Sân bóng ABC"
+      }
     }
   ],
-  "message": "Search results",
-  "timestamp": "2025-10-28T15:30:00Z"
+  "message": "Courts list",
+  "timestamp": "2025-11-05T15:30:00Z"
+}
+```
+
+**Response Error - Venue not found (404):**
+```json
+{
+  "success": false,
+  "message": "Venue not found with id: 999",
+  "timestamp": "2025-11-05T15:30:00Z"
 }
 ```
 
 ---
 
-### 8. Get Venue by ID
-**GET** `/venues/{id}`
+## 📱 **FRONTEND IMPLEMENTATION**
 
-**Authentication Required:** ✅ Yes (Any authenticated user)
+### **JavaScript/TypeScript:**
 
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "Sân bóng ABC",
-    "numberOfCourt": 3,
-    "address": {
-      "id": 1,
-      "provinceOrCity": "Hà Nội",
-      "district": "Cầu Giấy",
-      "detailAddress": "123 Đường ABC"
-    },
-    "courtsCount": 3
-  },
-  "message": "OK",
-  "timestamp": "2025-10-28T15:30:00Z"
+```javascript
+/**
+ * Lấy danh sách courts đơn giản - không cần biết booked slots
+ */
+async function getCourtsByVenue(venueId) {
+  const token = localStorage.getItem('token');
+  
+  const response = await fetch(`/api/venues/${venueId}/courts`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  
+  const data = await response.json();
+  
+  if (!data.success) {
+    throw new Error(data.message);
+  }
+  
+  return data.data; // Array of courts
 }
-```
 
----
-
-### 9. Create Venue
-**POST** `/venues`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER required)
-
-**Request Body:**
-```json
-{
-  "name": "Sân bóng XYZ",
-  "description": "Sân bóng chất lượng cao",
-  "phoneNumber": "0987654321",
-  "email": "contact@xyz.com",
-  "address": {
-    "provinceOrCity": "Hà Nội",
-    "district": "Đống Đa",
-    "detailAddress": "456 Đường XYZ"
+// Example 1: Hiển thị dropdown chọn sân
+async function populateCourtsDropdown(venueId) {
+  try {
+    const courts = await getCourtsByVenue(venueId);
+    
+    const selectElement = document.getElementById('court-select');
+    selectElement.innerHTML = '<option value="">-- Chọn sân --</option>';
+    
+    courts.forEach(court => {
+      const option = document.createElement('option');
+      option.value = court.id;
+      option.textContent = court.description;
+      selectElement.appendChild(option);
+    });
+  } catch (error) {
+    console.error('Error loading courts:', error);
+    alert('Không thể tải danh sách sân');
   }
 }
-```
 
-**Validation Rules:**
-- `name`: Bắt buộc, không được để trống
-- `phoneNumber`: Bắt buộc
-- `email`: Phải là email hợp lệ
-- `address`: Bắt buộc
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 2,
-    "name": "Sân bóng XYZ",
-    "numberOfCourt": 0,
-    "address": {
-      "id": 2,
-      "provinceOrCity": "Hà Nội",
-      "district": "Đống Đa",
-      "detailAddress": "456 Đường XYZ"
-    },
-    "courtsCount": 0
-  },
-  "message": "Created",
-  "timestamp": "2025-10-28T15:30:00Z"
+// Example 2: Hiển thị số lượng sân
+async function displayCourtsInfo(venueId) {
+  const courts = await getCourtsByVenue(venueId);
+  
+  document.getElementById('courts-count').textContent = 
+    `Có ${courts.length} sân`;
+  
+  document.getElementById('courts-list').innerHTML = courts.map(court => 
+    `<li>${court.description}</li>`
+  ).join('');
 }
 ```
 
----
+### **React Example:**
 
-### 10. Update Venue
-**PUT** `/venues/{id}`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
-
-**Request Body:**
-
-**Cách 1: Cập nhật chỉ thông tin cơ bản (GIỮ NGUYÊN GIÁ CŨ)**
-```json
-{
-  "name": "Sân bóng XYZ Updated",
-  "description": "Sân bóng chất lượng cao - đã nâng cấp",
-  "phoneNumber": "0987654321",
-  "email": "contact_new@xyz.com",
-  "address": {
-    "provinceOrCity": "Hà Nội",
-    "district": "Đống Đa",
-    "detailAddress": "456 Đường XYZ - Tầng 2"
-  }
-}
-```
-
-**Cách 2: Cập nhật cả thông tin và giá tiền (XÓA GIÁ CŨ, TẠO GIÁ MỚI)**
-```json
-{
-  "name": "Sân bóng XYZ Premium",
-  "description": "Sân bóng cao cấp với cỏ nhân tạo",
-  "phoneNumber": "0987654321",
-  "email": "premium@xyz.com",
-  "address": {
-    "provinceOrCity": "TP Hồ Chí Minh",
-    "district": "Quận 1",
-    "detailAddress": "789 Nguyễn Huệ"
-  },
-  "priceRules": [
-    {
-      "name": "Giờ sáng",
-      "startTime": "06:00:00",
-      "endTime": "10:00:00",
-      "pricePerHour": 150000
-    },
-    {
-      "name": "Giờ trưa",
-      "startTime": "10:00:00",
-      "endTime": "17:00:00",
-      "pricePerHour": 200000
-    },
-    {
-      "name": "Giờ tối cao điểm",
-      "startTime": "17:00:00",
-      "endTime": "22:00:00",
-      "pricePerHour": 300000
-    },
-    {
-      "name": "Giờ đêm",
-      "startTime": "22:00:00",
-      "endTime": "23:59:59",
-      "pricePerHour": 250000
+```jsx
+function VenueDetailScreen({ venueId }) {
+  const [courts, setCourts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    async function loadCourts() {
+      setLoading(true);
+      try {
+        const data = await getCourtsByVenue(venueId);
+        setCourts(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
-  ]
+    
+    loadCourts();
+  }, [venueId]);
+  
+  if (loading) return <div>Đang tải...</div>;
+  if (error) return <div>Lỗi: {error}</div>;
+  
+  return (
+    <div className="venue-detail">
+      <h3>Danh sách sân ({courts.length} sân)</h3>
+      <ul className="courts-list">
+        {courts.map(court => (
+          <li key={court.id} className="court-item">
+            {court.description}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 ```
 
-**⚠️ LƯU Ý QUAN TRỌNG VỀ PRICE RULES:**
-- Field `priceRules` là **OPTIONAL** (không bắt buộc)
-- **KHÔNG gửi** `priceRules` hoặc `priceRules: null` → Giá cũ được **GIỮ NGUYÊN**
-- **GỬI** `priceRules` với array → **TẤT CẢ** giá cũ sẽ bị **XÓA** và thay thế bằng giá mới
-- Không thể cập nhật một phần price rules. Nếu muốn sửa, phải gửi lại toàn bộ danh sách
+### **Kotlin/Android Example:**
 
-**Validation Rules cho PriceRules:**
-- `name`: Tên khung giờ (VD: "Giờ cao điểm buổi sáng")
-- `startTime`: Format "HH:mm:ss" (VD: "06:00:00")
-- `endTime`: Format "HH:mm:ss" (VD: "10:00:00")
-- `pricePerHour`: Số tiền dương (VD: 150000)
+```kotlin
+// Data class
+data class Court(
+    val id: Long,
+    val description: String,
+    val venues: VenueBasic
+)
 
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 2,
-    "name": "Sân bóng XYZ Premium",
-    "numberOfCourt": 3,
-    "address": {
-      "id": 2,
-      "provinceOrCity": "TP Hồ Chí Minh",
-      "district": "Quận 1",
-      "detailAddress": "789 Nguyễn Huệ"
-    },
-    "courtsCount": 3,
-    "averageRating": 4.5,
-    "totalReviews": 10
-  },
-  "message": "Updated",
-  "timestamp": "2025-10-29T15:30:00Z"
-}
-```
+data class VenueBasic(
+    val id: Long,
+    val name: String
+)
 
-**💡 UI/UX Flow đề xuất cho Frontend:**
+// API Service
+@GET("venues/{venueId}/courts")
+suspend fun getCourtsByVenue(
+    @Path("venueId") venueId: Long
+): ApiResponse<List<Court>>
 
-**Khi hiển thị form Update Venue:**
-
-1. **Load thông tin venue hiện tại:**
-```javascript
-const response = await fetch(`/api/venues/${venueId}`);
-const venue = await response.json();
-```
-
-2. **Load price rules hiện tại:**
-```javascript
-const pricesResponse = await fetch(`/api/pricerules/venue/${venueId}`);
-const currentPriceRules = await pricesResponse.json();
-```
-
-3. **Hiển thị form với 2 options:**
-    - ☑️ Checkbox: "Cập nhật giá tiền"
-    - Nếu KHÔNG check: Không gửi field `priceRules` → Giữ nguyên giá cũ
-    - Nếu CHECK: Hiển thị form nhập price rules → Gửi `priceRules` → Thay thế toàn bộ
-
-4. **Khi user check "Cập nhật giá tiền":**
-```javascript
-const updatePricesCheckbox = document.getElementById('update-prices');
-
-updatePricesCheckbox.addEventListener('change', (e) => {
-  if (e.target.checked) {
-    // Hiển thị form price rules
-    // Pre-fill với giá cũ để user có thể chỉnh sửa
-    priceRulesForm.style.display = 'block';
-    priceRulesInput.value = JSON.stringify(currentPriceRules, null, 2);
-  } else {
-    // Ẩn form price rules
-    priceRulesForm.style.display = 'none';
-  }
-});
-```
-
-5. **Khi submit form:**
-```javascript
-const formData = {
-  name: nameInput.value,
-  description: descInput.value,
-  phoneNumber: phoneInput.value,
-  email: emailInput.value,
-  address: {
-    provinceOrCity: provinceInput.value,
-    district: districtInput.value,
-    detailAddress: detailInput.value
-  }
-};
-
-// Chỉ thêm priceRules nếu user check "Cập nhật giá tiền"
-if (updatePricesCheckbox.checked) {
-  formData.priceRules = priceRulesArray; // Array của price rules mới
+// ViewModel
+class VenueDetailViewModel : ViewModel() {
+    private val _courts = MutableLiveData<List<Court>>()
+    val courts: LiveData<List<Court>> = _courts
+    
+    fun loadCourts(venueId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getCourtsByVenue(venueId)
+                if (response.success) {
+                    _courts.value = response.data
+                } else {
+                    // Handle error
+                }
+            } catch (e: Exception) {
+                Log.e("VenueDetail", "Error loading courts", e)
+            }
+        }
+    }
 }
 
-const response = await fetch(`/api/venues/${venueId}`, {
-  method: 'PUT',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify(formData)
-});
-```
-
-**Response Error (403):**
-```json
-{
-  "success": false,
-  "message": "Bạn không có quyền cập nhật venue này",
-  "timestamp": "2025-10-29T15:30:00Z"
-}
-```
-
-**Response Error (404):**
-```json
-{
-  "success": false,
-  "message": "Venues not found with id=2",
-  "timestamp": "2025-10-29T15:30:00Z"
+// Fragment/Activity
+class VenueDetailFragment : Fragment() {
+    private val viewModel: VenueDetailViewModel by viewModels()
+    
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        
+        val venueId = args.venueId
+        viewModel.loadCourts(venueId)
+        
+        viewModel.courts.observe(viewLifecycleOwner) { courts ->
+            binding.courtsCount.text = "Có ${courts.size} sân"
+            
+            // Hiển thị danh sách
+            val adapter = CourtsAdapter(courts)
+            binding.courtsList.adapter = adapter
+        }
+    }
 }
 ```
 
 ---
 
-### 11. Delete Venue
-**DELETE** `/venues/{id}`
+## ⚖️ **SO SÁNH 2 API**
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
+| Tính năng | `/venues/{id}/courts` | `/venues/{id}/courts/availability` |
+|-----------|----------------------|-------------------------------------|
+| **Query params** | ❌ Không cần | ✅ Cần `startTime`, `endTime` |
+| **Response** | Courts cơ bản | Courts + booked slots |
+| **Tốc độ** | ⚡ Nhanh (chỉ query courts) | 🐢 Chậm hơn (phải tính toán slots) |
+| **Use case chính** | Hiển thị danh sách sân | Booking calendar/grid |
+| **Khi nào dùng** | Lúc xem thông tin venue | Lúc đặt sân cần biết slot trống |
+| **Ví dụ màn hình** | Venue Detail Screen | Booking Screen |
 
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Deleted",
-  "timestamp": "2025-10-28T15:30:00Z"
+---
+
+## 💡 **BEST PRACTICES**
+
+### ✅ **ĐÚNG - Dùng API phù hợp:**
+
+```javascript
+// Scenario 1: User vào trang venue detail
+async function onVenuePageLoad(venueId) {
+  // ✅ Dùng API đơn giản - chỉ cần biết có bao nhiêu sân
+  const courts = await getCourtsByVenue(venueId);
+  displayCourtsCount(courts.length); // "Có 5 sân"
+  displayCourtsList(courts); // Hiển thị danh sách
+}
+
+// Scenario 2: User nhấn "Đặt sân" và chọn ngày
+async function onBookingButtonClick(venueId, selectedDate) {
+  // ✅ Bây giờ mới dùng API availability - cần biết slot nào trống
+  const startTime = `${selectedDate}T00:00:00`;
+  const endTime = `${selectedDate}T23:59:59`;
+  
+  const courtsWithAvailability = await getCourtsWithAvailability(
+    venueId, startTime, endTime
+  );
+  
+  displayBookingGrid(courtsWithAvailability); // Hiển thị lưới đặt sân
+}
+```
+
+### ❌ **SAI - Lãng phí tài nguyên:**
+
+```javascript
+// ❌ SAI: Dùng API phức tạp khi chỉ cần thông tin đơn giản
+async function onVenuePageLoad(venueId) {
+  // Gọi API phức tạp với thời gian
+  const courtsWithAvailability = await getCourtsWithAvailability(
+    venueId, 
+    '2025-11-05T00:00:00', 
+    '2025-11-05T23:59:59'
+  );
+  
+  // Nhưng chỉ dùng để hiển thị số lượng!
+  displayCourtsCount(courtsWithAvailability.length); // Lãng phí!
+}
+
+// ✅ ĐÚNG: Dùng API đơn giản
+async function onVenuePageLoad(venueId) {
+  const courts = await getCourtsByVenue(venueId); // Nhanh hơn!
+  displayCourtsCount(courts.length);
 }
 ```
 
 ---
 
-## Court APIs
+## 🔧 **WORKAROUND CŨ (TRƯỚC KHI CÓ API MỚI)**
 
-### 12. Get All Courts
-**GET** `/courts`
+**Trước đây frontend phải làm thế này (không tối ưu):**
 
-**Authentication Required:** ✅ Yes (Any authenticated user)
+```javascript
+// ❌ Cách cũ: Lấy TẤT CẢ courts rồi filter
+async function getCourtsByVenue_OLD(venueId) {
+  // Lấy tất cả courts trong hệ thống (có thể 1000+ courts)
+  const response = await fetch('/api/courts');
+  const allCourts = await response.json();
+  
+  // Filter ở client
+  const filteredCourts = allCourts.filter(court => 
+    court.venues.id === venueId
+  );
+  
+  return filteredCourts;
+}
 
-**Response Success (200):**
+// ✅ Cách mới: Backend filter sẵn
+async function getCourtsByVenue_NEW(venueId) {
+  const response = await fetch(`/api/venues/${venueId}/courts`);
+  const data = await response.json();
+  return data.data; // Chỉ nhận courts của venue này
+}
+```
+
+**So sánh hiệu năng:**
+```
+Giả sử hệ thống có:
+- 100 venues
+- Mỗi venue có 5 courts
+- Tổng: 500 courts
+
+Cách cũ (GET /courts):
+- Response size: ~50KB (500 courts)
+- Network time: 500ms
+- Filter time: 10ms
+- Total: 510ms
+
+Cách mới (GET /venues/{id}/courts):
+- Response size: ~0.5KB (5 courts)
+- Network time: 50ms
+- Filter time: 0ms (backend đã filter)
+- Total: 50ms
+
+→ Nhanh hơn 10 lần!
+```
+
+---
+
+## 🔍 **KIỂM TRA JSON RESPONSE CÓ CHUẨN KHÔNG**
+
+### ✅ **Response CHUẨN - Có ApiResponse wrapper:**
+
 ```json
+{
+  "success": true,
+  "data": [...],
+  "message": "Courts list",
+  "timestamp": "2025-11-05T15:30:00Z"
+}
+```
+
+**Các field bắt buộc:**
+- ✅ `success` (boolean)
+- ✅ `data` (object hoặc array hoặc null)
+- ✅ `message` (string)
+- ✅ `timestamp` (ISO DateTime string)
+
+### ⚠️ **LƯU Ý VỀ API `/courts` (Section 18)**
+
+**API này KHÔNG CHUẨN - Không có wrapper:**
+
+```json
+// ❌ KHÔNG CHUẨN: Response trực tiếp là array
 [
   {
     "id": 1,
@@ -573,1299 +397,66 @@ const response = await fetch(`/api/venues/${venueId}`, {
 ]
 ```
 
-**Note:** Response này không wrap trong ApiResponse format.
+**Nên sửa thành:**
 
----
-
-### 13. Get Court by ID
-**GET** `/courts/{id}`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Response Success (200):**
 ```json
-{
-  "id": 1,
-  "description": "Sân số 1",
-  "venues": {
-    "id": 1,
-    "name": "Sân bóng ABC"
-  }
-}
-```
-
----
-
-### 14. Check Court Availability (QUAN TRỌNG - Dùng trước khi đặt sân)
-**GET** `/courts/{id}/availability`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Query Parameters:**
-- `startTime` (required): ISO DateTime (VD: `2025-10-28T14:00:00`)
-- `endTime` (required): ISO DateTime (VD: `2025-10-28T16:00:00`)
-
-**Example:**
-```
-GET /courts/1/availability?startTime=2025-10-28T14:00:00&endTime=2025-10-28T16:00:00
-```
-
-**Response Success (200):**
-```json
-{
-  "courtId": 1,
-  "available": false,
-  "bookedSlots": [
-    {
-      "startTime": "2025-10-28T14:00:00",
-      "endTime": "2025-10-28T15:00:00",
-      "bookingId": 5
-    }
-  ]
-}
-```
-
-**Response khi sân trống:**
-```json
-{
-  "courtId": 1,
-  "available": true,
-  "bookedSlots": []
-}
-```
-
-**🎯 Use Case cho Frontend:**
-
-**Bước 1 - Người dùng chọn thời gian:**
-```javascript
-// User chọn sân, ngày giờ bắt đầu và kết thúc
-const courtId = 1;
-const startTime = "2025-10-28T14:00:00";
-const endTime = "2025-10-28T16:00:00";
-```
-
-**Bước 2 - Gọi API kiểm tra trước khi cho đặt:**
-```javascript
-const response = await fetch(
-  `/api/courts/${courtId}/availability?startTime=${startTime}&endTime=${endTime}`,
-  {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  }
-);
-
-const data = await response.json();
-
-if (data.available) {
-  // ✅ Sân trống - Cho phép người dùng đặt sân
-  // Hiện nút "Đặt sân" hoặc chuyển sang bước tiếp theo
-  enableBookingButton();
-} else {
-  // ❌ Sân đã có người đặt
-  // Hiển thị thông báo lỗi và danh sách các slot đã được đặt
-  showError("Sân đã được đặt trong khung giờ này!");
-  
-  // Có thể hiển thị chi tiết các slot đã đặt
-  data.bookedSlots.forEach(slot => {
-    console.log(`Đã đặt từ ${slot.startTime} đến ${slot.endTime}`);
-  });
-  
-  // Gợi ý user chọn thời gian khác
-  suggestOtherTimeSlots();
-}
-```
-
-**Bước 3 - Nếu available = true, gọi API Create Booking:**
-```javascript
-// Chỉ gọi API này sau khi đã check availability
-const bookingResponse = await fetch('/api/bookings', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    venueId: 1,
-    courtId: courtId,
-    startTime: startTime,
-    endTime: endTime
-  })
-});
-```
-
-**💡 Lưu ý quan trọng:**
-- ⚠️ **BẮT BUỘC** phải gọi API này trước khi cho phép user đặt sân
-- ⚠️ Nếu `available = false`, KHÔNG được gọi API Create Booking
-- ⚠️ Nên disable nút "Đặt sân" cho đến khi check availability thành công
-- ⚠️ Có thể xảy ra race condition: Giữa lúc check và lúc đặt có người khác đặt trước. Backend sẽ validate lại và trả lỗi nếu sân đã được đặt.
-- 💡 Khuyến nghị: Hiển thị loading spinner khi đang check availability
-- 💡 Có thể cache kết quả trong 10-30 giây để tránh gọi API quá nhiều lần
-
-**UI/UX Flow đề xuất:**
-
-```
-1. User chọn venue → Hiển thị danh sách courts
-2. User chọn court → Hiển thị calendar/time picker
-3. User chọn startTime và endTime
-4. Frontend: Disable nút "Đặt sân", hiển thị loading
-5. Frontend: Gọi GET /courts/{id}/availability
-6. Nếu available = true:
-   → Enable nút "Đặt sân"
-   → Hiển thị "Sân đang trống, bạn có thể đặt"
-7. Nếu available = false:
-   → Hiển thị "Sân đã được đặt"
-   → Hiển thị danh sách các slot đã đặt (từ bookedSlots)
-   → Gợi ý chọn thời gian khác
-8. User nhấn "Đặt sân" → Gọi POST /bookings
-```
-
-**Response Error (404):**
-```json
-{
-  "success": false,
-  "message": "Court not found"
-}
-```
-
----
-
-### 15. Create Court
-**POST** `/courts`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
-
-**Request Body:**
-```json
-{
-  "description": "Sân số 2",
-  "venues": {
-    "id": 1
-  }
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 2,
-    "description": "Sân số 2",
-    "venues": {
-      "id": 1,
-      "name": "Sân bóng ABC"
-    }
-  },
-  "message": "Created",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
----
-
-### 16. Update Court
-**PUT** `/courts/{id}`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu sân)
-
-**Request Body:**
-```json
-{
-  "description": "Sân số 2 - Đã nâng cấp"
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 2,
-    "description": "Sân số 2 - Đã nâng cấp",
-    "venues": {
-      "id": 1,
-      "name": "Sân bóng ABC"
-    }
-  },
-  "message": "Updated",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
----
-
-### 17. Delete Court
-**DELETE** `/courts/{id}`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu sân)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Deleted",
-  "timestamp": "2025-10-28T15:30:00Z"
-}
-```
-
----
-
-## Price Rules APIs
-
-### 18. Get All Price Rules
-**GET** `/pricerules`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Response Success (200):**
-```json
+// ✅ CHUẨN: Có ApiResponse wrapper
 {
   "success": true,
   "data": [
     {
       "id": 1,
-      "name": "Giờ cao điểm buổi sáng",
-      "startTime": "06:00:00",
-      "endTime": "09:00:00",
-      "pricePerHour": 200000,
-      "active": true,
-      "venues": {...}
-    },
-    {
-      "id": 2,
-      "name": "Giờ thường",
-      "startTime": "09:00:00",
-      "endTime": "17:00:00",
-      "pricePerHour": 150000,
-      "active": true,
-      "venues": {...}
+      "description": "Sân số 1",
+      "venues": {
+        "id": 1,
+        "name": "Sân bóng ABC"
+      }
     }
   ],
-  "message": "List price rules",
-  "timestamp": "2025-10-28T15:30:00Z"
+  "message": "All courts",
+  "timestamp": "2025-11-05T15:30:00Z"
 }
 ```
 
 ---
 
-### 19. Get Price Rules by Venue
-**GET** `/pricerules/venue/{venueId}`
+## 📝 **TÓM TẮT CẦN BỔ SUNG VÀO TÀI LIỆU CHÍNH**
 
-**Authentication Required:** ❌ No (Public)
+### **1. Thêm Section 16.1:**
+- Endpoint: `GET /venues/{venueId}/courts`
+- Vị trí: Đặt NGAY SAU "16. Delete Venue Image"
+- Đặt TRƯỚC "17. Get Courts with Availability"
 
-**Response Success (200):**
-```json
-[
-  {
-    "id": 1,
-    "name": "Giờ cao điểm buổi sáng",
-    "startTime": "06:00:00",
-    "endTime": "09:00:00",
-    "pricePerHour": 200000,
-    "active": true,
-    "venues": {...}
-  },
-  {
-    "id": 2,
-    "name": "Giờ thường",
-    "startTime": "09:00:00",
-    "endTime": "17:00:00",
-    "pricePerHour": 150000,
-    "active": true,
-    "venues": {...}
-  }
-]
-```
+### **2. Fix JSON Response Section 18:**
+- API `GET /courts` hiện tại trả về array trực tiếp
+- Cần ghi chú rõ: "Response này KHÔNG có ApiResponse wrapper"
+- Hoặc đề xuất backend fix
+
+### **3. Thêm bảng so sánh:**
+- So sánh `/venues/{id}/courts` vs `/venues/{id}/courts/availability`
+- Giúp frontend dev chọn đúng API
 
 ---
 
-### 20. Update Price Rule
-**PUT** `/pricerules/{id}`
+## 🚀 **HÀNH ĐỘNG TIẾP THEO**
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu venue)
+### **Cho Frontend Developer:**
+1. ✅ Sử dụng endpoint mới `GET /venues/{venueId}/courts`
+2. ✅ Chỉ dùng `courts/availability` khi thực sự cần booked slots
+3. ✅ Xóa code workaround cũ (filter ở client)
 
-**Request Body:**
-```json
-{
-  "name": "Giờ cao điểm buổi sáng - Updated",
-  "startTime": "06:00:00",
-  "endTime": "10:00:00",
-  "pricePerHour": 250000
-}
-```
+### **Cho Backend Developer:**
+1. ⚠️ Cân nhắc fix `GET /courts` để có ApiResponse wrapper (tính nhất quán)
+2. ⚠️ Hoặc ít nhất ghi chú rõ trong API doc
 
-**Note:** Tất cả field đều optional.
-
-**Response Success (200):**
-```json
-{
-  "id": 1,
-  "name": "Giờ cao điểm buổi sáng - Updated",
-  "startTime": "06:00:00",
-  "endTime": "10:00:00",
-  "pricePerHour": 250000,
-  "active": true,
-  "venues": {...}
-}
-```
+### **Cho Technical Writer:**
+1. ✅ Merge nội dung file này vào `API_DOCUMENTATION_FOR_FRONTEND.md`
+2. ✅ Thêm section 16.1 vào đúng vị trí
+3. ✅ Cập nhật Table of Contents
 
 ---
 
-### 21. Toggle Price Rule (Bật/Tắt)
-**PATCH** `/pricerules/{id}/toggle`
+**Ngày tạo:** 05/11/2025  
+**Người tạo:** AI Assistant  
+**Mục đích:** Bổ sung endpoint còn thiếu và kiểm tra JSON response chuẩn
 
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu venue)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "id": 1,
-  "name": "Giờ cao điểm buổi sáng",
-  "startTime": "06:00:00",
-  "endTime": "10:00:00",
-  "pricePerHour": 250000,
-  "active": false,
-  "venues": {...}
-}
-```
-
----
-
-## Booking APIs
-
-### 22. Create Booking (Đặt sân)
-**POST** `/bookings`
-
-**Authentication Required:** ✅ Yes (ROLE_USER)
-
-**Request Body:**
-```json
-{
-  "venueId": 1,
-  "courtId": 1,
-  "startTime": "2025-10-28T14:00:00",
-  "endTime": "2025-10-28T16:00:00"
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 10,
-    "userId": 1,
-    "userName": "Nguyen Van A",
-    "courtId": 1,
-    "courtName": "Sân số 1",
-    "venuesName": "Sân bóng ABC",
-    "startTime": "2025-10-28T14:00:00",
-    "endTime": "2025-10-28T16:00:00",
-    "totalPrice": 400000,
-    "status": "PENDING_PAYMENT",
-    "expireTime": "2025-10-28T14:05:00",
-    "paymentProofUploaded": false,
-    "paymentProofUrl": null,
-    "paymentProofUploadedAt": null,
-    "rejectionReason": null,
-    "ownerBankInfo": {
-      "bankName": "Vietcombank",
-      "bankAccountNumber": "1234567890",
-      "bankAccountName": "NGUYEN VAN B",
-      "ownerName": "Nguyen Van B"
-    }
-  },
-  "message": "Đặt sân thành công. Vui lòng chuyển khoản trong 5 phút.",
-  "timestamp": "2025-10-28T14:00:00Z"
-}
-```
-
-**Note:**
-- Trạng thái ban đầu: `PENDING_PAYMENT`
-- Có 5 phút để upload ảnh và confirm payment
-- `ownerBankInfo` chứa thông tin tài khoản ngân hàng của chủ sân để người dùng chuyển tiền
-
----
-
-### 23. Upload Payment Proof (Upload ảnh chuyển khoản)
-**POST** `/bookings/{id}/upload-payment-proof`
-
-**Authentication Required:** ✅ Yes (ROLE_USER - chỉ người đặt)
-
-**Request Type:** `multipart/form-data`
-
-**Form Data:**
-- `file`: File ảnh (jpg, jpeg, png - max 10MB)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 10,
-    "userId": 1,
-    "userName": "Nguyen Van A",
-    "courtId": 1,
-    "courtName": "Sân số 1",
-    "venuesName": "Sân bóng ABC",
-    "startTime": "2025-10-28T14:00:00",
-    "endTime": "2025-10-28T16:00:00",
-    "totalPrice": 400000,
-    "status": "PENDING_PAYMENT",
-    "expireTime": "2025-10-28T14:05:00",
-    "paymentProofUploaded": true,
-    "paymentProofUrl": "/api/files/payment-proofs/payment_1730102400000_abc123.jpg",
-    "paymentProofUploadedAt": "2025-10-28T14:03:00",
-    "rejectionReason": null,
-    "ownerBankInfo": {...}
-  },
-  "message": "Đã upload ảnh thành công. Vui lòng nhấn 'Xác nhận thanh toán' để gửi cho chủ sân.",
-  "timestamp": "2025-10-28T14:03:00Z"
-}
-```
-
----
-
-### 24. Confirm Payment (Xác nhận đã chuyển khoản)
-**PUT** `/bookings/{id}/confirm-payment`
-
-**Authentication Required:** ✅ Yes (ROLE_USER - chỉ người đặt)
-
-**Request Body:**
-```json
-{
-  "paymentProofUrl": "/api/files/payment-proofs/payment_1730102400000_abc123.jpg"
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 10,
-    "userId": 1,
-    "userName": "Nguyen Van A",
-    "courtId": 1,
-    "courtName": "Sân số 1",
-    "venuesName": "Sân bóng ABC",
-    "startTime": "2025-10-28T14:00:00",
-    "endTime": "2025-10-28T16:00:00",
-    "totalPrice": 400000,
-    "status": "PENDING_CONFIRMATION",
-    "expireTime": null,
-    "paymentProofUploaded": true,
-    "paymentProofUrl": "/api/files/payment-proofs/payment_1730102400000_abc123.jpg",
-    "paymentProofUploadedAt": "2025-10-28T14:03:00",
-    "rejectionReason": null,
-    "ownerBankInfo": {...}
-  },
-  "message": "Đã gửi chứng minh chuyển khoản. Chờ chủ sân xác nhận.",
-  "timestamp": "2025-10-28T14:04:00Z"
-}
-```
-
-**Note:**
-- Trạng thái chuyển sang `PENDING_CONFIRMATION`
-- Hệ thống gửi thông báo cho chủ sân
-
----
-
-### 25. Accept Booking (Chủ sân chấp nhận)
-**PUT** `/bookings/{id}/accept`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 10,
-    "userId": 1,
-    "userName": "Nguyen Van A",
-    "courtId": 1,
-    "courtName": "Sân số 1",
-    "venuesName": "Sân bóng ABC",
-    "startTime": "2025-10-28T14:00:00",
-    "endTime": "2025-10-28T16:00:00",
-    "totalPrice": 400000,
-    "status": "COMPLETED",
-    "expireTime": null,
-    "paymentProofUploaded": true,
-    "paymentProofUrl": "/api/files/payment-proofs/payment_1730102400000_abc123.jpg",
-    "paymentProofUploadedAt": "2025-10-28T14:03:00",
-    "rejectionReason": null,
-    "ownerBankInfo": {...}
-  },
-  "message": "Đã xác nhận đặt sân thành công.",
-  "timestamp": "2025-10-28T14:10:00Z"
-}
-```
-
-**Note:**
-- Trạng thái chuyển sang `COMPLETED`
-- Hệ thống gửi thông báo cho người đặt sân
-
----
-
-### 26. Reject Booking (Chủ sân từ chối)
-**PUT** `/bookings/{id}/reject`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu)
-
-**Request Body:**
-```json
-{
-  "rejectionReason": "Chưa nhận được tiền chuyển khoản"
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 10,
-    "userId": 1,
-    "userName": "Nguyen Van A",
-    "courtId": 1,
-    "courtName": "Sân số 1",
-    "venuesName": "Sân bóng ABC",
-    "startTime": "2025-10-28T14:00:00",
-    "endTime": "2025-10-28T16:00:00",
-    "totalPrice": 400000,
-    "status": "REJECTED",
-    "expireTime": null,
-    "paymentProofUploaded": true,
-    "paymentProofUrl": "/api/files/payment-proofs/payment_1730102400000_abc123.jpg",
-    "paymentProofUploadedAt": "2025-10-28T14:03:00",
-    "rejectionReason": "Chưa nhận được tiền chuyển khoản",
-    "ownerBankInfo": {...}
-  },
-  "message": "Đã từ chối đặt sân.",
-  "timestamp": "2025-10-28T14:10:00Z"
-}
-```
-
-**Note:**
-- Trạng thái chuyển sang `REJECTED`
-- Hệ thống gửi thông báo cho người đặt sân
-
----
-
-### 27. Get My Bookings (Lấy danh sách booking của tôi)
-**GET** `/bookings/my-bookings`
-
-**Authentication Required:** ✅ Yes (ROLE_USER)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 10,
-      "userId": 1,
-      "userName": "Nguyen Van A",
-      "courtId": 1,
-      "courtName": "Sân số 1",
-      "venuesName": "Sân bóng ABC",
-      "startTime": "2025-10-28T14:00:00",
-      "endTime": "2025-10-28T16:00:00",
-      "totalPrice": 400000,
-      "status": "COMPLETED",
-      "expireTime": null,
-      "paymentProofUploaded": true,
-      "paymentProofUrl": "/api/files/payment-proofs/payment_1730102400000_abc123.jpg",
-      "paymentProofUploadedAt": "2025-10-28T14:03:00",
-      "rejectionReason": null,
-      "ownerBankInfo": {...}
-    }
-  ],
-  "message": "My bookings retrieved successfully",
-  "timestamp": "2025-10-28T15:00:00Z"
-}
-```
-
----
-
-### 28. Get Pending Bookings (Chủ sân xem booking chờ xác nhận)
-**GET** `/bookings/pending`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 11,
-      "userId": 2,
-      "userName": "Tran Thi B",
-      "courtId": 2,
-      "courtName": "Sân số 2",
-      "venuesName": "Sân bóng ABC",
-      "startTime": "2025-10-28T16:00:00",
-      "endTime": "2025-10-28T18:00:00",
-      "totalPrice": 400000,
-      "status": "PENDING_CONFIRMATION",
-      "expireTime": null,
-      "paymentProofUploaded": true,
-      "paymentProofUrl": "/api/files/payment-proofs/payment_1730106000000_xyz789.jpg",
-      "paymentProofUploadedAt": "2025-10-28T15:55:00",
-      "rejectionReason": null,
-      "ownerBankInfo": {...}
-    }
-  ],
-  "message": "Lấy danh sách booking chờ xác nhận thành công.",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 29. Get Venue Bookings (Lấy tất cả booking của một venue)
-**GET** `/bookings/venue/{venueId}`
-
-**Authentication Required:** ✅ Yes (ROLE_OWNER - chỉ chủ sở hữu venue)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 10,
-      "userId": 1,
-      "userName": "Nguyen Van A",
-      "courtId": 1,
-      "courtName": "Sân số 1",
-      "venuesName": "Sân bóng ABC",
-      "startTime": "2025-10-28T14:00:00",
-      "endTime": "2025-10-28T16:00:00",
-      "totalPrice": 400000,
-      "status": "COMPLETED",
-      ...
-    }
-  ],
-  "message": "Lấy danh sách booking thành công.",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 30. Get Booking by ID
-**GET** `/bookings/{id}`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 10,
-    "userId": 1,
-    "userName": "Nguyen Van A",
-    "courtId": 1,
-    "courtName": "Sân số 1",
-    "venuesName": "Sân bóng ABC",
-    "startTime": "2025-10-28T14:00:00",
-    "endTime": "2025-10-28T16:00:00",
-    "totalPrice": 400000,
-    "status": "COMPLETED",
-    ...
-  },
-  "message": "Booking retrieved successfully",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 31. Cancel Booking (Người dùng hủy booking)
-**PUT** `/bookings/{id}/cancel`
-
-**Authentication Required:** ✅ Yes (ROLE_USER - chỉ người đặt)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 10,
-    "status": "CANCELLED",
-    ...
-  },
-  "message": "Booking cancelled successfully",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-## Notification APIs
-
-### 32. Get My Notifications
-**GET** `/notifications`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "bookingId": 10,
-      "type": "BOOKING_ACCEPTED",
-      "title": "Đặt sân thành công",
-      "message": "Booking #10 đã được chủ sân xác nhận. Bạn có thể đến sân vào 2025-10-28 14:00:00.",
-      "isRead": false,
-      "createdAt": "2025-10-28T14:10:00Z",
-      "senderName": "Nguyen Van B"
-    },
-    {
-      "id": 2,
-      "bookingId": 11,
-      "type": "NEW_BOOKING",
-      "title": "Có booking mới",
-      "message": "Bạn có booking mới #11 từ Tran Thi B. Vui lòng kiểm tra và xác nhận.",
-      "isRead": true,
-      "createdAt": "2025-10-28T15:56:00Z",
-      "senderName": "Tran Thi B"
-    }
-  ],
-  "message": "Lấy danh sách thông báo thành công.",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
-**Notification Types:**
-- `NEW_BOOKING`: Có booking mới (gửi cho OWNER)
-- `BOOKING_ACCEPTED`: Booking được chấp nhận (gửi cho USER)
-- `BOOKING_REJECTED`: Booking bị từ chối (gửi cho USER)
-- `BOOKING_CANCELLED`: Booking bị hủy (gửi cho OWNER)
-
----
-
-### 33. Get Unread Count
-**GET** `/notifications/unread-count`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": 5,
-  "message": "Số thông báo chưa đọc.",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 34. Mark Notification as Read
-**PUT** `/notifications/{id}/read`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Đã đánh dấu thông báo là đã đọc.",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 35. Mark All as Read
-**PUT** `/notifications/read-all`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Đã đánh dấu tất cả thông báo là đã đọc.",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 36. Delete Notification
-**DELETE** `/notifications/{id}`
-
-**Authentication Required:** ✅ Yes (Any authenticated user)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Đã xóa thông báo.",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-## Review APIs
-
-### 37. Create Review (Đánh giá sau khi hoàn thành booking)
-**POST** `/bookings/{bookingId}/review`
-
-**Authentication Required:** ✅ Yes (ROLE_USER - chỉ người đã đặt sân)
-
-**Request Body:**
-```json
-{
-  "rating": 5,
-  "comment": "Sân rất đẹp, chất lượng tốt. Sẽ quay lại lần sau!"
-}
-```
-
-**Validation Rules:**
-- `rating`: Bắt buộc, từ 1-5
-- `comment`: Tùy chọn
-
-**Note:** Chỉ có thể review booking có status = `COMPLETED`
-
-**Response Success (201):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "userId": 1,
-    "userFullname": "Nguyen Van A",
-    "venueId": 1,
-    "venueName": "Sân bóng ABC",
-    "bookingId": 10,
-    "rating": 5,
-    "comment": "Sân rất đẹp, chất lượng tốt. Sẽ quay lại lần sau!",
-    "createdAt": "2025-10-28T16:30:00Z",
-    "updatedAt": "2025-10-28T16:30:00Z"
-  },
-  "message": "Review created successfully",
-  "timestamp": "2025-10-28T16:30:00Z"
-}
-```
-
----
-
-### 38. Get Venue Reviews (Xem tất cả đánh giá của một venue)
-**GET** `/venues/{venueId}/reviews`
-
-**Authentication Required:** ❌ No (Public)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "userId": 1,
-      "userFullname": "Nguyen Van A",
-      "venueId": 1,
-      "venueName": "Sân bóng ABC",
-      "bookingId": 10,
-      "rating": 5,
-      "comment": "Sân rất đẹp, chất lượng tốt. Sẽ quay lại lần sau!",
-      "createdAt": "2025-10-28T16:30:00Z",
-      "updatedAt": "2025-10-28T16:30:00Z"
-    },
-    {
-      "id": 2,
-      "userId": 2,
-      "userFullname": "Tran Thi B",
-      "venueId": 1,
-      "venueName": "Sân bóng ABC",
-      "bookingId": 12,
-      "rating": 4,
-      "comment": "Sân ổn, giá hợp lý",
-      "createdAt": "2025-10-27T10:00:00Z",
-      "updatedAt": "2025-10-27T10:00:00Z"
-    }
-  ],
-  "message": "Reviews retrieved successfully",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 39. Get My Reviews (Xem tất cả đánh giá của tôi)
-**GET** `/my-reviews`
-
-**Authentication Required:** ✅ Yes (ROLE_USER)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "userId": 1,
-      "userFullname": "Nguyen Van A",
-      "venueId": 1,
-      "venueName": "Sân bóng ABC",
-      "bookingId": 10,
-      "rating": 5,
-      "comment": "Sân rất đẹp, chất lượng tốt. Sẽ quay lại lần sau!",
-      "createdAt": "2025-10-28T16:30:00Z",
-      "updatedAt": "2025-10-28T16:30:00Z"
-    }
-  ],
-  "message": "Your reviews retrieved successfully",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 40. Get Booking Review (Xem review của một booking)
-**GET** `/bookings/{bookingId}/review`
-
-**Authentication Required:** ✅ Yes (ROLE_USER)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "userId": 1,
-    "userFullname": "Nguyen Van A",
-    "venueId": 1,
-    "venueName": "Sân bóng ABC",
-    "bookingId": 10,
-    "rating": 5,
-    "comment": "Sân rất đẹp, chất lượng tốt. Sẽ quay lại lần sau!",
-    "createdAt": "2025-10-28T16:30:00Z",
-    "updatedAt": "2025-10-28T16:30:00Z"
-  },
-  "message": "Review retrieved successfully",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 41. Delete Review
-**DELETE** `/reviews/{reviewId}`
-
-**Authentication Required:** ✅ Yes (ROLE_USER - chỉ người tạo review)
-
-**Request Body:** None
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Review deleted successfully",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-## File APIs
-
-### 42. Get Payment Proof Image
-**GET** `/files/payment-proofs/{filename}`
-
-**Authentication Required:** ❌ No (Public - nhưng URL khó đoán)
-
-**Example:**
-```
-GET /files/payment-proofs/payment_1730102400000_abc123.jpg
-```
-
-**Response:** Image file (image/jpeg hoặc image/png)
-
-**Note:** URL này được trả về trong `paymentProofUrl` của BookingResponse. Có thể dùng trực tiếp trong thẻ `<img>` hoặc để hiển thị ảnh.
-
----
-
-## Address APIs
-
-### 43. Get All Addresses
-**GET** `/addresses`
-
-**Authentication Required:** ❌ No (Public)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "provinceOrCity": "Hà Nội",
-      "district": "Cầu Giấy",
-      "detailAddress": "123 Đường ABC"
-    }
-  ],
-  "message": "List addresses",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 44. Get Address by ID
-**GET** `/addresses/{id}`
-
-**Authentication Required:** ❌ No (Public)
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "provinceOrCity": "Hà Nội",
-    "district": "Cầu Giấy",
-    "detailAddress": "123 Đường ABC"
-  },
-  "message": "OK",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-### 45. Create Address
-**POST** `/addresses`
-
-**Authentication Required:** ❌ No (nhưng nên bảo mật lại)
-
-**Request Body:**
-```json
-{
-  "provinceOrCity": "Hồ Chí Minh",
-  "district": "Quận 1",
-  "detailAddress": "789 Đường XYZ"
-}
-```
-
-**Response Success (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 2,
-    "provinceOrCity": "Hồ Chí Minh",
-    "district": "Quận 1",
-    "detailAddress": "789 Đường XYZ"
-  },
-  "message": "Created",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-## Booking Status Flow (Luồng trạng thái đặt sân)
-
-```
-1. USER tạo booking
-   ↓
-   Status: PENDING_PAYMENT
-   ↓ (có 5 phút)
-   
-2. USER upload ảnh chuyển khoản
-   ↓
-   Status: vẫn PENDING_PAYMENT
-   ↓
-   
-3. USER confirm payment
-   ↓
-   Status: PENDING_CONFIRMATION
-   ↓ (gửi thông báo cho OWNER)
-   
-4a. OWNER accept          hoặc     4b. OWNER reject
-    ↓                                   ↓
-    Status: COMPLETED                   Status: REJECTED
-    ↓                                   ↓
-    (gửi thông báo cho USER)           (gửi thông báo cho USER)
-    ↓
-    USER có thể review
-```
-
-**Các trạng thái:**
-- `PENDING_PAYMENT`: Chờ user upload ảnh và confirm
-- `PENDING_CONFIRMATION`: Chờ owner xác nhận
-- `COMPLETED`: Đã hoàn thành
-- `REJECTED`: Bị từ chối
-- `CANCELLED`: Bị hủy (do user hoặc hệ thống)
-- `EXPIRED`: Hết hạn (quá 5 phút không upload ảnh)
-
----
-
-## Common Error Responses
-
-### 400 Bad Request
-```json
-{
-  "success": false,
-  "message": "Validation error message",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
-### 401 Unauthorized
-```json
-{
-  "success": false,
-  "message": "Unauthorized",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
-### 403 Forbidden
-```json
-{
-  "success": false,
-  "message": "You don't have permission to access this resource",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
-### 404 Not Found
-```json
-{
-  "success": false,
-  "message": "Resource not found",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
-### 500 Internal Server Error
-```json
-{
-  "success": false,
-  "message": "Internal server error",
-  "timestamp": "2025-10-28T16:00:00Z"
-}
-```
-
----
-
-## Notes for Frontend Developers
-
-### 1. DateTime Format
-- Tất cả datetime đều dùng ISO 8601 format
-- Example: `2025-10-28T14:00:00`
-- Timestamp trong response dùng ISO 8601 với timezone: `2025-10-28T14:00:00Z`
-
-### 2. Authorization Header
-```javascript
-headers: {
-  'Authorization': `Bearer ${token}`,
-  'Content-Type': 'application/json'
-}
-```
-
-### 3. File Upload
-```javascript
-const formData = new FormData();
-formData.append('file', fileObject);
-
-fetch('/api/bookings/{id}/upload-payment-proof', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${token}`
-    // Không set Content-Type khi upload file
-  },
-  body: formData
-});
-```
-
-### 4. Polling for Notifications
-Nên poll API `/notifications/unread-count` mỗi 30-60 giây để cập nhật số thông báo chưa đọc.
-
-### 5. Image Display
-Payment proof images có thể hiển thị trực tiếp:
-```html
-<img src="http://localhost:8080/api/files/payment-proofs/payment_xxx.jpg" />
-```
-
-### 6. Role-based UI
-- Kiểm tra `roles` trong JWT response để hiển thị UI phù hợp
-- `ROLE_USER`: Chức năng đặt sân, xem booking của mình, review
-- `ROLE_OWNER`: Tạo venue, court, price rules, quản lý booking
-
----
-
-## Testing với Postman
-
-### 1. Login và lấy token
-```
-POST http://localhost:8080/api/auth/login
-Body: {"phone": "0123456789", "password": "password123"}
-→ Copy jwtToken từ response
-```
-
-### 2. Set Authorization
-```
-Authorization: Bearer {jwtToken}
-```
-
-### 3. Test các API theo thứ tự
-1. Register user
-2. Login
-3. Request owner role (nếu cần)
-4. Login lại để lấy role mới
-5. Create venue (với OWNER role)
-6. Create court
-7. Create price rules
-8. Create booking (với USER role)
-9. Upload payment proof
-10. Confirm payment
-11. Accept/Reject booking (với OWNER role)
-12. Create review
-13. Get notifications
-
----
-
-## Swagger UI
-Truy cập Swagger UI để test API tương tác
-```
-http://localhost:8080/swagger-ui/index.html
-```
-
----
-
-**Last Updated:** October 28, 2025
-**Version:** 1.0
-**Backend Developer:** CodeWithVy Team

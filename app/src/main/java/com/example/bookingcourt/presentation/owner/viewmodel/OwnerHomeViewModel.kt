@@ -1,11 +1,13 @@
 package com.example.bookingcourt.presentation.owner.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.domain.repository.AuthRepository
+import com.example.bookingcourt.domain.repository.BookingRepository
 import com.example.bookingcourt.domain.repository.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,10 +33,15 @@ data class OwnerHomeState(
 class OwnerHomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val venueRepository: VenueRepository,
+    private val bookingRepository: BookingRepository, // ✅ Inject BookingRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OwnerHomeState())
     val state: StateFlow<OwnerHomeState> = _state.asStateFlow()
+
+    // ✅ State cho số lượng pending bookings
+    private val _pendingBookingsCount = MutableStateFlow(0)
+    val pendingBookingsCount: StateFlow<Int> = _pendingBookingsCount.asStateFlow()
 
     init {
         loadUserInfo()
@@ -109,9 +116,38 @@ class OwnerHomeViewModel @Inject constructor(
         }
     }
 
+    // ✅ Load số lượng pending bookings
+    fun loadPendingBookingsCount() {
+        viewModelScope.launch {
+            try {
+                Log.d("OwnerHomeVM", "📊 Loading pending bookings count...")
+                bookingRepository.getPendingBookings().collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            val count = result.data?.size ?: 0
+                            _pendingBookingsCount.value = count
+                            Log.d("OwnerHomeVM", "✅ Pending bookings count: $count")
+                        }
+                        is Resource.Error -> {
+                            Log.e("OwnerHomeVM", "❌ Error loading pending bookings count: ${result.message}")
+                            _pendingBookingsCount.value = 0
+                        }
+                        is Resource.Loading -> {
+                            Log.d("OwnerHomeVM", "⏳ Loading pending bookings count...")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("OwnerHomeVM", "❌ Exception loading pending bookings count", e)
+                _pendingBookingsCount.value = 0
+            }
+        }
+    }
+
     fun refresh() {
         loadUserInfo()
         loadVenues()
+        loadPendingBookingsCount() // ✅ Refresh count khi refresh
     }
 
     fun resetUpdateSuccess() {

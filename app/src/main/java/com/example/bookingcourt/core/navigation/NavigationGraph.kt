@@ -362,8 +362,9 @@ fun NavigationGraph(
                 PaymentScreen(
                     bookingId = bookingId,
                     onNavigateBack = { navController.navigateUp() },
-                    onPaymentSuccess = {
-                        navController.navigate(Screen.BookingHistory.route) {
+                    onPaymentSuccess = { createdBookingId ->
+                        // Navigate to BookingDetailPayment screen with bank info
+                        navController.navigate(Screen.BookingDetailPayment.createRoute(createdBookingId)) {
                             popUpTo(Screen.Home.route)
                         }
                     },
@@ -550,6 +551,80 @@ fun NavigationGraph(
             composable(route = Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateBack = { navController.navigateUp() },
+                )
+            }
+
+            // ========== PAYMENT CONFIRMATION FLOW ==========
+
+            // User: Màn hình chi tiết booking với upload payment proof
+            composable(
+                route = Screen.BookingDetailPayment.route,
+                arguments = listOf(
+                    navArgument("bookingId") {
+                        type = NavType.StringType
+                    },
+                ),
+            ) { backStackEntry ->
+                val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+                com.example.bookingcourt.presentation.booking.screen.BookingDetailScreen(
+                    bookingId = bookingId,
+                    onNavigateBack = { navController.navigateUp() },
+                    onNavigateToWaiting = { id ->
+                        navController.navigate(Screen.PaymentWaiting.createRoute(id)) {
+                            popUpTo(Screen.BookingDetailPayment.createRoute(id)) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // User: Màn hình chờ owner xác nhận thanh toán
+            composable(
+                route = Screen.PaymentWaiting.route,
+                arguments = listOf(
+                    navArgument("bookingId") {
+                        type = NavType.StringType
+                    },
+                ),
+            ) { backStackEntry ->
+                val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+                com.example.bookingcourt.presentation.booking.screen.PaymentWaitingScreen(
+                    bookingId = bookingId,
+                    onNavigateBack = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToHome = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // Owner: Danh sách booking chờ xác nhận
+            composable(route = Screen.PendingBookings.route) {
+                com.example.bookingcourt.presentation.owner.screen.PendingBookingsScreen(
+                    onNavigateBack = { navController.navigateUp() },
+                    onNavigateToApproval = { bookingId ->
+                        navController.navigate(Screen.BookingApproval.createRoute(bookingId))
+                    }
+                )
+            }
+
+            // Owner: Màn hình xét duyệt booking (accept/reject)
+            composable(
+                route = Screen.BookingApproval.route,
+                arguments = listOf(
+                    navArgument("bookingId") {
+                        type = NavType.StringType
+                    },
+                ),
+            ) { backStackEntry ->
+                val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+                com.example.bookingcourt.presentation.owner.screen.BookingApprovalScreen(
+                    bookingId = bookingId,
+                    onNavigateBack = { navController.navigateUp() }
                 )
             }
         }

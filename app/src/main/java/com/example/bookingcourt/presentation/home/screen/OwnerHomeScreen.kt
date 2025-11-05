@@ -46,14 +46,23 @@ fun OwnerHomeScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToBecomeCustomer: () -> Unit = {},
     onNavigateToCreateVenue: () -> Unit = {},
+    onNavigateToPendingBookings: () -> Unit = {}, // New navigation callback
     onLogout: () -> Unit = {},
     viewModel: OwnerHomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var selectedTab by remember { mutableStateOf(HomeTab.HOME) }
 
+    // ✅ Thêm state để track số lượng pending bookings
+    val pendingBookingsCount by viewModel.pendingBookingsCount.collectAsState()
+
     // Snackbar host for error messages
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // ✅ Load pending bookings count khi screen được tạo
+    LaunchedEffect(Unit) {
+        viewModel.loadPendingBookingsCount()
+    }
 
     // Show error message if any
     LaunchedEffect(state.error) {
@@ -121,6 +130,8 @@ fun OwnerHomeScreen(
                     onNavigateToCreateVenue = onNavigateToCreateVenue,
                     bottomPadding = paddingValues.calculateBottomPadding(),
                     snackbarHostState = snackbarHostState,
+                    onNavigateToPendingBookings = onNavigateToPendingBookings,
+                    pendingBookingsCount = pendingBookingsCount // ✅ Pass count
                 )
             }
             HomeTab.PROFILE -> {
@@ -146,6 +157,8 @@ private fun OwnerHomeContent(
     onNavigateToCreateVenue: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
     snackbarHostState: SnackbarHostState,
+    onNavigateToPendingBookings: () -> Unit, // New parameter for navigation
+    pendingBookingsCount: Int = 0, // ✅ Add count parameter
     viewModel: OwnerHomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -275,6 +288,83 @@ private fun OwnerHomeContent(
                                 text = "Tìm kiếm sân của bạn...",
                                 color = Color.Gray,
                                 fontSize = 16.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Button "Booking chờ xác nhận" - NEW with count badge
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToPendingBookings() },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFF9800) // Orange color for attention
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // ✅ Icon with badge
+                                Box {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Booking chờ xác nhận",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    // ✅ Badge hiển thị số lượng
+                                    if (pendingBookingsCount > 0) {
+                                        Box(
+                                            modifier = Modifier
+                                                .offset(x = 20.dp, y = (-4).dp)
+                                                .size(20.dp)
+                                                .background(Color.Red, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = if (pendingBookingsCount > 9) "9+" else "$pendingBookingsCount",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                                Column {
+                                    Text(
+                                        text = "Booking chờ xác nhận",
+                                        color = Color.White,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = if (pendingBookingsCount > 0) {
+                                            "$pendingBookingsCount booking cần xử lý"
+                                        } else {
+                                            "Xem và duyệt đặt sân"
+                                        },
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowRight,
+                                contentDescription = "Xem chi tiết",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                     }

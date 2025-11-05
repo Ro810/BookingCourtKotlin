@@ -1,14 +1,16 @@
 package com.example.bookingcourt.presentation.payment.screen
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,8 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.BookingData
 import com.example.bookingcourt.domain.model.CourtTimeSlot
+import com.example.bookingcourt.presentation.payment.viewmodel.PaymentViewModel
 import com.example.bookingcourt.presentation.theme.BookingCourtTheme
 import com.example.bookingcourt.presentation.theme.Primary
 import java.net.URLDecoder
@@ -30,11 +35,12 @@ import com.google.gson.Gson
 fun PaymentScreen(
     bookingId: String,
     onNavigateBack: () -> Unit,
-    onPaymentSuccess: () -> Unit,
+    onPaymentSuccess: (String) -> Unit, // Changed to pass bookingId
+    paymentViewModel: PaymentViewModel = hiltViewModel()
 ) {
     // Decode URL-encoded JSON string and deserialize BookingData
     val gson = Gson()
-    val bookingData = try {
+    val initialBookingData = try {
         // Decode URL-encoded string first
         val decodedJson = URLDecoder.decode(bookingId, StandardCharsets.UTF_8.toString())
         gson.fromJson(decodedJson, BookingData::class.java)
@@ -53,10 +59,88 @@ fun PaymentScreen(
         )
     }
 
+    // State để lưu bookingData có thể cập nhật từ API
+    var bookingData by remember { mutableStateOf(initialBookingData) }
+
+    // Observe create booking state
+    val createBookingState by paymentViewModel.createBookingState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Handle create booking result
+    LaunchedEffect(createBookingState) {
+        when (val state = createBookingState) {
+            is Resource.Success -> {
+                val bookingWithBankInfo = state.data
+                if (bookingWithBankInfo != null) {
+                    // ✅ LOG CHI TIẾT để debug vấn đề thông tin sân bị nhầm
+                    Log.d("PaymentScreen", "========== BOOKING CREATED SUCCESSFULLY ==========")
+                    Log.d("PaymentScreen", "  📋 Booking ID: ${bookingWithBankInfo.id}")
+                    Log.d("PaymentScreen", "  🏟️ Court ID: ${bookingWithBankInfo.court.id}")
+                    Log.d("PaymentScreen", "  🏟️ Court Name: ${bookingWithBankInfo.court.description}")
+                    Log.d("PaymentScreen", "  🏢 Venue ID: ${bookingWithBankInfo.venue.id}")
+                    Log.d("PaymentScreen", "  🏢 Venue Name: ${bookingWithBankInfo.venue.name}")
+                    Log.d("PaymentScreen", "  💰 Total Price: ${bookingWithBankInfo.totalPrice}")
+                    Log.d("PaymentScreen", "  🏦 Bank Name: ${bookingWithBankInfo.ownerBankInfo.bankName}")
+                    Log.d("PaymentScreen", "  🏦 Account Number: ${bookingWithBankInfo.ownerBankInfo.bankAccountNumber}")
+                    Log.d("PaymentScreen", "  🏦 Account Name: ${bookingWithBankInfo.ownerBankInfo.bankAccountName}")
+                    Log.d("PaymentScreen", "  ⏰ Start Time: ${bookingWithBankInfo.startTime}")
+                    Log.d("PaymentScreen", "  ⏰ End Time: ${bookingWithBankInfo.endTime}")
+                    Log.d("PaymentScreen", "====================================================")
+
+                    // ✅ CẬP NHẬT bookingData với thông tin CHÍNH XÁC từ API
+                    bookingData = bookingData.copy(
+                        courtName = "${bookingWithBankInfo.venue.name} - ${bookingWithBankInfo.court.description}",
+                        totalPrice = bookingWithBankInfo.totalPrice.toLong(),
+                        ownerBankInfo = bookingWithBankInfo.ownerBankInfo,
+                        expireTime = bookingWithBankInfo.expireTime.toString()
+                    )
+
+                    Log.d("PaymentScreen", "✅ Updated bookingData with API response:")
+                    Log.d("PaymentScreen", "  Court Name: ${bookingData.courtName}")
+                    Log.d("PaymentScreen", "  Bank: ${bookingData.ownerBankInfo?.bankName}")
+                    Log.d("PaymentScreen", "  Account: ${bookingData.ownerBankInfo?.bankAccountNumber}")
+
+                    snackbarHostState.showSnackbar(
+                        message = "Đặt sân thành công!",
+                        duration = SnackbarDuration.Short
+                    )
+                    // Reset state và navigate with bookingId
+                    paymentViewModel.resetCreateBookingState()
+                    onPaymentSuccess(bookingWithBankInfo.id)
+                }
+            }
+            is Resource.Error -> {
+                Log.e("PaymentScreen", "❌ Error creating booking: ${state.message}")
+                snackbarHostState.showSnackbar(
+                    message = state.message ?: "Đã xảy ra lỗi khi đặt sân",
+                    duration = SnackbarDuration.Long
+                )
+                paymentViewModel.resetCreateBookingState()
+            }
+            else -> { /* Loading or null */ }
+        }
+    }
+
     BookingConfirmationScreenContent(
         bookingData = bookingData,
         onNavigateBack = onNavigateBack,
-        onConfirmPayment = onPaymentSuccess
+        onConfirmPayment = {
+            // Gọi API tạo booking khi bấm xác nhận
+            Log.d("PaymentScreen", "📝 Calling API to create booking:")
+            Log.d("PaymentScreen", "  Court ID: ${bookingData.courtId}")
+            Log.d("PaymentScreen", "  Start: ${bookingData.startTime}")
+            Log.d("PaymentScreen", "  End: ${bookingData.endTime}")
+
+            paymentViewModel.createBooking(
+                courtId = bookingData.courtId,
+                startTime = bookingData.startTime,
+                endTime = bookingData.endTime,
+                notes = null,
+                paymentMethod = "BANK_TRANSFER"
+            )
+        },
+        isLoading = createBookingState is Resource.Loading,
+        snackbarHostState = snackbarHostState
     )
 }
 
@@ -65,14 +149,16 @@ fun PaymentScreen(
 fun BookingConfirmationScreenContent(
     bookingData: BookingData,
     onNavigateBack: () -> Unit,
-    onConfirmPayment: () -> Unit
+    onConfirmPayment: () -> Unit,
+    isLoading: Boolean = false,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Xác nhận đặt sân", color = Color.White) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = onNavigateBack, enabled = !isLoading) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -86,7 +172,8 @@ fun BookingConfirmationScreenContent(
                     navigationIconContentColor = Color.Black
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -227,7 +314,7 @@ fun BookingConfirmationScreenContent(
             ) {
                 InfoRow(
                     label = "Giá/giờ:",
-                    value = "${bookingData.pricePerHour / 1000}.000 VNĐ"
+                    value = "${bookingData.pricePerHour.formatPrice()} VNĐ"
                 )
                 InfoRow(
                     label = "Số giờ:",
@@ -250,7 +337,7 @@ fun BookingConfirmationScreenContent(
                         color = Color.Black
                     )
                     Text(
-                        text = "${bookingData.totalPrice / 1000}.000 VNĐ",
+                        text = "${bookingData.totalPrice.formatPrice()} VNĐ",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Primary
@@ -288,7 +375,7 @@ fun BookingConfirmationScreenContent(
                             )
                             InfoRow(
                                 label = "Số tiền:",
-                                value = "${bookingData.totalPrice / 1000}.000 VNĐ",
+                                value = "${bookingData.totalPrice.formatPrice()} VNĐ",
                                 valueColor = Primary
                             )
                         }
@@ -363,7 +450,8 @@ fun BookingConfirmationScreenContent(
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Primary
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isLoading
                 ) {
                     Text("Quay lại", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
@@ -376,24 +464,57 @@ fun BookingConfirmationScreenContent(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Primary
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isLoading
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Payment,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Xác nhận",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Payment,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Xác nhận",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Show loading overlay when creating booking
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                    Text(
+                        text = "Đang tạo booking...",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }
@@ -451,18 +572,34 @@ fun InfoRow(
         Text(
             text = label,
             fontSize = 14.sp,
-            color = Color.Gray,
-            modifier = Modifier.weight(1f)
+            color = Color.Gray
         )
         Text(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = valueColor,
-            modifier = Modifier.weight(1.5f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.End
+            color = valueColor
         )
     }
+}
+
+// ✅ Helper function để format giá tiền đúng
+private fun Long.formatPrice(): String {
+    return "%,d".format(this).replace(',', '.')
+}
+
+private fun formatEndTime(timeSlot: String): String {
+    val parts = timeSlot.split(":")
+    if (parts.size < 2) return timeSlot
+
+    val hour = parts[0].toIntOrNull() ?: return timeSlot
+    val minute = parts[1].toIntOrNull() ?: return timeSlot
+
+    val totalMinutes = hour * 60 + minute + 30
+    val endHour = (totalMinutes / 60) % 24
+    val endMinute = totalMinutes % 60
+
+    return String.format("%02d:%02d", endHour, endMinute)
 }
 
 @Preview(showBackground = true)
@@ -475,21 +612,4 @@ fun PaymentScreenPreview() {
             onPaymentSuccess = {}
         )
     }
-}
-
-// Format end time based on start time slot (add 30 minutes)
-fun formatEndTime(timeSlot: String): String {
-    // Assuming timeSlot is in "HH:mm" format
-    val parts = timeSlot.split(":")
-    if (parts.size != 2) return timeSlot // Return original if format is incorrect
-
-    val hour = parts[0].toIntOrNull() ?: return timeSlot
-    val minute = parts[1].toIntOrNull() ?: return timeSlot
-
-    // Add 30 minutes to the selected slot to calculate end time
-    val totalMinutes = hour * 60 + minute + 30
-    val endHour = (totalMinutes / 60) % 24
-    val endMinute = totalMinutes % 60
-
-    return String.format("%02d:%02d", endHour, endMinute)
 }

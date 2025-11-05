@@ -33,6 +33,10 @@ class BookingViewModel @Inject constructor(
     private val _courtsState = MutableStateFlow<Resource<List<CourtDetail>>?>(null)
     val courtsState: StateFlow<Resource<List<CourtDetail>>?> = _courtsState.asStateFlow()
 
+    // State cho booked slots
+    private val _bookedSlotsState = MutableStateFlow<Resource<List<com.example.bookingcourt.domain.model.BookedSlot>>?>(null)
+    val bookedSlotsState: StateFlow<Resource<List<com.example.bookingcourt.domain.model.BookedSlot>>?> = _bookedSlotsState.asStateFlow()
+
     /**
      * Tạo booking mới - trả về thông tin booking kèm thông tin ngân hàng của chủ sân
      * @param courtId: ID của court (CHÚ Ý: đây là courtId, không phải venueId)
@@ -119,6 +123,19 @@ class BookingViewModel @Inject constructor(
         viewModelScope.launch {
             courtRepository.getCourtsByVenueId(venueId).collect { result ->
                 _courtsState.value = result
+            }
+        }
+    }
+
+    /**
+     * Lấy các time slots đã được đặt cho một venue trong ngày cụ thể
+     * @param venueId ID của venue
+     * @param date Ngày cần kiểm tra (format: yyyy-MM-dd)
+     */
+    fun getBookedSlots(venueId: Long, date: String) {
+        viewModelScope.launch {
+            bookingRepository.getBookedSlots(venueId, date).collect { result ->
+                _bookedSlotsState.value = result
             }
         }
     }

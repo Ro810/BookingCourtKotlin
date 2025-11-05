@@ -3,16 +3,22 @@ package com.example.bookingcourt.data.repository
 import android.util.Log
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.data.remote.api.BookingApi
+import com.example.bookingcourt.data.remote.api.VenueApi
 import com.example.bookingcourt.data.remote.dto.*
 import com.example.bookingcourt.domain.model.*
 import com.example.bookingcourt.domain.repository.BookingRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.LocalDateTime
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 import javax.inject.Inject
 
 class BookingRepositoryImpl @Inject constructor(
-    private val bookingApi: BookingApi
+    private val bookingApi: BookingApi,
+    private val venueApi: VenueApi // ✅ Inject VenueApi để gọi availability API
 ) : BookingRepository {
 
     override suspend fun createBooking(
@@ -24,15 +30,18 @@ class BookingRepositoryImpl @Inject constructor(
     ): Flow<Resource<BookingWithBankInfo>> = flow {
         emit(Resource.Loading())
         try {
-            // Parse courtId format: "venueId_courtNumber"
-            // VD: "5_1" -> venueId=5, courtId=1
+            // ✅ Parse courtId format: "venueId_courtId"
+            // VD: "14_4" -> venueId=14, courtId=4
+            // Backend CẦN CẢ HAI để validate và tính giá
             val parts = courtId.split("_")
             val venueIdLong = parts.getOrNull(0)?.toLongOrNull()
                 ?: throw IllegalArgumentException("Invalid venueId in courtId: $courtId")
             val courtIdLong = parts.getOrNull(1)?.toLongOrNull()
-                ?: throw IllegalArgumentException("Invalid courtId format: $courtId. Expected format: venueId_courtNumber")
+                ?: throw IllegalArgumentException("Invalid courtId format: $courtId. Expected format: venueId_courtId")
 
-            // ✅ Theo API document, chỉ cần 4 fields: venueId, courtId, startTime, endTime
+            // ✅ Backend yêu cầu cả venueId và courtId
+            // venueId: để validate court thuộc venue + tính giá
+            // courtId: để lưu vào bookings table
             val request = CreateBookingRequestDto(
                 venueId = venueIdLong,
                 courtId = courtIdLong,
@@ -42,7 +51,7 @@ class BookingRepositoryImpl @Inject constructor(
 
             // Log request để debug
             Log.d("BookingRepo", "========== CREATE BOOKING REQUEST ==========")
-            Log.d("BookingRepo", "  Original courtId: $courtId")
+            Log.d("BookingRepo", "  Original courtId param: $courtId")
             Log.d("BookingRepo", "  Parsed venueId: $venueIdLong")
             Log.d("BookingRepo", "  Parsed courtId: $courtIdLong")
             Log.d("BookingRepo", "  startTime: $startTime")
@@ -56,6 +65,8 @@ class BookingRepositoryImpl @Inject constructor(
 
             Log.d("BookingRepo", "✅ Booking created successfully!")
             Log.d("BookingRepo", "  Booking ID: ${response.id}")
+            Log.d("BookingRepo", "  Court ID: ${response.courtId}")
+            Log.d("BookingRepo", "  Venue Name: ${response.venuesName}")
             Log.d("BookingRepo", "  Total Price: ${response.totalPrice}")
             Log.d("BookingRepo", "  API message: ${apiResponse.message}")
 
@@ -123,8 +134,10 @@ class BookingRepositoryImpl @Inject constructor(
     override suspend fun getBookingById(bookingId: String): Flow<Resource<Booking>> = flow {
         emit(Resource.Loading())
         try {
-            val response = bookingApi.getBookingById(bookingId)
-            val booking = response.toBooking()
+            val response = bookingApi.getBookingDetail(bookingId)
+            val bookingDetail = response.data.toBookingDetail()
+            // Convert BookingDetail to Booking for backward compatibility
+            val booking = bookingDetail.toBooking()
             emit(Resource.Success(booking))
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Lỗi khi lấy chi tiết booking"))
@@ -163,6 +176,173 @@ class BookingRepositoryImpl @Inject constructor(
             emit(Resource.Success(bookings))
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Lỗi khi lấy booking sắp tới"))
+        }
+    }
+
+    // Payment confirmation flow implementations
+
+    override suspend fun uploadPaymentProof(
+        bookingId: String,
+        imageFile: File
+    ): Flow<Resource<BookingDetail>> = flow {
+        emit(Resource.Loading())
+        try {
+            val requestFile = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
+            val body = MultipartBody.Part.createFormData("file", imageFile.name, requestFile)
+
+            val response = bookingApi.uploadPaymentProof(bookingId, body)
+            val bookingDetail = response.data.toBookingDetail()
+            emit(Resource.Success(bookingDetail))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "Error uploading payment proof", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi upload ảnh"))
+        }
+    }
+
+    override suspend fun confirmPayment(
+        bookingId: String,
+        paymentProofUrl: String
+    ): Flow<Resource<BookingDetail>> = flow {
+        emit(Resource.Loading())
+        try {
+            val request = ConfirmPaymentRequestDto(paymentProofUrl)
+            val response = bookingApi.confirmPayment(bookingId, request)
+            val bookingDetail = response.data.toBookingDetail()
+            emit(Resource.Success(bookingDetail))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "Error confirming payment", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi xác nhận thanh toán"))
+        }
+    }
+
+    override suspend fun acceptBooking(
+        bookingId: String
+    ): Flow<Resource<BookingDetail>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = bookingApi.acceptBooking(bookingId)
+            val bookingDetail = response.data.toBookingDetail()
+            emit(Resource.Success(bookingDetail))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "Error accepting booking", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi chấp nhận booking"))
+        }
+    }
+
+    override suspend fun rejectBooking(
+        bookingId: String,
+        reason: String
+    ): Flow<Resource<BookingDetail>> = flow {
+        emit(Resource.Loading())
+        try {
+            val request = RejectBookingRequestDto(reason)
+            val response = bookingApi.rejectBooking(bookingId, request)
+            val bookingDetail = response.data.toBookingDetail()
+            emit(Resource.Success(bookingDetail))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "Error rejecting booking", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi từ chối booking"))
+        }
+    }
+
+    override suspend fun getPendingBookings(): Flow<Resource<List<BookingDetail>>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = bookingApi.getPendingBookings()
+            val bookings = response.data.map { it.toBookingDetail() }
+            emit(Resource.Success(bookings))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting pending bookings", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách chờ xác nhận"))
+        }
+    }
+
+    override suspend fun getBookingDetail(
+        bookingId: String
+    ): Flow<Resource<BookingDetail>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = bookingApi.getBookingDetail(bookingId)
+            val bookingDetail = response.data.toBookingDetail()
+            emit(Resource.Success(bookingDetail))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting booking detail", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy chi tiết booking"))
+        }
+    }
+
+    override suspend fun getBookedSlots(
+        venueId: Long,
+        date: String
+    ): Flow<Resource<List<com.example.bookingcourt.domain.model.BookedSlot>>> = flow {
+        emit(Resource.Loading())
+        try {
+            Log.d("BookingRepo", "📥 Fetching court availability for venue $venueId on $date")
+
+            // Chuyển date từ "yyyy-MM-dd" thành ISO DateTime range cho API
+            // VD: "2025-11-05" → startTime: "2025-11-05T00:00:00", endTime: "2025-11-05T23:59:59"
+            val startTime = "${date}T00:00:00"
+            val endTime = "${date}T23:59:59"
+
+            Log.d("BookingRepo", "  Query range: $startTime to $endTime")
+
+            // ✅ Gọi API availability có sẵn từ backend
+            val response = venueApi.getCourtsAvailability(venueId, startTime, endTime)
+
+            if (!response.isSuccessful || response.body() == null) {
+                val errorMsg = "API error: ${response.code()} - ${response.message()}"
+                Log.e("BookingRepo", "❌ $errorMsg")
+                emit(Resource.Error(errorMsg))
+                return@flow
+            }
+
+            val apiResponse = response.body()!!
+            if (!apiResponse.success || apiResponse.data == null) {
+                val errorMsg = apiResponse.message ?: "No data returned"
+                Log.e("BookingRepo", "❌ API returned error: $errorMsg")
+                emit(Resource.Error(errorMsg))
+                return@flow
+            }
+
+            val courts = apiResponse.data
+            Log.d("BookingRepo", "  ✅ Received ${courts.size} courts from API")
+
+            // Chuyển đổi từ CourtAvailabilityDto sang BookedSlot domain model
+            val bookedSlots = mutableListOf<com.example.bookingcourt.domain.model.BookedSlot>()
+
+            courts.forEachIndexed { index, court ->
+                val courtNumber = index + 1 // Court number theo thứ tự (1, 2, 3, ...)
+
+                Log.d("BookingRepo", "  Court ${court.id} (${court.description}): ${court.bookedSlots?.size ?: 0} booked slots")
+
+                // Nếu court có booked slots, thêm vào danh sách
+                court.bookedSlots?.forEach { slot ->
+                    bookedSlots.add(
+                        com.example.bookingcourt.domain.model.BookedSlot(
+                            courtId = court.id,
+                            courtNumber = courtNumber,
+                            startTime = slot.startTime,
+                            endTime = slot.endTime,
+                            status = BookingStatus.CONFIRMED, // Assume confirmed nếu đã booked
+                            bookingId = slot.bookingId
+                        )
+                    )
+
+                    Log.d("BookingRepo", "    🔒 Blocked: $courtNumber - ${slot.startTime} to ${slot.endTime}")
+                }
+            }
+
+            Log.d("BookingRepo", "  ✅ Total ${bookedSlots.size} booked slots generated")
+            emit(Resource.Success(bookedSlots))
+
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = try { e.response()?.errorBody()?.string() } catch (ex: Exception) { null }
+            Log.e("BookingRepo", "❌ HTTP Error getting booked slots: ${e.code()}")
+            Log.e("BookingRepo", "  Error body: $errorBody")
+            emit(Resource.Error("Lỗi HTTP ${e.code()}: ${e.message()}"))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "❌ Error getting booked slots", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy thông tin slots đã đặt"))
         }
     }
 }
@@ -249,5 +429,93 @@ private fun BookingDto.toBooking(): Booking {
         updatedAt = LocalDateTime.parse(this.updatedAt),
         cancellationReason = this.cancellationReason,
         qrCode = this.qrCode
+    )
+}
+
+private fun BookingDetailResponseDto.toBookingDetail(): BookingDetail {
+    // Helper function để parse time với xử lý lỗi
+    fun parseDateTime(timeString: String?): LocalDateTime? {
+        if (timeString.isNullOrBlank()) return null
+        return try {
+            val cleanedTime = if (timeString.contains('.')) {
+                timeString.substringBefore('.')
+            } else {
+                timeString
+            }
+            LocalDateTime.parse(cleanedTime)
+        } catch (e: Exception) {
+            Log.e("BookingMapper", "Error parsing time: $timeString", e)
+            null
+        }
+    }
+
+    return BookingDetail(
+        id = this.id.toString(),
+        user = BookingUserInfo(
+            id = this.userId.toString(),
+            fullname = this.userName ?: "Người dùng",
+            phone = this.userPhone
+        ),
+        court = BookingCourtInfo(
+            id = this.courtId.toString(),
+            description = this.courtName ?: "Sân"
+        ),
+        venue = BookingVenueInfo(
+            id = this.venueId?.toString() ?: "0",
+            name = this.venuesName ?: "Venue"
+        ),
+        venueAddress = this.venueAddress,
+        startTime = parseDateTime(this.startTime) ?: LocalDateTime.parse("2025-01-01T00:00:00"),
+        endTime = parseDateTime(this.endTime) ?: LocalDateTime.parse("2025-01-01T00:00:00"),
+        totalPrice = this.totalPrice.toLong(),
+        status = when (this.status.uppercase()) {
+            "PENDING_PAYMENT" -> BookingStatus.PENDING_PAYMENT
+            "PAYMENT_UPLOADED" -> BookingStatus.PAYMENT_UPLOADED
+            "CONFIRMED" -> BookingStatus.CONFIRMED
+            "REJECTED" -> BookingStatus.REJECTED
+            "CANCELLED" -> BookingStatus.CANCELLED
+            "COMPLETED" -> BookingStatus.COMPLETED
+            "NO_SHOW" -> BookingStatus.NO_SHOW
+            else -> BookingStatus.PENDING
+        },
+        paymentProofUploaded = this.paymentProofUploaded,
+        paymentProofUrl = this.paymentProofUrl,
+        paymentProofUploadedAt = this.paymentProofUploadedAt,
+        rejectionReason = this.rejectionReason,
+        expireTime = parseDateTime(this.expireTime),
+        ownerBankInfo = this.ownerBankInfo?.let {
+            BankInfo(
+                bankName = it.bankName,
+                bankAccountNumber = it.bankAccountNumber,
+                bankAccountName = it.bankAccountName
+            )
+        }
+    )
+}
+
+// Convert BookingDetail to Booking for backward compatibility
+private fun BookingDetail.toBooking(): Booking {
+    return Booking(
+        id = this.id,
+        courtId = this.court.id,
+        courtName = this.court.description,
+        userId = this.user.id,
+        userName = this.user.fullname,
+        userPhone = this.user.phone ?: "",
+        startTime = this.startTime,
+        endTime = this.endTime,
+        totalPrice = this.totalPrice,
+        status = this.status,
+        paymentStatus = when {
+            this.paymentProofUploaded && this.status == BookingStatus.PAYMENT_UPLOADED -> PaymentStatus.PENDING
+            this.status == BookingStatus.CONFIRMED -> PaymentStatus.PAID
+            else -> PaymentStatus.PENDING
+        },
+        paymentMethod = PaymentMethod.BANK_TRANSFER,
+        notes = null,
+        createdAt = this.startTime, // fallback
+        updatedAt = this.startTime, // fallback
+        cancellationReason = this.rejectionReason,
+        qrCode = null
     )
 }

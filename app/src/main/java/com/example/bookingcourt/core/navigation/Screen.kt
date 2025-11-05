@@ -66,6 +66,22 @@ sealed class Screen(val route: String) {
     data object PaymentSuccess : Screen("payment_success/{bookingId}") {
         fun createRoute(bookingId: String) = "payment_success/$bookingId"
     }
+
+    // Payment Confirmation Flow Screens
+    data object BookingDetailPayment : Screen("booking_detail_payment/{bookingId}") {
+        fun createRoute(bookingId: String) = "booking_detail_payment/$bookingId"
+    }
+
+    data object PaymentWaiting : Screen("payment_waiting/{bookingId}") {
+        fun createRoute(bookingId: String) = "payment_waiting/$bookingId"
+    }
+
+    // Owner Screens
+    data object PendingBookings : Screen("pending_bookings")
+
+    data object BookingApproval : Screen("booking_approval/{bookingId}") {
+        fun createRoute(bookingId: String) = "booking_approval/$bookingId"
+    }
 }
 
 object Route {
