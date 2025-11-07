@@ -16,14 +16,14 @@ interface CourtApi {
      * Lấy tất cả courts
      * GET /api/courts
      */
-    @GET("api/courts")
+    @GET("courts")
     suspend fun getAllCourts(): Response<List<CourtDetailDto>>
 
     /**
      * Lấy court theo ID
      * GET /api/courts/{id}
      */
-    @GET("api/courts/{id}")
+    @GET("courts/{id}")
     suspend fun getCourtById(
         @Path("id") courtId: Long
     ): Response<CourtDetailDto>
