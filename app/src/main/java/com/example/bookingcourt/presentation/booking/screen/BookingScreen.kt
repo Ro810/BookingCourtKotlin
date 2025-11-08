@@ -653,56 +653,92 @@ fun BookingScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Confirm Button
+            // ✅ Disable button nếu courts chưa được load hoặc đang loading
+            val courtsLoaded = courtsState is Resource.Success &&
+                               (courtsState as? Resource.Success<List<CourtDetail>>)?.data?.isNotEmpty() == true
+
             Button(
                 onClick = {
                     if (selectedSlots.isNotEmpty()) {
                         val firstSlot = selectedSlots.first()
                         val courtNumber = firstSlot.courtNumber
 
-                        // Xác định court ID để gửi
-                        val realCourtId = if (realCourts.value.isNotEmpty()) {
-                            // ✅ CÁCH MỚI: Tìm court theo courtNumber một cách chính xác hơn
-                            // Sử dụng Regex để extract số đầu tiên từ description
-                            val sortedCourts = realCourts.value.sortedBy { court ->
-                                // Extract chỉ SỐ ĐẦU TIÊN từ description
-                                // "Sân số 1" -> 1, "Sân 2 VIP" -> 2, "Sân A" -> MAX_VALUE (đẩy xuống cuối)
-                                val numberMatch = Regex("""\d+""").find(court.description)
-                                numberMatch?.value?.toIntOrNull() ?: Int.MAX_VALUE
-                            }
+                        // ✅ Xác định court ID - Sử dụng thứ tự trong list (KHÔNG parse description)
+                        // ⚠️ QUAN TRỌNG: Backend yêu cầu format "venueId_courtId" (ví dụ: "5_6")
+                        // Strategy: Court Number từ UI (1, 2, 3...) → Index trong list (0, 1, 2...) → Court ID thực tế
+                        Log.d("BookingScreen", "=".repeat(60))
+                        Log.d("BookingScreen", "========== COURT ID MAPPING ==========")
+                        Log.d("BookingScreen", "🎯 User selected Court Number (UI): $courtNumber")
+                        Log.d("BookingScreen", "🏢 Venue ID: ${venue.id}")
 
-                            // Debug: Hiển thị danh sách courts sau khi sort
-                            Log.d("BookingScreen", "📋 Sorted Courts List:")
+                        // ✅ Lấy courts trực tiếp từ courtsState (KHÔNG dùng realCourts.value)
+                        val availableCourts = when (courtsState) {
+                            is Resource.Success -> (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
+                            else -> emptyList()
+                        }
+
+                        val realCourtId: String? = if (availableCourts.isNotEmpty()) {
+                            // ✅ Sort courts theo ID để đảm bảo thứ tự nhất quán
+                            val sortedCourts = availableCourts.sortedBy { it.id }
+                            val courtIndex = courtNumber - 1 // Court 1 → index 0, Court 2 → index 1, ...
+
+                            Log.d("BookingScreen", "📋 Available courts: ${sortedCourts.size}")
+                            Log.d("BookingScreen", "📋 Mapping strategy: Court Number $courtNumber → Index $courtIndex")
+
+                            // Log tất cả courts để debug
                             sortedCourts.forEachIndexed { index, court ->
-                                Log.d("BookingScreen", "  [$index] ID=${court.id}, Description='${court.description}'")
+                                Log.d("BookingScreen", "  [$index] Court ID=${court.id}, Description='${court.description}'")
                             }
 
-                            val courtIndex = courtNumber - 1
                             if (courtIndex >= 0 && courtIndex < sortedCourts.size) {
-                                val actualCourt = sortedCourts[courtIndex]
-                                val actualCourtId = actualCourt.id
-                                val combinedId = "${venue.id}_$actualCourtId"
+                                val selectedCourt = sortedCourts[courtIndex]
+                                Log.d("BookingScreen", "✅ COURT FOUND!")
+                                Log.d("BookingScreen", "  UI Court Number: $courtNumber")
+                                Log.d("BookingScreen", "  Array Index: $courtIndex")
+                                Log.d("BookingScreen", "  Real Court ID: ${selectedCourt.id}")
+                                Log.d("BookingScreen", "  Description: '${selectedCourt.description}'")
 
-                                Log.d("BookingScreen", "✅ Using real court ID from API")
-                                Log.d("BookingScreen", "  🎯 Court Number (UI): $courtNumber")
-                                Log.d("BookingScreen", "  📝 Court Description: ${actualCourt.description}")
-                                Log.d("BookingScreen", "  🔑 Actual Court ID: $actualCourtId")
-                                Log.d("BookingScreen", "  🏢 Venue ID: ${venue.id}")
-                                Log.d("BookingScreen", "  📦 Combined ID: $combinedId")
-
-                                combinedId
+                                // ✅ FORMAT: "venueId_courtId" như backend yêu cầu
+                                val formattedCourtId = "${venue.id}_${selectedCourt.id}"
+                                Log.d("BookingScreen", "  ✅ Formatted: ${venue.id}_${selectedCourt.id} = $formattedCourtId")
+                                formattedCourtId
                             } else {
-                                Log.e("BookingScreen", "❌ Invalid court index: $courtIndex, sorted size: ${sortedCourts.size}")
-                                // Fallback: Sử dụng số thứ tự
-                                "${venue.id}_$courtNumber"
+                                Log.e("BookingScreen", "❌ INDEX OUT OF BOUNDS!")
+                                Log.e("BookingScreen", "  Court Number: $courtNumber")
+                                Log.e("BookingScreen", "  Calculated Index: $courtIndex")
+                                Log.e("BookingScreen", "  Available Courts: ${sortedCourts.size}")
+                                // Show error và return null để không tiếp tục
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Lỗi: Không tìm thấy sân. Vui lòng thử lại.",
+                                        duration = SnackbarDuration.Long
+                                    )
+                                }
+                                null
                             }
                         } else {
-                            // ⚠️ Không có courts từ API → Fallback: dùng số thứ tự
-                            Log.w("BookingScreen", "⚠️ Courts not loaded from API, using fallback (sequential number)")
-                            Log.w("BookingScreen", "  Court Number: $courtNumber")
-                            Log.w("BookingScreen", "  Venue ID: ${venue.id}")
-                            Log.w("BookingScreen", "  Fallback ID: ${venue.id}_$courtNumber")
-                            "${venue.id}_$courtNumber"
+                            Log.e("BookingScreen", "❌ NO COURTS LOADED!")
+                            Log.e("BookingScreen", "  Venue ID: ${venue.id}")
+                            Log.e("BookingScreen", "  CourtsState: $courtsState")
+                            Log.e("BookingScreen", "  Cannot map court number $courtNumber without court list")
+                            // Show error và return null để không tiếp tục
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Lỗi: Chưa tải được danh sách sân. Vui lòng thử lại.",
+                                    duration = SnackbarDuration.Long
+                                )
+                            }
+                            null
                         }
+
+                        // ✅ Kiểm tra nếu realCourtId là null thì dừng lại, không thực hiện booking
+                        if (realCourtId == null) {
+                            Log.e("BookingScreen", "❌ Cannot proceed with booking - Court ID is null")
+                            return@Button
+                        }
+
+                        Log.d("BookingScreen", "🔑 FINAL Court ID to send (format: venueId_courtId): $realCourtId")
+                        Log.d("BookingScreen", "=".repeat(60))
 
                         val selectedDateFormatted = selectedDate.ifEmpty {
                             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
@@ -780,7 +816,8 @@ fun BookingScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = Primary),
                 enabled = selectedSlots.isNotEmpty() &&
                          playerName.isNotEmpty() &&
-                         phoneNumber.isNotEmpty()
+                         phoneNumber.isNotEmpty() &&
+                         courtsLoaded  // ✅ Chỉ enable khi courts đã được load
             ) {
                 Text("Xác nhận đặt sân", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }

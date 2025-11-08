@@ -29,9 +29,18 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideGson(): Gson = GsonBuilder()
-        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-        .create()
+    fun provideGson(): Gson {
+        val gsonBuilder = GsonBuilder()
+            .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+            .setLenient() // Cho phép parse linh hoạt hơn
+        
+        // ✅ Đăng ký TypeAdapterFactory để xử lý time fields
+        gsonBuilder.registerTypeAdapterFactory(
+            com.example.bookingcourt.data.remote.dto.TimeFieldTypeAdapterFactory()
+        )
+        
+        return gsonBuilder.create()
+    }
 
     @Provides
     @Singleton

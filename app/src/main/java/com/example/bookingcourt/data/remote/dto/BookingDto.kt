@@ -1,5 +1,6 @@
 package com.example.bookingcourt.data.remote.dto
 
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
 data class BookingDto(
@@ -112,15 +113,18 @@ data class CreateBookingResponseDto(
     @SerializedName("venuesName")
     val venuesName: String?, // Nullable để xử lý trường hợp server không trả về
     @SerializedName("startTime")
-    val startTime: String?, // Nullable để xử lý parse error
+    @JsonAdapter(TimeStringDeserializer::class)
+    val startTime: String?, // Nullable để xử lý parse error - có thể là string hoặc array
     @SerializedName("endTime")
-    val endTime: String?, // Nullable để xử lý parse error
+    @JsonAdapter(TimeStringDeserializer::class)
+    val endTime: String?, // Nullable để xử lý parse error - có thể là string hoặc array
     @SerializedName("totalPrice")
     val totalPrice: Double,
     @SerializedName("status")
     val status: String,
     @SerializedName("expireTime")
-    val expireTime: String?, // Nullable để xử lý parse error
+    @JsonAdapter(TimeStringDeserializer::class)
+    val expireTime: String?, // Nullable để xử lý parse error - có thể là string hoặc array
     @SerializedName("ownerBankInfo")
     val ownerBankInfo: BankInfoDto,
     @SerializedName("paymentProofUploaded")
@@ -196,9 +200,11 @@ data class BookingDetailResponseDto(
     @SerializedName("venueAddress")
     val venueAddress: String?,
     @SerializedName("startTime")
-    val startTime: String,
+    @JsonAdapter(TimeStringDeserializer::class)
+    val startTime: String?, // Nullable và có thể là string hoặc array
     @SerializedName("endTime")
-    val endTime: String,
+    @JsonAdapter(TimeStringDeserializer::class)
+    val endTime: String?, // Nullable và có thể là string hoặc array
     @SerializedName("totalPrice")
     val totalPrice: Double,
     @SerializedName("status")
@@ -212,7 +218,8 @@ data class BookingDetailResponseDto(
     @SerializedName("rejectionReason")
     val rejectionReason: String?,
     @SerializedName("expireTime")
-    val expireTime: String?,
+    @JsonAdapter(TimeStringDeserializer::class)
+    val expireTime: String?, // Nullable và có thể là string hoặc array
     @SerializedName("ownerBankInfo")
     val ownerBankInfo: BankInfoDto?
 )

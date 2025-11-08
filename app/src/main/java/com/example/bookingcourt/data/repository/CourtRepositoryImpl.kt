@@ -3,7 +3,9 @@ package com.example.bookingcourt.data.repository
 import android.util.Log
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.data.remote.api.CourtApi
+import com.example.bookingcourt.data.remote.api.VenueApi
 import com.example.bookingcourt.data.remote.dto.CourtDetailDto
+import com.example.bookingcourt.data.remote.dto.CourtSimpleDto
 import com.example.bookingcourt.data.remote.dto.CreateCourtRequest
 import com.example.bookingcourt.data.remote.dto.UpdateCourtRequest
 import com.example.bookingcourt.data.remote.dto.VenueIdDto
@@ -18,6 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class CourtRepositoryImpl @Inject constructor(
     private val courtApi: CourtApi,
+    private val venueApi: VenueApi, // ✅ Thêm VenueApi để gọi endpoint mới
 ) : CourtRepository {
 
     companion object {
@@ -83,34 +86,41 @@ class CourtRepositoryImpl @Inject constructor(
 
             Log.d(TAG, "========== GET COURTS BY VENUE ID ==========")
             Log.d(TAG, "  Venue ID: $venueId")
+            Log.d(TAG, "  Using endpoint: GET /api/venues/{venueId}/courts")
 
-            // Get all courts and filter by venueId
-            val response = courtApi.getAllCourts()
+            // ✅ Sử dụng endpoint mới từ VenueApi thay vì get all rồi filter
+            val response = venueApi.getCourtsByVenueId(venueId)
 
             Log.d(TAG, "  API Response Code: ${response.code()}")
             Log.d(TAG, "  API Response Success: ${response.isSuccessful}")
 
             if (response.isSuccessful) {
-                val courtsDto = response.body() ?: emptyList()
-                Log.d(TAG, "  Total courts from API: ${courtsDto.size}")
+                val apiResponse = response.body()
+                if (apiResponse != null && apiResponse.success && apiResponse.data != null) {
+                    val courtsSimpleDto = apiResponse.data
+                    Log.d(TAG, "  Total courts from API: ${courtsSimpleDto.size}")
 
-                // Log tất cả courts để debug
-                courtsDto.forEachIndexed { index, court ->
-                    Log.d(TAG, "    Court $index: ID=${court.id}, VenueID=${court.venue.id}, Desc=${court.description}")
+                    // Log tất cả courts để debug
+                    courtsSimpleDto.forEachIndexed { index, court ->
+                        Log.d(TAG, "    Court $index: ID=${court.id}, VenueID=${court.venueId}, Desc='${court.description}'")
+                    }
+
+                    // Convert CourtSimpleDto to CourtDetail domain model
+                    val courts = courtsSimpleDto.map { it.toDomain() }
+
+                    Log.d(TAG, "  ✅ Successfully loaded ${courts.size} courts for venue $venueId")
+
+                    if (courts.isEmpty()) {
+                        Log.w(TAG, "  ⚠️ No courts found for venue $venueId")
+                        Log.w(TAG, "  ⚠️ This venue may not have any courts in database")
+                    }
+
+                    emit(Resource.Success(courts))
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể tải danh sách sân"
+                    Log.e(TAG, "  ⚠️ API returned success=false: $errorMsg")
+                    emit(Resource.Error(errorMsg))
                 }
-
-                val filteredCourts = courtsDto
-                    .filter { it.venue.id == venueId }
-                    .map { it.toDomain() }
-
-                Log.d(TAG, "  ✅ Filtered courts for venue $venueId: ${filteredCourts.size}")
-
-                if (filteredCourts.isEmpty()) {
-                    Log.w(TAG, "  ⚠️ No courts found for venue $venueId")
-                    Log.w(TAG, "  ⚠️ This venue may not have any courts in database")
-                }
-
-                emit(Resource.Success(filteredCourts))
             } else {
                 val errorBody = response.errorBody()?.string()
                 Log.e(TAG, "  ❌ API Error: ${response.code()}")
@@ -259,6 +269,21 @@ class CourtRepositoryImpl @Inject constructor(
             venue = CourtVenueInfo(
                 id = venue.id,
                 name = venue.name
+            )
+        )
+    }
+
+    /**
+     * Convert CourtSimpleDto (from GET /api/venues/{venueId}/courts) to CourtDetail domain model
+     */
+    private fun CourtSimpleDto.toDomain(): CourtDetail {
+        return CourtDetail(
+            id = id,
+            description = description,
+            booked = false, // CourtSimpleDto không có thông tin booked
+            venue = CourtVenueInfo(
+                id = venueId,
+                name = venueName
             )
         )
     }

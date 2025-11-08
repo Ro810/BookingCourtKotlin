@@ -79,6 +79,18 @@ interface VenueApi {
     ): Response<ApiResponse<Any>>
 
     /**
+     * Get courts by venue ID (simple list)
+     * GET /api/venues/{venueId}/courts
+     *
+     * @param venueId ID của venue
+     * @return Danh sách courts đơn giản của venue
+     */
+    @GET("venues/{venueId}/courts")
+    suspend fun getCourtsByVenueId(
+        @Path("venueId") venueId: Long
+    ): Response<ApiResponse<List<com.example.bookingcourt.data.remote.dto.CourtSimpleDto>>>
+
+    /**
      * Get court availability for a specific time range
      * GET /api/venues/{venueId}/courts/availability
      *

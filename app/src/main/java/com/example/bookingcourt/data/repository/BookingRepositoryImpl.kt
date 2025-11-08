@@ -9,7 +9,12 @@ import com.example.bookingcourt.domain.model.*
 import com.example.bookingcourt.domain.repository.BookingRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration.Companion.minutes
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -60,17 +65,43 @@ class BookingRepositoryImpl @Inject constructor(
 
             val apiResponse = bookingApi.createBooking(request)
 
+            // ✅ Log raw response để debug
+            Log.d("BookingRepo", "========== RAW API RESPONSE ==========")
+            Log.d("BookingRepo", "  Success: ${apiResponse.success}")
+            Log.d("BookingRepo", "  Message: ${apiResponse.message}")
+            if (apiResponse.data != null) {
+                Log.d("BookingRepo", "  Data class: ${apiResponse.data.javaClass.simpleName}")
+                // Try to log data as JSON string để xem structure thực tế
+                try {
+                    val gson = com.google.gson.Gson()
+                    val jsonString = gson.toJson(apiResponse.data)
+                    Log.d("BookingRepo", "  Data JSON: $jsonString")
+                } catch (e: Exception) {
+                    Log.e("BookingRepo", "  Cannot serialize data to JSON: ${e.message}")
+                }
+            } else {
+                Log.e("BookingRepo", "  ❌ Response data is NULL!")
+            }
+            Log.d("BookingRepo", "======================================")
+
             // Lấy data từ wrapper response
-            val response = apiResponse.data
+            val response = apiResponse.data ?: throw IllegalStateException("Response data is null")
 
             Log.d("BookingRepo", "✅ Booking created successfully!")
             Log.d("BookingRepo", "  Booking ID: ${response.id}")
             Log.d("BookingRepo", "  Court ID: ${response.courtId}")
             Log.d("BookingRepo", "  Venue Name: ${response.venuesName}")
+            Log.d("BookingRepo", "  StartTime: ${response.startTime ?: "NULL"}")
+            Log.d("BookingRepo", "  EndTime: ${response.endTime ?: "NULL"}")
+            Log.d("BookingRepo", "  ExpireTime: ${response.expireTime ?: "NULL"}")
             Log.d("BookingRepo", "  Total Price: ${response.totalPrice}")
             Log.d("BookingRepo", "  API message: ${apiResponse.message}")
 
-            val bookingWithBankInfo = response.toBookingWithBankInfo()
+            // ✅ Sử dụng startTime/endTime từ request nếu response không có
+            val bookingWithBankInfo = response.toBookingWithBankInfo(
+                fallbackStartTime = startTime,
+                fallbackEndTime = endTime
+            )
             emit(Resource.Success(bookingWithBankInfo))
         } catch (e: IllegalArgumentException) {
             // Lỗi parse courtId
@@ -262,11 +293,43 @@ class BookingRepositoryImpl @Inject constructor(
     ): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
+            Log.d("BookingRepo", "========== GET BOOKING DETAIL ==========")
+            Log.d("BookingRepo", "  Booking ID: $bookingId")
+            
             val response = bookingApi.getBookingDetail(bookingId)
-            val bookingDetail = response.data.toBookingDetail()
-            emit(Resource.Success(bookingDetail))
+            
+            Log.d("BookingRepo", "  Response success: ${response.success}")
+            Log.d("BookingRepo", "  Response message: ${response.message}")
+            
+            if (response.data != null) {
+                // Log raw data để debug
+                try {
+                    val gson = com.google.gson.Gson()
+                    val jsonString = gson.toJson(response.data)
+                    Log.d("BookingRepo", "  Response data JSON: $jsonString")
+                } catch (e: Exception) {
+                    Log.e("BookingRepo", "  Cannot serialize to JSON: ${e.message}")
+                }
+                
+                val bookingDetail = response.data.toBookingDetail()
+                Log.d("BookingRepo", "✅ Successfully mapped booking detail")
+                emit(Resource.Success(bookingDetail))
+            } else {
+                Log.e("BookingRepo", "❌ Response data is null")
+                emit(Resource.Error("Không tìm thấy thông tin booking"))
+            }
+        } catch (e: com.google.gson.JsonSyntaxException) {
+            Log.e("BookingRepo", "❌ JSON Parse Error getting booking detail", e)
+            Log.e("BookingRepo", "  Error message: ${e.message}")
+            emit(Resource.Error("Lỗi parse dữ liệu từ server: ${e.message}"))
+        } catch (e: IllegalArgumentException) {
+            Log.e("BookingRepo", "❌ Invalid data getting booking detail", e)
+            Log.e("BookingRepo", "  Error message: ${e.message}")
+            emit(Resource.Error("Dữ liệu không hợp lệ: ${e.message}"))
         } catch (e: Exception) {
-            Log.e("BookingRepo", "Error getting booking detail", e)
+            Log.e("BookingRepo", "❌ Error getting booking detail", e)
+            Log.e("BookingRepo", "  Error type: ${e.javaClass.simpleName}")
+            Log.e("BookingRepo", "  Error message: ${e.message}")
             emit(Resource.Error(e.message ?: "Lỗi khi lấy chi tiết booking"))
         }
     }
@@ -348,27 +411,51 @@ class BookingRepositoryImpl @Inject constructor(
 }
 
 // Mapper functions
-private fun CreateBookingResponseDto.toBookingWithBankInfo(): BookingWithBankInfo {
-    // Helper function để parse time với xử lý lỗi
-    fun parseDateTime(timeString: String?): LocalDateTime {
-        if (timeString.isNullOrBlank()) {
-            throw IllegalArgumentException("Time string is null or empty")
+private fun CreateBookingResponseDto.toBookingWithBankInfo(
+    fallbackStartTime: String? = null,
+    fallbackEndTime: String? = null
+): BookingWithBankInfo {
+    // Helper function để parse time với xử lý lỗi và fallback
+    fun parseDateTime(timeString: String?, fallback: String? = null): LocalDateTime? {
+        val timeToParse = timeString ?: fallback
+        if (timeToParse.isNullOrBlank()) {
+            Log.w("BookingMapper", "⚠️ Time string is null and no fallback provided")
+            Log.w("BookingMapper", "  Response time: $timeString")
+            Log.w("BookingMapper", "  Fallback time: $fallback")
+            return null // Trả về null thay vì throw exception
         }
+        
         return try {
             // Xử lý format có microseconds: 2025-11-03T23:00:09.5733903
             // LocalDateTime.parse chỉ hỗ trợ format chuẩn ISO-8601
-            val cleanedTime = if (timeString.contains('.')) {
+            val cleanedTime = if (timeToParse.contains('.')) {
                 // Cắt bỏ phần microseconds, chỉ giữ lại đến giây
-                timeString.substringBefore('.')
+                timeToParse.substringBefore('.')
             } else {
-                timeString
+                timeToParse
             }
+            
+            Log.d("BookingMapper", "✅ Parsing time: $cleanedTime")
             LocalDateTime.parse(cleanedTime)
         } catch (e: Exception) {
-            Log.e("BookingMapper", "Error parsing time: $timeString", e)
-            throw IllegalArgumentException("Invalid time format: $timeString")
+            Log.e("BookingMapper", "❌ Error parsing time: $timeToParse", e)
+            null // Trả về null thay vì throw exception
         }
     }
+    
+    // Helper function để parse time bắt buộc (throw exception nếu null)
+    fun parseDateTimeRequired(timeString: String?, fallback: String? = null): LocalDateTime {
+        return parseDateTime(timeString, fallback) 
+            ?: throw IllegalArgumentException("Time string is null or empty and no fallback available. Response: $timeString, Fallback: $fallback")
+    }
+
+    // ✅ Log chi tiết để debug
+    Log.d("BookingMapper", "========== MAPPING BOOKING RESPONSE ==========")
+    Log.d("BookingMapper", "  Response startTime: ${this.startTime}")
+    Log.d("BookingMapper", "  Response endTime: ${this.endTime}")
+    Log.d("BookingMapper", "  Response expireTime: ${this.expireTime}")
+    Log.d("BookingMapper", "  Fallback startTime: $fallbackStartTime")
+    Log.d("BookingMapper", "  Fallback endTime: $fallbackEndTime")
 
     return BookingWithBankInfo(
         id = this.id.toString(),
@@ -385,8 +472,8 @@ private fun CreateBookingResponseDto.toBookingWithBankInfo(): BookingWithBankInf
             id = this.venueId?.toString() ?: "0",  // ✅ Dùng venueId từ API thay vì hardcode
             name = this.venuesName?.takeIf { it.isNotBlank() } ?: "Venue"
         ),
-        startTime = parseDateTime(this.startTime),
-        endTime = parseDateTime(this.endTime),
+        startTime = parseDateTimeRequired(this.startTime, fallbackStartTime),
+        endTime = parseDateTimeRequired(this.endTime, fallbackEndTime),
         totalPrice = this.totalPrice.toLong(),
         status = when (this.status.uppercase()) {
             "PENDING_PAYMENT" -> BookingStatus.PENDING
@@ -396,7 +483,18 @@ private fun CreateBookingResponseDto.toBookingWithBankInfo(): BookingWithBankInf
             "NO_SHOW" -> BookingStatus.NO_SHOW
             else -> BookingStatus.PENDING
         },
-        expireTime = parseDateTime(this.expireTime),
+        expireTime = parseDateTime(this.expireTime) 
+            ?: run {
+                // Fallback: Nếu expireTime null, tính từ startTime + 5 phút
+                val start = parseDateTimeRequired(this.startTime, fallbackStartTime)
+                // Convert LocalDateTime to Instant, add 5 minutes, convert back
+                val timeZone = TimeZone.currentSystemDefault()
+                val instant = start.toInstant(timeZone)
+                val expireInstant = instant + 5.minutes
+                val expireTimeFallback = expireInstant.toLocalDateTime(timeZone)
+                Log.w("BookingMapper", "⚠️ ExpireTime is null, using fallback: startTime + 5 minutes")
+                expireTimeFallback
+            },
         ownerBankInfo = this.ownerBankInfo.toBankInfo(),
         notes = null
     )
@@ -435,18 +533,42 @@ private fun BookingDto.toBooking(): Booking {
 private fun BookingDetailResponseDto.toBookingDetail(): BookingDetail {
     // Helper function để parse time với xử lý lỗi
     fun parseDateTime(timeString: String?): LocalDateTime? {
-        if (timeString.isNullOrBlank()) return null
+        if (timeString.isNullOrBlank()) {
+            Log.w("BookingMapper", "⚠️ Time string is null or blank")
+            return null
+        }
         return try {
             val cleanedTime = if (timeString.contains('.')) {
                 timeString.substringBefore('.')
             } else {
                 timeString
             }
+            Log.d("BookingMapper", "✅ Parsing time: $cleanedTime")
             LocalDateTime.parse(cleanedTime)
         } catch (e: Exception) {
-            Log.e("BookingMapper", "Error parsing time: $timeString", e)
+            Log.e("BookingMapper", "❌ Error parsing time: $timeString", e)
             null
         }
+    }
+
+    // ✅ Log để debug
+    Log.d("BookingMapper", "========== MAPPING BOOKING DETAIL ==========")
+    Log.d("BookingMapper", "  Booking ID: ${this.id}")
+    Log.d("BookingMapper", "  StartTime: ${this.startTime} (${this.startTime?.javaClass?.simpleName})")
+    Log.d("BookingMapper", "  EndTime: ${this.endTime} (${this.endTime?.javaClass?.simpleName})")
+    Log.d("BookingMapper", "  ExpireTime: ${this.expireTime} (${this.expireTime?.javaClass?.simpleName})")
+    Log.d("BookingMapper", "  Status: ${this.status}")
+    Log.d("BookingMapper", "  Court ID: ${this.courtId}")
+    Log.d("BookingMapper", "  Venue ID: ${this.venueId}")
+    
+    // ✅ Kiểm tra nếu startTime/endTime null thì log cảnh báo
+    if (this.startTime.isNullOrBlank()) {
+        Log.e("BookingMapper", "❌ CRITICAL: StartTime is NULL or EMPTY!")
+        Log.e("BookingMapper", "  This means backend did not map startTime from BookingItem")
+    }
+    if (this.endTime.isNullOrBlank()) {
+        Log.e("BookingMapper", "❌ CRITICAL: EndTime is NULL or EMPTY!")
+        Log.e("BookingMapper", "  This means backend did not map endTime from BookingItem")
     }
 
     return BookingDetail(
@@ -465,8 +587,20 @@ private fun BookingDetailResponseDto.toBookingDetail(): BookingDetail {
             name = this.venuesName ?: "Venue"
         ),
         venueAddress = this.venueAddress,
-        startTime = parseDateTime(this.startTime) ?: LocalDateTime.parse("2025-01-01T00:00:00"),
-        endTime = parseDateTime(this.endTime) ?: LocalDateTime.parse("2025-01-01T00:00:00"),
+        startTime = parseDateTime(this.startTime) ?: run {
+            Log.w("BookingMapper", "⚠️ StartTime is null, using fallback: current time")
+            // Fallback: dùng thời gian hiện tại nếu startTime null
+            kotlinx.datetime.Clock.System.now()
+                .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+        },
+        endTime = parseDateTime(this.endTime) ?: run {
+            Log.w("BookingMapper", "⚠️ EndTime is null, using fallback: current time + 1 hour")
+            // Fallback: dùng thời gian hiện tại + 1 giờ nếu endTime null
+            val now = kotlinx.datetime.Clock.System.now()
+            val timeZone = kotlinx.datetime.TimeZone.currentSystemDefault()
+            (now + kotlin.time.Duration.parse("PT1H"))
+                .toLocalDateTime(timeZone)
+        },
         totalPrice = this.totalPrice.toLong(),
         status = when (this.status.uppercase()) {
             "PENDING_PAYMENT" -> BookingStatus.PENDING_PAYMENT
@@ -519,3 +653,4 @@ private fun BookingDetail.toBooking(): Booking {
         qrCode = null
     )
 }
+

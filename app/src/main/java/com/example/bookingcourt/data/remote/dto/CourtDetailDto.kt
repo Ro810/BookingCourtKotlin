@@ -67,3 +67,24 @@ data class VenueIdDto(
     val id: Long
 )
 
+/**
+ * Court DTO from GET /api/venues/{venueId}/courts endpoint
+ * Backend trả về format đơn giản với venueId và venueName ở root level
+ */
+data class CourtSimpleDto(
+    @SerializedName("id")
+    val id: Long,
+    
+    @SerializedName("description")
+    val description: String,
+    
+    @SerializedName("isActive")
+    val isActive: Boolean? = null,
+    
+    @SerializedName("venueId")
+    val venueId: Long,
+    
+    @SerializedName("venueName")
+    val venueName: String
+)
+
