@@ -367,8 +367,8 @@ class BookingRepositoryImpl @Inject constructor(
                 return@flow
             }
 
-            val courts = apiResponse.data
-            Log.d("BookingRepo", "  ✅ Received ${courts.size} courts from API")
+            val courts = apiResponse.data.courts
+            Log.d("BookingRepo", "  ✅ Received ${courts.size} courts from venue '${apiResponse.data.venueName}'")
 
             // Chuyển đổi từ CourtAvailabilityDto sang BookedSlot domain model
             val bookedSlots = mutableListOf<com.example.bookingcourt.domain.model.BookedSlot>()
@@ -384,14 +384,14 @@ class BookingRepositoryImpl @Inject constructor(
                         com.example.bookingcourt.domain.model.BookedSlot(
                             courtId = court.id,
                             courtNumber = courtNumber,
-                            startTime = slot.startTime,
-                            endTime = slot.endTime,
+                            startTime = slot.getStartTimeString(),
+                            endTime = slot.getEndTimeString(),
                             status = BookingStatus.CONFIRMED, // Assume confirmed nếu đã booked
-                            bookingId = slot.bookingId
+                            bookingId = slot.bookingId.toString()
                         )
                     )
 
-                    Log.d("BookingRepo", "    🔒 Blocked: $courtNumber - ${slot.startTime} to ${slot.endTime}")
+                    Log.d("BookingRepo", "    🔒 Blocked: $courtNumber - ${slot.getStartTimeString()} to ${slot.getEndTimeString()}")
                 }
             }
 

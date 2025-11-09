@@ -27,6 +27,7 @@ data class CourtDetailState(
     val todayRevenue: Long = 0, // Lấy từ bên phải
     val bookedSlots: List<com.example.bookingcourt.domain.model.BookedSlot> = emptyList(),
     val selectedDateRevenue: Long = 0, // Doanh thu của ngày được chọn
+    val courtsAvailability: List<com.example.bookingcourt.domain.model.CourtAvailability> = emptyList(), // Tình trạng sân theo API mới
 )
 
 sealed interface CourtDetailIntent {
@@ -45,7 +46,7 @@ class CourtDetailViewModel @Inject constructor(
     private val bookingRepository: BookingRepository
 ) : ViewModel() {
 
-    private val venueId: String = savedStateHandle.get<String>("venueId") ?: ""
+    private val venueId: String = savedStateHandle.get<String>("courtId") ?: ""
 
     private val _state = MutableStateFlow(CourtDetailState())
     val state: StateFlow<CourtDetailState> = _state.asStateFlow()
@@ -54,8 +55,12 @@ class CourtDetailViewModel @Inject constructor(
     val uiEvent = _uiEvent.asSharedFlow()
 
     init {
+        android.util.Log.d("CourtDetailVM", "🔧 Init - venueId from savedStateHandle: '$venueId'")
         if (venueId.isNotEmpty()) {
+            android.util.Log.d("CourtDetailVM", "🔧 Loading venue detail for venueId: ${venueId.toLongOrNull()}")
             handleIntent(CourtDetailIntent.LoadVenueDetail(venueId.toLongOrNull() ?: 0))
+        } else {
+            android.util.Log.w("CourtDetailVM", "⚠️ VenueId is empty!")
         }
     }
 
@@ -191,6 +196,82 @@ class CourtDetailViewModel @Inject constructor(
             }
 
             _state.value = _state.value.copy(selectedDateRevenue = revenue)
+        }
+    }
+
+    /**
+     * Lấy thông tin tình trạng sân cho khoảng thời gian cụ thể
+     * Sử dụng API mới: GET /venues/{venueId}/courts/availability
+     * @param venueId ID của venue
+     * @param date Ngày cần kiểm tra (format: yyyy-MM-dd)
+     * @param startTime Giờ bắt đầu (format: HH:mm:ss)
+     * @param endTime Giờ kết thúc (format: HH:mm:ss)
+     */
+    fun getCourtsAvailabilityForTimeRange(
+        venueId: Long,
+        date: String,
+        startTime: String,
+        endTime: String
+    ) {
+        viewModelScope.launch {
+            // Format thời gian theo ISO 8601
+            val startDateTime = "${date}T${startTime}"
+            val endDateTime = "${date}T${endTime}"
+
+            venueRepository.getCourtsAvailability(venueId, startDateTime, endDateTime).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        _state.value = _state.value.copy(
+                            courtsAvailability = result.data ?: emptyList()
+                        )
+                    }
+                    is Resource.Error -> {
+                        _state.value = _state.value.copy(
+                            courtsAvailability = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        // Không làm gì
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Lấy thông tin tình trạng sân cho cả ngày
+     * @param venueId ID của venue
+     * @param date Ngày cần kiểm tra (format: yyyy-MM-dd)
+     */
+    fun getCourtsAvailabilityForWholeDay(venueId: Long, date: String) {
+        viewModelScope.launch {
+            android.util.Log.d("CourtDetailVM", "📅 Getting courts availability for whole day - venueId: $venueId, date: $date")
+
+            // Lấy availability cho cả ngày (00:00:00 đến 23:59:59)
+            val startDateTime = "${date}T00:00:00"
+            val endDateTime = "${date}T23:59:59"
+
+            android.util.Log.d("CourtDetailVM", "🕐 Time range: $startDateTime to $endDateTime")
+
+            venueRepository.getCourtsAvailability(venueId, startDateTime, endDateTime).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Courts availability loaded: ${result.data?.size} courts")
+                        _state.value = _state.value.copy(
+                            courtsAvailability = result.data ?: emptyList()
+                        )
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error loading courts availability: ${result.message}")
+                        _state.value = _state.value.copy(
+                            courtsAvailability = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Loading courts availability...")
+                    }
+                }
+            }
         }
     }
 }

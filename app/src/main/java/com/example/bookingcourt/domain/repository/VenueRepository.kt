@@ -1,6 +1,7 @@
 package com.example.bookingcourt.domain.repository
 
 import com.example.bookingcourt.core.common.Resource
+import com.example.bookingcourt.domain.model.CourtAvailability
 import com.example.bookingcourt.domain.model.Venue
 import kotlinx.coroutines.flow.Flow
 
@@ -49,4 +50,17 @@ interface VenueRepository {
     ): Flow<Resource<Venue>>
 
     suspend fun deleteVenue(venueId: Long): Flow<Resource<Unit>>
+
+    /**
+     * Get court availability for a specific time range
+     * @param venueId ID của venue
+     * @param startTime Thời gian bắt đầu (ISO format: "2025-11-07T14:00:00")
+     * @param endTime Thời gian kết thúc (ISO format: "2025-11-07T15:00:00")
+     * @return Danh sách courts với thông tin availability
+     */
+    suspend fun getCourtsAvailability(
+        venueId: Long,
+        startTime: String,
+        endTime: String
+    ): Flow<Resource<List<CourtAvailability>>>
 }

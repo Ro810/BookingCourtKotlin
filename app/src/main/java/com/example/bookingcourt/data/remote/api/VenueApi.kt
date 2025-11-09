@@ -2,6 +2,7 @@ package com.example.bookingcourt.data.remote.api
 
 import com.example.bookingcourt.data.remote.dto.ApiResponse
 import com.example.bookingcourt.data.remote.dto.CourtAvailabilityDto
+import com.example.bookingcourt.data.remote.dto.CourtAvailabilityResponseDto
 import com.example.bookingcourt.data.remote.dto.CreateVenueRequest
 import com.example.bookingcourt.data.remote.dto.UpdateVenueRequest
 import com.example.bookingcourt.data.remote.dto.VenueDetailDto
@@ -97,12 +98,12 @@ interface VenueApi {
      * @param venueId ID của venue
      * @param startTime Thời gian bắt đầu (ISO DateTime format: "2025-11-05T00:00:00")
      * @param endTime Thời gian kết thúc (ISO DateTime format: "2025-11-05T23:59:59")
-     * @return Danh sách courts với thông tin availability và booked slots
+     * @return Object chứa thông tin venue và danh sách courts với availability và booked slots
      */
     @GET("venues/{venueId}/courts/availability")
     suspend fun getCourtsAvailability(
         @Path("venueId") venueId: Long,
         @Query("startTime") startTime: String,
         @Query("endTime") endTime: String
-    ): Response<ApiResponse<List<CourtAvailabilityDto>>>
+    ): Response<ApiResponse<CourtAvailabilityResponseDto>>
 }

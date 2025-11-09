@@ -132,6 +132,7 @@ data class CreateBookingResponseDto(
     @SerializedName("paymentProofUrl")
     val paymentProofUrl: String? = null,
     @SerializedName("paymentProofUploadedAt")
+    @JsonAdapter(TimeStringDeserializer::class)
     val paymentProofUploadedAt: String? = null,
     @SerializedName("rejectionReason")
     val rejectionReason: String? = null
@@ -214,6 +215,7 @@ data class BookingDetailResponseDto(
     @SerializedName("paymentProofUrl")
     val paymentProofUrl: String?,
     @SerializedName("paymentProofUploadedAt")
+    @JsonAdapter(TimeStringDeserializer::class)
     val paymentProofUploadedAt: String?,
     @SerializedName("rejectionReason")
     val rejectionReason: String?,

@@ -269,39 +269,6 @@ private fun OwnerHomeContent(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Search Bar
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .clickable { /* TODO: Navigate to search */ },
-                        shape = RoundedCornerShape(28.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Tìm kiếm",
-                                tint = Color(0xFF123E62)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "Tìm kiếm sân của bạn...",
-                                color = Color.Gray,
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
                     // Button "Booking chờ xác nhận" - NEW with count badge
                     Card(
                         modifier = Modifier
@@ -1333,17 +1300,13 @@ private fun VenueCardFromVenue(
             ) {
                 IconButton(
                     onClick = onEditClick,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color.White.copy(alpha = 0.9f), CircleShape)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(Icons.Default.Edit, "Chỉnh sửa", tint = Color(0xFF123E62), modifier = Modifier.size(20.dp))
                 }
                 IconButton(
                     onClick = { showDeleteDialog = true },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color.White.copy(alpha = 0.9f), CircleShape)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(Icons.Default.Delete, "Xóa", tint = Color(0xFFEF5350), modifier = Modifier.size(20.dp))
                 }

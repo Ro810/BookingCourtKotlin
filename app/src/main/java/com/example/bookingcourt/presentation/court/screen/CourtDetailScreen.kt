@@ -70,8 +70,10 @@ fun CourtDetailScreen(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
 
-    // Fetch booked slots và cập nhật doanh thu khi selectedDate thay đổi
+    // Fetch booked slots và courts availability khi selectedDate thay đổi
     LaunchedEffect(selectedDate, venue?.id) {
+        Log.d("CourtDetailScreen", "🔄 LaunchedEffect triggered - venue: ${venue?.id}, selectedDate: $selectedDate")
+
         if (venue != null) {
             val currentDate = if (selectedDate.isNotEmpty()) {
                 selectedDate
@@ -86,9 +88,17 @@ fun CourtDetailScreen(
                 Log.d("CourtDetailScreen", "🔍 Fetching booked slots for venue ${venue.id} on $apiDate")
                 viewModel.getBookedSlots(venue.id, apiDate)
 
+                // Fetch courts availability cho cả ngày
+                Log.d("CourtDetailScreen", "🔍 Fetching courts availability for venue ${venue.id} on $apiDate")
+                viewModel.getCourtsAvailabilityForWholeDay(venue.id, apiDate)
+
                 // Cập nhật doanh thu theo ngày được chọn
                 viewModel.updateSelectedDateRevenue(currentDate)
+            } else {
+                Log.e("CourtDetailScreen", "❌ Failed to parse date: $currentDate")
             }
+        } else {
+            Log.w("CourtDetailScreen", "⚠️ Venue is null, cannot fetch courts availability")
         }
     }
 
@@ -331,125 +341,132 @@ fun CourtDetailScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Grid Table
-                        Row(
-                            modifier = Modifier.padding(8.dp)
-                        ) {
-                            // Fixed Column - Tên sân
-                            Column {
-                                // Header cell
-                                Box(
-                                    modifier = Modifier
-                                        .width(70.dp)
-                                        .height(50.dp)
-                                        .border(1.dp, Color.Gray)
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Sân",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                        textAlign = TextAlign.Center,
-                                        color = Color.Black
-                                    )
-                                }
+                        val courtsToDisplay = if (state.courtsAvailability.isNotEmpty()) {
+                            state.courtsAvailability
+                        } else {
+                            emptyList()
+                        }
 
-                                // Court rows
-                                for (courtNum in 1..actualCourtCount) {
+                        if (courtsToDisplay.isEmpty()) {
+                            // Hiển thị loading hoặc empty state
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Đang tải thông tin sân...",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                // Fixed Column - Tên sân
+                                Column {
+                                    // Header cell
                                     Box(
                                         modifier = Modifier
-                                            .width(70.dp)
-                                            .height(45.dp)
+                                            .width(90.dp)
+                                            .height(50.dp)
                                             .border(1.dp, Color.Gray)
-                                            .background(Color(0xFFF5F5F5)),
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = "Sân $courtNum",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium,
+                                            text = "Sân",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
                                             textAlign = TextAlign.Center,
                                             color = Color.Black
                                         )
                                     }
-                                }
-                            }
 
-                            // Scrollable Column - Time slots
-                            Column(
-                                modifier = Modifier.horizontalScroll(rememberScrollState())
-                            ) {
-                                // Header Row
-                                Row {
-                                    timeSlots.forEach { time ->
+                                    // Court rows - Sử dụng tên sân từ API
+                                    courtsToDisplay.forEach { court ->
                                         Box(
                                             modifier = Modifier
-                                                .width(80.dp)
-                                                .height(50.dp)
+                                                .width(90.dp)
+                                                .height(45.dp)
                                                 .border(1.dp, Color.Gray)
-                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                                .background(Color(0xFFF5F5F5)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                text = time,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp,
+                                                text = court.courtName,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
                                                 textAlign = TextAlign.Center,
-                                                color = Color.Black
+                                                color = Color.Black,
+                                                maxLines = 2
                                             )
                                         }
                                     }
                                 }
 
-                                // Data Rows
-                                for (courtNum in 1..actualCourtCount) {
+                                // Scrollable Column - Time slots
+                                Column(
+                                    modifier = Modifier.horizontalScroll(rememberScrollState())
+                                ) {
+                                    // Header Row
                                     Row {
                                         timeSlots.forEach { time ->
-                                            val slot = CourtTimeSlot(courtNum, time)
-
-                                            // Kiểm tra slot đã đặt
-                                            val isBooked = state.bookedSlots.any { bookedSlot ->
-                                                if (bookedSlot.courtNumber != courtNum) {
-                                                    false
-                                                } else {
-                                                    val slotStartTime = timeSlotToStartTime(time)
-                                                    val slotEndTime = timeSlotToEndTime(time)
-
-                                                    // Extract HH:mm:ss from ISO datetime if needed
-                                                    val bookedStart = if (bookedSlot.startTime.contains("T")) {
-                                                        bookedSlot.startTime.substring(11, 19)
-                                                    } else {
-                                                        bookedSlot.startTime
-                                                    }
-
-                                                    val bookedEnd = if (bookedSlot.endTime.contains("T")) {
-                                                        bookedSlot.endTime.substring(11, 19)
-                                                    } else {
-                                                        bookedSlot.endTime
-                                                    }
-
-                                                    slotStartTime == bookedStart && slotEndTime == bookedEnd
-                                                }
-                                            }
-
                                             Box(
                                                 modifier = Modifier
                                                     .width(80.dp)
-                                                    .height(45.dp)
+                                                    .height(50.dp)
                                                     .border(1.dp, Color.Gray)
-                                                    .background(
-                                                        if (isBooked) Color(0xFFFFCDD2) else Color.White
-                                                    ),
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                if (isBooked) {
-                                                    Text(
-                                                        text = "Đã đặt",
-                                                        color = Color.Black,
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        textAlign = TextAlign.Center
+                                                Text(
+                                                    text = time,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    textAlign = TextAlign.Center,
+                                                    color = Color.Black
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Data Rows - Sử dụng courtsAvailability
+                                    courtsToDisplay.forEach { court ->
+                                        Row {
+                                            timeSlots.forEach { time ->
+                                                val slotStartTime = timeSlotToStartTime(time)
+                                                val slotEndTime = timeSlotToEndTime(time)
+
+                                                // Kiểm tra slot có bị overlap bởi bất kỳ booking nào không
+                                                val isBooked = court.bookedSlots.any { bookedSlot ->
+                                                    timeRangesOverlap(
+                                                        slotStartTime, slotEndTime,
+                                                        bookedSlot.startTime, bookedSlot.endTime
                                                     )
+                                                }
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(80.dp)
+                                                        .height(45.dp)
+                                                        .border(1.dp, Color.Gray)
+                                                        .background(
+                                                            if (isBooked) Color(0xFFFFCDD2) else Color.White
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    if (isBooked) {
+                                                        Text(
+                                                            text = "Đã đặt",
+                                                            color = Color.Black,
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -533,6 +550,32 @@ private fun timeSlotToEndTime(timeSlot: String): String {
     val endMinute = totalMinutes % 60
 
     return String.format("%02d:%02d:00", endHour, endMinute)
+}
+
+// Helper function để check xem 2 time ranges có overlap không
+// Format: "HH:mm:ss"
+private fun timeRangesOverlap(
+    start1: String,
+    end1: String,
+    start2: String,
+    end2: String
+): Boolean {
+    // Convert time strings to minutes for easier comparison
+    fun timeToMinutes(time: String): Int {
+        val parts = time.split(":")
+        if (parts.size < 2) return 0
+        val hour = parts[0].toIntOrNull() ?: 0
+        val minute = parts[1].toIntOrNull() ?: 0
+        return hour * 60 + minute
+    }
+
+    val start1Minutes = timeToMinutes(start1)
+    val end1Minutes = timeToMinutes(end1)
+    val start2Minutes = timeToMinutes(start2)
+    val end2Minutes = timeToMinutes(end2)
+
+    // Two ranges overlap if: start1 < end2 AND start2 < end1
+    return start1Minutes < end2Minutes && start2Minutes < end1Minutes
 }
 
 @Composable

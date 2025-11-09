@@ -432,4 +432,74 @@ class VenueRepositoryImpl @Inject constructor(
             detailAddress = detailAddress
         )
     }
+
+    override suspend fun getCourtsAvailability(
+        venueId: Long,
+        startTime: String,
+        endTime: String
+    ): Flow<Resource<List<com.example.bookingcourt.domain.model.CourtAvailability>>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "========== FETCHING COURTS AVAILABILITY ==========")
+            Log.d(TAG, "Venue ID: $venueId")
+            Log.d(TAG, "Start Time: $startTime")
+            Log.d(TAG, "End Time: $endTime")
+
+            val response = venueApi.getCourtsAvailability(venueId, startTime, endTime)
+
+            Log.d(TAG, "Response Code: ${response.code()}")
+            Log.d(TAG, "Response isSuccessful: ${response.isSuccessful}")
+
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+
+                Log.d(TAG, "Response body is null: ${apiResponse == null}")
+                Log.d(TAG, "Response success: ${apiResponse?.success}")
+                Log.d(TAG, "Response message: ${apiResponse?.message}")
+                Log.d(TAG, "Response data - venueName: ${apiResponse?.data?.venueName}")
+                Log.d(TAG, "Response data - courts count: ${apiResponse?.data?.courts?.size}")
+
+                if (apiResponse != null && apiResponse.success && apiResponse.data != null) {
+                    val courtsAvailability = apiResponse.data.courts.map { dto ->
+                        com.example.bookingcourt.domain.model.CourtAvailability(
+                            courtId = dto.id,
+                            courtName = dto.description,
+                            available = dto.available,
+                            bookedSlots = dto.bookedSlots?.map { slotDto ->
+                                com.example.bookingcourt.domain.model.BookedSlotInfo(
+                                    startTime = slotDto.getStartTimeString(),
+                                    endTime = slotDto.getEndTimeString(),
+                                    bookingId = slotDto.bookingId
+                                )
+                            } ?: emptyList()
+                        )
+                    }
+
+                    Log.d(TAG, "✓ Successfully fetched ${courtsAvailability.size} courts availability")
+                    courtsAvailability.forEachIndexed { index, court ->
+                        Log.d(TAG, "  [$index] ${court.courtName} - Available: ${court.available}, Booked Slots: ${court.bookedSlots.size}")
+                    }
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Success(courtsAvailability))
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể tải thông tin tình trạng sân"
+                    Log.e(TAG, "⚠ API returned success=false: $errorMsg")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "⚠ API error: ${response.code()}")
+                Log.e(TAG, "Error body: $errorBody")
+                Log.d(TAG, "======================================")
+                emit(Resource.Error("Lỗi kết nối: ${response.code()}"))
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠ Exception fetching courts availability: ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
 }
