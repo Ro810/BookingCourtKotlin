@@ -43,6 +43,7 @@ fun ProfileScreen(
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToBecomeOwner: () -> Unit = {},
     onNavigateToBecomeCustomer: () -> Unit = {},
+    onNavigateToBookingHistory: () -> Unit = {},
     onLogout: () -> Unit = {},
     showBackButton: Boolean = true,
     showTopBar: Boolean = true,
@@ -106,6 +107,7 @@ fun ProfileScreen(
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
                             onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
+                            onNavigateToBookingHistory = onNavigateToBookingHistory,
                             onShowLogoutDialog = { showLogoutDialog = true },
                         )
                     }
@@ -167,6 +169,7 @@ fun ProfileScreen(
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
                             onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
+                            onNavigateToBookingHistory = onNavigateToBookingHistory,
                             onShowLogoutDialog = { showLogoutDialog = true },
                         )
                     }
@@ -232,6 +235,7 @@ private fun LazyListScope.ProfileContent(
     onNavigateToChangePassword: () -> Unit,
     onNavigateToBecomeOwner: () -> Unit,
     onNavigateToBecomeCustomer: () -> Unit,
+    onNavigateToBookingHistory: () -> Unit,
     onShowLogoutDialog: () -> Unit,
 ) {
     // User Profile Header
@@ -379,7 +383,7 @@ private fun LazyListScope.ProfileContent(
                 MenuItemRow(
                     icon = Icons.Default.DateRange,
                     title = "Lịch sử đặt sân",
-                    onClick = { /* TODO */ },
+                    onClick = onNavigateToBookingHistory,
                 )
                 HorizontalDivider()
                 MenuItemRow(

@@ -393,6 +393,22 @@ class BookingRepositoryImpl @Inject constructor(
             emit(Resource.Error(e.message ?: "Lỗi khi lấy thông tin slots đã đặt"))
         }
     }
+
+    override suspend fun getMyBookings(): Flow<Resource<List<BookingDetail>>> = flow {
+        emit(Resource.Loading())
+        try {
+            Log.d("BookingRepo", "🔍 Getting my bookings...")
+            val response = bookingApi.getMyBookings()
+
+            Log.d("BookingRepo", "✅ Received ${response.data.size} bookings")
+            val bookings = response.data.map { it.toBookingDetail() }
+
+            emit(Resource.Success(bookings))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "❌ Error getting my bookings", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách booking"))
+        }
+    }
 }
 
 // ---------------- Mapper helpers ----------------

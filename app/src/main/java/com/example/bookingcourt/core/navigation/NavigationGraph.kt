@@ -443,6 +443,9 @@ fun NavigationGraph(
                     onNavigateToChangePassword = {
                         navController.navigate(Screen.ChangePassword.route)
                     },
+                    onNavigateToBookingHistory = {
+                        navController.navigate(Screen.BookingHistory.route)
+                    },
                     onNavigateToBecomeOwner = {
                         // Kiểm tra xem user đã có bank info chưa
                         val user = profileState.currentUser

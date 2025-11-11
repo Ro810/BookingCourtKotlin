@@ -115,4 +115,9 @@ interface BookingRepository {
         venueId: Long,
         date: String
     ): Flow<Resource<List<com.example.bookingcourt.domain.model.BookedSlot>>>
+
+    /**
+     * Lấy danh sách booking của user hiện tại (my bookings)
+     */
+    suspend fun getMyBookings(): Flow<Resource<List<BookingDetail>>>
 }
