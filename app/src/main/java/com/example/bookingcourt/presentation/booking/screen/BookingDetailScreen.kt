@@ -39,7 +39,7 @@ import java.io.FileOutputStream
 fun BookingDetailScreen(
     bookingId: String,
     onNavigateBack: () -> Unit,
-    onNavigateToWaiting: (String) -> Unit,
+    onNavigateToWaiting: ((String) -> Unit)? = null, // ✅ Làm optional
     viewModel: BookingDetailViewModel = hiltViewModel()
 ) {
     val bookingDetail by viewModel.bookingDetail.collectAsState()
@@ -93,7 +93,7 @@ fun BookingDetailScreen(
                 snackbarHostState.showSnackbar("Đã gửi xác nhận thanh toán!")
                 viewModel.resetConfirmState()
                 // Navigate to waiting screen
-                onNavigateToWaiting(bookingId)
+                onNavigateToWaiting?.invoke(bookingId)
             }
             is Resource.Error -> {
                 snackbarHostState.showSnackbar(

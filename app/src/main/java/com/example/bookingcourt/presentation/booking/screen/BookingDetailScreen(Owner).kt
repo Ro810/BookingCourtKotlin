@@ -28,7 +28,7 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BookingDetailScreen(
+fun OwnerBookingDetailScreen(
     bookingId: String,
     onNavigateBack: () -> Unit = {},
 ) {
@@ -472,8 +472,8 @@ fun getPaymentMethodName(method: PaymentMethod?): String {
 
 @Preview(showBackground = true)
 @Composable
-fun BookingDetailScreenPreview() {
+fun OwnerBookingDetailScreenPreview() {
     BookingCourtTheme {
-        BookingDetailScreen(bookingId = "booking_123")
+        OwnerBookingDetailScreen(bookingId = "booking_123")
     }
 }
