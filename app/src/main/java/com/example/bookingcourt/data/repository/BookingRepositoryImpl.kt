@@ -293,9 +293,48 @@ class BookingRepositoryImpl @Inject constructor(
     override suspend fun getBookingDetail(bookingId: String): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
+            Log.d("BookingRepo", "🔍 Getting booking detail for ID: $bookingId")
             val response = bookingApi.getBookingDetail(bookingId)
+
+            // ✅ LOG RAW API RESPONSE
+            Log.d("BookingRepo", "========== API RESPONSE ==========")
+            Log.d("BookingRepo", "  Booking ID: ${response.data?.id}")
+            Log.d("BookingRepo", "  Court ID: ${response.data?.courtId}")
+            Log.d("BookingRepo", "  Court Name: ${response.data?.courtName}")
+            Log.d("BookingRepo", "  Total Price: ${response.data?.totalPrice}")
+
+            // ✅ CHECK BOOKING ITEMS
+            if (response.data?.bookingItems != null) {
+                Log.d("BookingRepo", "  ✅ HAS BOOKING ITEMS: ${response.data.bookingItems.size} items")
+                response.data.bookingItems.forEachIndexed { index, item ->
+                    Log.d("BookingRepo", "    [$index] Court ${item.courtId}: ${item.courtName}")
+                    Log.d("BookingRepo", "         Time: ${item.startTime} - ${item.endTime}")
+                    Log.d("BookingRepo", "         Price: ${item.price}")
+                }
+            } else {
+                Log.w("BookingRepo", "  ⚠️ NO BOOKING ITEMS in response - using legacy court data")
+            }
+            Log.d("BookingRepo", "==================================")
+
             val bookingDetail = response.data?.toBookingDetail()
-            if (bookingDetail != null) emit(Resource.Success(bookingDetail)) else emit(Resource.Error("Không tìm thấy thông tin booking"))
+
+            if (bookingDetail != null) {
+                // ✅ LOG MAPPED DATA
+                Log.d("BookingRepo", "========== MAPPED BOOKING DETAIL ==========")
+                Log.d("BookingRepo", "  Booking ID: ${bookingDetail.id}")
+                if (bookingDetail.bookingItems != null) {
+                    Log.d("BookingRepo", "  ✅ Mapped ${bookingDetail.bookingItems.size} booking items")
+                } else {
+                    Log.w("BookingRepo", "  ⚠️ NO booking items after mapping")
+                    Log.d("BookingRepo", "  Legacy court: ${bookingDetail.court?.description}")
+                }
+                Log.d("BookingRepo", "  Total Price: ${bookingDetail.totalPrice}")
+                Log.d("BookingRepo", "==========================================")
+
+                emit(Resource.Success(bookingDetail))
+            } else {
+                emit(Resource.Error("Không tìm thấy thông tin booking"))
+            }
         } catch (e: Exception) {
             Log.e("BookingRepo", "Error getting booking detail", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy chi tiết booking"))

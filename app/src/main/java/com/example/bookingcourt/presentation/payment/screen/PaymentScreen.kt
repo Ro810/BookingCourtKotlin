@@ -156,7 +156,7 @@ fun PaymentScreen(
             }
             Log.d("PaymentScreen", "  Total Price: ${bookingData.totalPrice} VNĐ")
 
-            paymentViewModel.createBooking(bookingItems = items)
+            paymentViewModel.createBookingWithItems(bookingItems = items)
         },
         isLoading = createBookingState is Resource.Loading,
         snackbarHostState = snackbarHostState

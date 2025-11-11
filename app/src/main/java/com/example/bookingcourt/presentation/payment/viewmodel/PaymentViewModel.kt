@@ -24,13 +24,13 @@ class PaymentViewModel @Inject constructor(
     /**
      * ✅ Tạo booking mới - hỗ trợ nhiều sân
      */
-    fun createBooking(
+    fun createBookingWithItems(
         bookingItems: List<BookingItemData>
     ) {
         viewModelScope.launch {
             bookingRepository.createBookingMultipleCourts(
                 bookingItems = bookingItems
-            ).collect { result ->
+            ).collect { result: Resource<BookingWithBankInfo> ->
                 _createBookingState.value = result
             }
         }
