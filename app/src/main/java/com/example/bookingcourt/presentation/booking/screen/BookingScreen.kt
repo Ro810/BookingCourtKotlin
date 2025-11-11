@@ -516,15 +516,8 @@ fun BookingScreen(
                                                 fontSize = 18.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
-                                        } else if (isBooked) {
-                                            Text(
-                                                text = "Đã đặt",
-                                                color = Color.Black,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                textAlign = TextAlign.Center
-                                            )
                                         }
+                                        // Ô đã đặt - chỉ hiển thị màu, không có text
                                     }
                                 }
                             }
