@@ -43,6 +43,49 @@ data class BookingDto(
 data class CreateBookingRequestDto(
     @SerializedName("venueId")
     val venueId: Long,
+
+    // ✨ NEW: Dùng khi đặt nhiều sân (RECOMMENDED)
+    @SerializedName("bookingItems")
+    val bookingItems: List<BookingItemRequestDto>? = null,
+
+    // 🔄 LEGACY: Dùng khi đặt 1 sân (backward compatible)
+    @SerializedName("courtId")
+    val courtId: Long? = null,
+    @SerializedName("startTime")
+    val startTime: String? = null,
+    @SerializedName("endTime")
+    val endTime: String? = null
+) {
+    companion object {
+        /**
+         * ✨ Factory method: Tạo request cho NHIỀU SÂN (NEW API)
+         */
+        fun forMultipleCourts(
+            venueId: Long,
+            items: List<BookingItemRequestDto>
+        ) = CreateBookingRequestDto(
+            venueId = venueId,
+            bookingItems = items
+        )
+
+        /**
+         * 🔄 Factory method: Tạo request cho 1 SÂN (LEGACY - backward compatible)
+         */
+        fun forSingleCourt(
+            venueId: Long,
+            courtId: Long,
+            startTime: String,
+            endTime: String
+        ) = CreateBookingRequestDto(
+            venueId = venueId,
+            courtId = courtId,
+            startTime = startTime,
+            endTime = endTime
+        )
+    }
+}
+
+data class BookingItemRequestDto(
     @SerializedName("courtId")
     val courtId: Long,
     @SerializedName("startTime")
@@ -103,28 +146,34 @@ data class CreateBookingResponseDto(
     @SerializedName("userId")
     val userId: Long,
     @SerializedName("userName")
-    val userName: String?, // Nullable để xử lý trường hợp server không trả về
+    val userName: String?,
+
+    // ✨ NEW: Danh sách sân đã đặt
+    @SerializedName("bookingItems")
+    val bookingItems: List<BookingItemResponseDto>? = null,
+
+    // 🔄 LEGACY: Thông tin sân đơn (backward compatible)
     @SerializedName("courtId")
-    val courtId: Long,
+    val courtId: Long? = null,
     @SerializedName("courtName")
-    val courtName: String?, // Nullable để xử lý trường hợp server không trả về
+    val courtName: String?,
     @SerializedName("venueId")
-    val venueId: Long?,  // ✅ THÊM field này để parse từ API (nếu có)
+    val venueId: Long?,
     @SerializedName("venuesName")
-    val venuesName: String?, // Nullable để xử lý trường hợp server không trả về
+    val venuesName: String?,
     @SerializedName("startTime")
     @JsonAdapter(TimeStringDeserializer::class)
-    val startTime: String?, // Nullable để xử lý parse error - có thể là string hoặc array
+    val startTime: String?,
     @SerializedName("endTime")
     @JsonAdapter(TimeStringDeserializer::class)
-    val endTime: String?, // Nullable để xử lý parse error - có thể là string hoặc array
+    val endTime: String?,
     @SerializedName("totalPrice")
     val totalPrice: Double,
     @SerializedName("status")
     val status: String,
     @SerializedName("expireTime")
     @JsonAdapter(TimeStringDeserializer::class)
-    val expireTime: String?, // Nullable để xử lý parse error - có thể là string hoặc array
+    val expireTime: String?,
     @SerializedName("ownerBankInfo")
     val ownerBankInfo: BankInfoDto,
     @SerializedName("paymentProofUploaded")
@@ -180,6 +229,7 @@ data class RejectBookingRequestDto(
 
 /**
  * Response DTO chi tiết booking - dùng cho cả GET /bookings/{id} và các API payment
+ * ✅ UPDATED: Hỗ trợ bookingItems array cho nhiều sân
  */
 data class BookingDetailResponseDto(
     @SerializedName("id")
@@ -190,10 +240,17 @@ data class BookingDetailResponseDto(
     val userName: String?,
     @SerializedName("userPhone")
     val userPhone: String?,
+
+    // ✨ NEW: Danh sách sân đã đặt (có thể nhiều sân)
+    @SerializedName("bookingItems")
+    val bookingItems: List<BookingItemResponseDto>? = null,
+
+    // 🔄 LEGACY: Thông tin sân đơn (backward compatible)
     @SerializedName("courtId")
-    val courtId: Long,
+    val courtId: Long? = null,
     @SerializedName("courtName")
     val courtName: String?,
+
     @SerializedName("venueId")
     val venueId: Long?,
     @SerializedName("venuesName")
@@ -224,4 +281,22 @@ data class BookingDetailResponseDto(
     val expireTime: String?, // Nullable và có thể là string hoặc array
     @SerializedName("ownerBankInfo")
     val ownerBankInfo: BankInfoDto?
+)
+
+/**
+ * ✨ NEW: Booking Item trong response (thông tin mỗi sân đã đặt)
+ */
+data class BookingItemResponseDto(
+    @SerializedName("courtId")
+    val courtId: Long,
+    @SerializedName("courtName")
+    val courtName: String?,
+    @SerializedName("startTime")
+    @JsonAdapter(TimeStringDeserializer::class)
+    val startTime: String?,
+    @SerializedName("endTime")
+    @JsonAdapter(TimeStringDeserializer::class)
+    val endTime: String?,
+    @SerializedName("price")
+    val price: Double
 )

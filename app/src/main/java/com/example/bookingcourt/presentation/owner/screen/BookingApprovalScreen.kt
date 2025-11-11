@@ -248,12 +248,70 @@ private fun BookingApprovalContent(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                InfoRow(label = "Sân", value = booking.court.description)
                 InfoRow(label = "Địa điểm", value = booking.venue.name)
-                InfoRow(
-                    label = "Thời gian",
-                    value = formatDateTime(booking.startTime) + " - " + formatTime(booking.endTime)
-                )
+                booking.venueAddress?.let { InfoRow(label = "Địa chỉ", value = it) }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ✅ Court info - Hiển thị tất cả các sân đã đặt
+                if (!booking.bookingItems.isNullOrEmpty()) {
+                    Text(
+                        text = "Sân đã đặt:",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    booking.bookingItems.forEach { item ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFF5F5F5)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = item.courtName,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
+                                    fontSize = 13.sp,
+                                    color = Color.DarkGray
+                                )
+                                Text(
+                                    text = "${item.price.formatPrice()} đ",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Primary
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Legacy: 1 sân duy nhất
+                    booking.court?.let { court ->
+                        InfoRow(label = "Sân", value = court.description)
+                        InfoRow(
+                            label = "Thời gian",
+                            value = formatDateTime(booking.startTime) + " - " + formatTime(booking.endTime)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ✅ Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
                 InfoRow(
                     label = "Tổng tiền",
                     value = "${booking.totalPrice.formatPrice()} đ",
@@ -418,4 +476,3 @@ private fun formatTime(dateTime: LocalDateTime): String {
 private fun Long.formatPrice(): String {
     return "%,d".format(this).replace(',', '.')
 }
-

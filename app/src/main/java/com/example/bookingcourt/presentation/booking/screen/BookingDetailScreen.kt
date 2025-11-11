@@ -1,6 +1,7 @@
 package com.example.bookingcourt.presentation.booking.screen
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -274,25 +275,109 @@ private fun BookingInfoCard(booking: BookingDetail) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // ✅ Hiển thị tiêu đề với số lượng sân
+            val courtsCount = booking.getCourtsCount()
             Text(
-                text = "Thông tin đặt sân",
+                text = if (courtsCount > 1) "Thông tin đặt sân ($courtsCount sân)" else "Thông tin đặt sân",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            InfoRow(label = "Sân", value = booking.court.description)
+            // Venue info
             InfoRow(label = "Địa điểm", value = booking.venue.name)
             booking.venueAddress?.let { InfoRow(label = "Địa chỉ", value = it) }
-            InfoRow(
-                label = "Thời gian",
-                value = formatDateTime(booking.startTime) + " - " + formatTime(booking.endTime)
-            )
-            InfoRow(
-                label = "Tổng tiền",
-                value = "${booking.totalPrice.formatPrice()} đ",
-                valueColor = Primary
-            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ✅ Court info - Hiển thị tất cả các sân đã đặt
+            if (!booking.bookingItems.isNullOrEmpty()) {
+                Text(
+                    text = if (booking.bookingItems.size > 1)
+                        "Các sân đã đặt (${booking.bookingItems.size}):"
+                    else
+                        "Sân đã đặt:",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.DarkGray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                booking.bookingItems.forEachIndexed { index, item ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFF5F5F5)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${index + 1}. ${item.courtName}",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Primary
+                                )
+                                Text(
+                                    text = "${item.price.formatPrice()} đ",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "⏰ ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
+                                fontSize = 13.sp,
+                                color = Color.DarkGray
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Legacy: 1 sân duy nhất
+                booking.court?.let { court ->
+                    InfoRow(label = "Sân", value = court.description)
+                    InfoRow(
+                        label = "Thời gian",
+                        value = formatDateTime(booking.startTime) + " - " + formatTime(booking.endTime)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ✅ Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Tổng tiền:",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Text(
+                    text = "${booking.totalPrice.formatPrice()} đ",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Primary
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             InfoRow(
                 label = "Trạng thái",
                 value = booking.status.toVietnamese(),
@@ -471,17 +556,57 @@ private fun BookingStatus.toColor(): Color {
 
 private fun uriToFile(context: android.content.Context, uri: Uri): File? {
     return try {
+        Log.d("BookingDetailScreen", "🔄 Converting URI to File...")
+        Log.d("BookingDetailScreen", "  URI: $uri")
+
         val contentResolver = context.contentResolver
-        val file = File(context.cacheDir, "payment_proof_${System.currentTimeMillis()}.jpg")
+
+        // ✅ Get file extension from MIME type
+        val mimeType = contentResolver.getType(uri)
+        Log.d("BookingDetailScreen", "  MIME Type: $mimeType")
+
+        val extension = when {
+            mimeType?.contains("jpeg") == true || mimeType?.contains("jpg") == true -> "jpg"
+            mimeType?.contains("png") == true -> "png"
+            mimeType?.contains("webp") == true -> "webp"
+            else -> "jpg" // default
+        }
+
+        val fileName = "payment_proof_${System.currentTimeMillis()}.$extension"
+        val file = File(context.cacheDir, fileName)
+
+        Log.d("BookingDetailScreen", "  Target file: ${file.absolutePath}")
+
         val inputStream = contentResolver.openInputStream(uri)
+        if (inputStream == null) {
+            Log.e("BookingDetailScreen", "  ❌ Cannot open InputStream from URI!")
+            return null
+        }
+
         val outputStream = FileOutputStream(file)
-        inputStream?.copyTo(outputStream)
-        inputStream?.close()
+
+        val bytesCopied = inputStream.copyTo(outputStream)
+        Log.d("BookingDetailScreen", "  ✅ Copied $bytesCopied bytes")
+
+        inputStream.close()
         outputStream.close()
-        file
+
+        // ✅ Verify file was created successfully
+        if (file.exists() && file.length() > 0) {
+            Log.d("BookingDetailScreen", "  ✅ File created successfully:")
+            Log.d("BookingDetailScreen", "    Name: ${file.name}")
+            Log.d("BookingDetailScreen", "    Size: ${file.length()} bytes")
+            Log.d("BookingDetailScreen", "    Path: ${file.absolutePath}")
+            file
+        } else {
+            Log.e("BookingDetailScreen", "  ❌ File created but is empty or doesn't exist!")
+            null
+        }
     } catch (e: Exception) {
+        Log.e("BookingDetailScreen", "  ❌ Exception converting URI to File:", e)
+        Log.e("BookingDetailScreen", "    Exception type: ${e.javaClass.simpleName}")
+        Log.e("BookingDetailScreen", "    Exception message: ${e.message}")
         e.printStackTrace()
         null
     }
 }
-

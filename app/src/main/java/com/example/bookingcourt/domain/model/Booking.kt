@@ -48,12 +48,55 @@ enum class PaymentMethod {
 }
 
 /**
+ * ✨ NEW: Booking Item model - đại diện cho 1 sân trong booking
+ */
+data class BookingItem(
+    val courtId: String,
+    val courtName: String,
+    val startTime: LocalDateTime,
+    val endTime: LocalDateTime,
+    val price: Long
+)
+
+/**
+ * Thông tin user trong booking
+ */
+data class BookingUserInfo(
+    val id: String,
+    val fullname: String,
+    val phone: String?
+)
+
+/**
+ * Thông tin court trong booking
+ */
+data class BookingCourtInfo(
+    val id: String,
+    val description: String
+)
+
+/**
+ * Thông tin venue trong booking
+ */
+data class BookingVenueInfo(
+    val id: String,
+    val name: String
+)
+
+/**
  * Response model khi tạo booking mới - bao gồm thông tin ngân hàng của chủ sân
+ * ✅ UPDATED: Hỗ trợ bookingItems array cho nhiều sân
  */
 data class BookingWithBankInfo(
     val id: String,
     val user: BookingUserInfo,
-    val court: BookingCourtInfo,
+
+    // ✨ NEW: Danh sách sân đã đặt (có thể nhiều sân)
+    val bookingItems: List<BookingItem>? = null,
+
+    // 🔄 LEGACY: Thông tin sân đơn (backward compatible)
+    val court: BookingCourtInfo? = null,
+
     val venue: BookingVenueInfo,
     val startTime: LocalDateTime,
     val endTime: LocalDateTime,
@@ -62,32 +105,49 @@ data class BookingWithBankInfo(
     val expireTime: LocalDateTime,
     val ownerBankInfo: BankInfo,
     val notes: String?
-)
+) {
+    /**
+     * Helper: Lấy tên courts để hiển thị
+     * - Nếu có bookingItems: "Sân 1, Sân 2, Sân 3"
+     * - Nếu không: dùng court.description
+     */
+    fun getCourtsDisplayName(): String {
+        return when {
+            !bookingItems.isNullOrEmpty() -> {
+                if (bookingItems.size == 1) {
+                    bookingItems.first().courtName
+                } else {
+                    "${bookingItems.size} sân"
+                }
+            }
+            court != null -> court.description
+            else -> "Sân"
+        }
+    }
 
-data class BookingUserInfo(
-    val id: String,
-    val fullname: String,
-    val phone: String? = null // Cho phép null vì API không luôn trả về
-)
-
-data class BookingCourtInfo(
-    val id: String,
-    val description: String // Giữ non-null, sẽ dùng default value nếu null
-)
-
-data class BookingVenueInfo(
-    val id: String,
-    val name: String // Giữ non-null, sẽ dùng default value nếu null
-)
+    /**
+     * Helper: Số lượng sân đã đặt
+     */
+    fun getCourtsCount(): Int {
+        return bookingItems?.size ?: 1
+    }
+}
 
 /**
  * Model chi tiết booking cho payment flow
  * Bao gồm tất cả thông tin cần thiết cho user và owner
+ * ✅ UPDATED: Hỗ trợ bookingItems array cho nhiều sân
  */
 data class BookingDetail(
     val id: String,
     val user: BookingUserInfo,
-    val court: BookingCourtInfo,
+
+    // ✨ NEW: Danh sách sân đã đặt (có thể nhiều sân)
+    val bookingItems: List<BookingItem>? = null,
+
+    // 🔄 LEGACY: Thông tin sân đơn (backward compatible)
+    val court: BookingCourtInfo? = null,
+
     val venue: BookingVenueInfo,
     val venueAddress: String?,
     val startTime: LocalDateTime,
@@ -100,4 +160,30 @@ data class BookingDetail(
     val rejectionReason: String?,
     val expireTime: LocalDateTime?,
     val ownerBankInfo: BankInfo?
-)
+) {
+    /**
+     * Helper: Lấy tên courts để hiển thị
+     * - Nếu có bookingItems: "Sân 1, Sân 2" hoặc "3 sân"
+     * - Nếu không: dùng court.description
+     */
+    fun getCourtsDisplayName(): String {
+        return when {
+            !bookingItems.isNullOrEmpty() -> {
+                if (bookingItems.size == 1) {
+                    bookingItems.first().courtName
+                } else {
+                    bookingItems.joinToString(", ") { it.courtName }
+                }
+            }
+            court != null -> court.description
+            else -> "N/A"
+        }
+    }
+
+    /**
+     * Helper: Đếm số lượng sân
+     */
+    fun getCourtsCount(): Int {
+        return bookingItems?.size ?: 1
+    }
+}

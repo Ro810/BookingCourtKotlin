@@ -9,11 +9,13 @@ import com.example.bookingcourt.domain.model.*
 import com.example.bookingcourt.domain.repository.BookingRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -23,8 +25,81 @@ import javax.inject.Inject
 
 class BookingRepositoryImpl @Inject constructor(
     private val bookingApi: BookingApi,
-    private val venueApi: VenueApi // ✅ Inject VenueApi để gọi availability API
+    private val venueApi: VenueApi
 ) : BookingRepository {
+
+    /**
+     * ✅ Tạo booking nhiều sân - method mới
+     */
+    override suspend fun createBookingMultipleCourts(
+        bookingItems: List<BookingItemData>
+    ): Flow<Resource<BookingWithBankInfo>> = flow {
+        emit(Resource.Loading())
+        try {
+            if (bookingItems.isEmpty()) {
+                throw IllegalArgumentException("Booking items cannot be empty")
+            }
+
+            // Lấy venueId từ courtId đầu tiên (tất cả sân phải cùng venue)
+            val firstCourtId = bookingItems.first().courtId
+            val parts = firstCourtId.split("_")
+            val venueIdLong = parts.getOrNull(0)?.toLongOrNull()
+                ?: throw IllegalArgumentException("Invalid venueId in courtId: $firstCourtId")
+
+            // Chuyển đổi BookingItemData thành BookingItemRequestDto
+            val requestItems = bookingItems.map { item ->
+                val itemParts = item.courtId.split("_")
+                val courtIdLong = itemParts.getOrNull(1)?.toLongOrNull()
+                    ?: throw IllegalArgumentException("Invalid courtId format: ${item.courtId}")
+
+                BookingItemRequestDto(
+                    courtId = courtIdLong,
+                    startTime = item.startTime,
+                    endTime = item.endTime
+                )
+            }
+
+            val request = CreateBookingRequestDto.forMultipleCourts(
+                venueId = venueIdLong,
+                items = requestItems
+            )
+
+            Log.d("BookingRepo", "Creating booking: venue=$venueIdLong, items=${requestItems.size}")
+            requestItems.forEachIndexed { index, item ->
+                Log.d("BookingRepo", "  [$index] Court ${item.courtId}: ${item.startTime} - ${item.endTime}")
+            }
+
+            val apiResponse = bookingApi.createBooking(request)
+            val response = apiResponse.data ?: throw IllegalStateException("Response data is null")
+
+            // Sử dụng startTime/endTime từ item đầu tiên làm fallback
+            val mapped = response.toBookingWithBankInfo(
+                fallbackStartTime = bookingItems.first().startTime,
+                fallbackEndTime = bookingItems.first().endTime
+            )
+
+            Log.d("BookingRepo", "✅ Booking created successfully:")
+            Log.d("BookingRepo", "   Booking ID: ${mapped.id}")
+            Log.d("BookingRepo", "   Total Price: ${mapped.totalPrice} VNĐ")
+
+            emit(Resource.Success(mapped))
+        } catch (e: retrofit2.HttpException) {
+            val body = try { e.response()?.errorBody()?.string() } catch (_: Exception) { null }
+            Log.e("BookingRepo", "HTTP error creating booking: ${e.code()} - $body")
+            val message = when (e.code()) {
+                400 -> "Thông tin đặt sân không hợp lệ. Vui lòng kiểm tra lại."
+                401 -> "Vui lòng đăng nhập lại"
+                404 -> "Không tìm thấy sân. Vui lòng thử lại."
+                409 -> "Một hoặc nhiều sân đã được đặt trong khung giờ này. Vui lòng chọn giờ khác."
+                500 -> "Lỗi server: ${body ?: "Server đang gặp sự cố."}"
+                else -> "Lỗi: ${e.message()}"
+            }
+            emit(Resource.Error(message))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "Error creating booking", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi tạo booking"))
+        }
+    }
 
     override suspend fun createBooking(
         courtId: String,
@@ -35,129 +110,56 @@ class BookingRepositoryImpl @Inject constructor(
     ): Flow<Resource<BookingWithBankInfo>> = flow {
         emit(Resource.Loading())
         try {
-            // ✅ Parse courtId format: "venueId_courtId"
-            // VD: "14_4" -> venueId=14, courtId=4
-            // Backend CẦN CẢ HAI để validate và tính giá
             val parts = courtId.split("_")
             val venueIdLong = parts.getOrNull(0)?.toLongOrNull()
                 ?: throw IllegalArgumentException("Invalid venueId in courtId: $courtId")
             val courtIdLong = parts.getOrNull(1)?.toLongOrNull()
                 ?: throw IllegalArgumentException("Invalid courtId format: $courtId. Expected format: venueId_courtId")
 
-            // ✅ Backend yêu cầu cả venueId và courtId
-            // venueId: để validate court thuộc venue + tính giá
-            // courtId: để lưu vào bookings table
-            val request = CreateBookingRequestDto(
-                venueId = venueIdLong,
+            val bookingItem = BookingItemRequestDto(
                 courtId = courtIdLong,
                 startTime = startTime,
                 endTime = endTime
             )
 
-            // Log request để debug
-            Log.d("BookingRepo", "========== CREATE BOOKING REQUEST ==========")
-            Log.d("BookingRepo", "  Original courtId param: $courtId")
-            Log.d("BookingRepo", "  Parsed venueId: $venueIdLong")
-            Log.d("BookingRepo", "  Parsed courtId: $courtIdLong")
-            Log.d("BookingRepo", "  startTime: $startTime")
-            Log.d("BookingRepo", "  endTime: $endTime")
-            Log.d("BookingRepo", "==========================================")
+            val request = CreateBookingRequestDto.forMultipleCourts(
+                venueId = venueIdLong,
+                items = listOf(bookingItem)
+            )
+
+            Log.d("BookingRepo", "Creating booking: venue=$venueIdLong, items=${request.bookingItems?.size}")
 
             val apiResponse = bookingApi.createBooking(request)
-
-            // ✅ Log raw response để debug
-            Log.d("BookingRepo", "========== RAW API RESPONSE ==========")
-            Log.d("BookingRepo", "  Success: ${apiResponse.success}")
-            Log.d("BookingRepo", "  Message: ${apiResponse.message}")
-            if (apiResponse.data != null) {
-                Log.d("BookingRepo", "  Data class: ${apiResponse.data.javaClass.simpleName}")
-                // Try to log data as JSON string để xem structure thực tế
-                try {
-                    val gson = com.google.gson.Gson()
-                    val jsonString = gson.toJson(apiResponse.data)
-                    Log.d("BookingRepo", "  Data JSON: $jsonString")
-                } catch (e: Exception) {
-                    Log.e("BookingRepo", "  Cannot serialize data to JSON: ${e.message}")
-                }
-            } else {
-                Log.e("BookingRepo", "  ❌ Response data is NULL!")
-            }
-            Log.d("BookingRepo", "======================================")
-
-            // Lấy data từ wrapper response
             val response = apiResponse.data ?: throw IllegalStateException("Response data is null")
 
-            Log.d("BookingRepo", "✅ Booking created successfully!")
-            Log.d("BookingRepo", "  Booking ID: ${response.id}")
-            Log.d("BookingRepo", "  Court ID: ${response.courtId}")
-            Log.d("BookingRepo", "  Venue Name: ${response.venuesName}")
-            Log.d("BookingRepo", "  StartTime: ${response.startTime ?: "NULL"}")
-            Log.d("BookingRepo", "  EndTime: ${response.endTime ?: "NULL"}")
-            Log.d("BookingRepo", "  ExpireTime: ${response.expireTime ?: "NULL"}")
-            Log.d("BookingRepo", "  Total Price: ${response.totalPrice}")
-            Log.d("BookingRepo", "  API message: ${apiResponse.message}")
-
-            // ✅ Sử dụng startTime/endTime từ request nếu response không có
-            val bookingWithBankInfo = response.toBookingWithBankInfo(
-                fallbackStartTime = startTime,
-                fallbackEndTime = endTime
-            )
-            emit(Resource.Success(bookingWithBankInfo))
-        } catch (e: IllegalArgumentException) {
-            // Lỗi parse courtId
-            Log.e("BookingRepo", "❌ Invalid courtId format", e)
-            emit(Resource.Error("Lỗi: ${e.message}"))
+            val mapped = response.toBookingWithBankInfo(fallbackStartTime = startTime, fallbackEndTime = endTime)
+            emit(Resource.Success(mapped))
         } catch (e: retrofit2.HttpException) {
-            // Lỗi HTTP từ server
-            val errorBody = try {
-                e.response()?.errorBody()?.string()
-            } catch (ex: Exception) {
-                null
-            }
-
-            Log.e("BookingRepo", "❌ HTTP Error creating booking")
-            Log.e("BookingRepo", "  HTTP Code: ${e.code()}")
-            Log.e("BookingRepo", "  Error message: ${e.message()}")
-            Log.e("BookingRepo", "  Error body: $errorBody")
-
-            val errorMessage = when (e.code()) {
+            val body = try { e.response()?.errorBody()?.string() } catch (_: Exception) { null }
+            Log.e("BookingRepo", "HTTP error creating booking: ${e.code()} - $body")
+            val message = when (e.code()) {
                 400 -> "Thông tin đặt sân không hợp lệ. Vui lòng kiểm tra lại."
                 401 -> "Vui lòng đăng nhập lại"
                 404 -> "Không tìm thấy sân. Vui lòng thử lại."
                 409 -> "Sân đã được đặt trong khung giờ này. Vui lòng chọn giờ khác."
-                500 -> "Lỗi server: ${errorBody ?: "Server đang gặp sự cố. Vui lòng thử lại sau."}"
+                500 -> "Lỗi server: ${body ?: "Server đang gặp sự cố."}"
                 else -> "Lỗi: ${e.message()}"
             }
-
-            emit(Resource.Error(errorMessage))
+            emit(Resource.Error(message))
         } catch (e: Exception) {
-            // Lỗi khác
-            Log.e("BookingRepo", "❌ Error creating booking", e)
-            Log.e("BookingRepo", "  Error type: ${e.javaClass.simpleName}")
-            Log.e("BookingRepo", "  Error message: ${e.message}")
-            Log.e("BookingRepo", "  Error cause: ${e.cause}")
-
-            val errorMessage = when {
-                e.message?.contains("timeout", ignoreCase = true) == true -> "Kết nối tới server bị timeout. Vui lòng kiểm tra mạng."
-                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "Không thể kết nối tới server. Vui lòng kiểm tra kết nối mạng."
-                else -> "Lỗi: ${e.message ?: "Không xác định"}"
-            }
-
-            emit(Resource.Error(errorMessage))
+            Log.e("BookingRepo", "Error creating booking", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi tạo booking"))
         }
     }
 
-    override suspend fun getUserBookings(
-        page: Int,
-        size: Int,
-        status: String?
-    ): Flow<Resource<List<Booking>>> = flow {
+    override suspend fun getUserBookings(page: Int, size: Int, status: String?): Flow<Resource<List<Booking>>> = flow {
         emit(Resource.Loading())
         try {
             val response = bookingApi.getUserBookings(page, size, status)
             val bookings = response.bookings.map { it.toBooking() }
             emit(Resource.Success(bookings))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting user bookings", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách booking"))
         }
     }
@@ -166,24 +168,21 @@ class BookingRepositoryImpl @Inject constructor(
         emit(Resource.Loading())
         try {
             val response = bookingApi.getBookingDetail(bookingId)
-            val bookingDetail = response.data.toBookingDetail()
-            // Convert BookingDetail to Booking for backward compatibility
-            val booking = bookingDetail.toBooking()
-            emit(Resource.Success(booking))
+            val bookingDetail = response.data?.toBookingDetail()
+            if (bookingDetail != null) emit(Resource.Success(bookingDetail.toBooking())) else emit(Resource.Error("Không tìm thấy chi tiết booking"))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting booking by id", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy chi tiết booking"))
         }
     }
 
-    override suspend fun cancelBooking(
-        bookingId: String,
-        reason: String
-    ): Flow<Resource<Unit>> = flow {
+    override suspend fun cancelBooking(bookingId: String, reason: String): Flow<Resource<Unit>> = flow {
         emit(Resource.Loading())
         try {
             bookingApi.cancelBooking(bookingId, mapOf("reason" to reason))
             emit(Resource.Success(Unit))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error cancelling booking", e)
             emit(Resource.Error(e.message ?: "Lỗi khi hủy booking"))
         }
     }
@@ -195,6 +194,7 @@ class BookingRepositoryImpl @Inject constructor(
             val booking = response.toBooking()
             emit(Resource.Success(booking))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error confirming booking", e)
             emit(Resource.Error(e.message ?: "Lỗi khi xác nhận booking"))
         }
     }
@@ -206,70 +206,72 @@ class BookingRepositoryImpl @Inject constructor(
             val bookings = response.map { it.toBooking() }
             emit(Resource.Success(bookings))
         } catch (e: Exception) {
+            Log.e("BookingRepo", "Error getting upcoming bookings", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy booking sắp tới"))
         }
     }
 
-    // Payment confirmation flow implementations
-
-    override suspend fun uploadPaymentProof(
-        bookingId: String,
-        imageFile: File
-    ): Flow<Resource<BookingDetail>> = flow {
+    override suspend fun uploadPaymentProof(bookingId: String, imageFile: File): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
+            if (!imageFile.exists() || imageFile.length() == 0L) {
+                emit(Resource.Error("File không tồn tại hoặc rỗng"))
+                return@flow
+            }
             val requestFile = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("file", imageFile.name, requestFile)
-
             val response = bookingApi.uploadPaymentProof(bookingId, body)
-            val bookingDetail = response.data.toBookingDetail()
-            emit(Resource.Success(bookingDetail))
+            val bookingDetail = response.data?.toBookingDetail()
+            if (bookingDetail != null) emit(Resource.Success(bookingDetail)) else emit(Resource.Error("Response data is null"))
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = try { e.response()?.errorBody()?.string() } catch (_: Exception) { null }
+            Log.e("BookingRepo", "HTTP error uploading payment proof: ${e.code()} - $errorBody")
+            val message = when (e.code()) {
+                400 -> "File không hợp lệ. Vui lòng chọn ảnh khác."
+                401 -> "Vui lòng đăng nhập lại"
+                413 -> "File quá lớn. Vui lòng chọn ảnh nhỏ hơn."
+                500 -> "Lỗi server. Vui lòng thử lại sau."
+                else -> "Lỗi upload: ${e.message()}"
+            }
+            emit(Resource.Error(message))
         } catch (e: Exception) {
             Log.e("BookingRepo", "Error uploading payment proof", e)
             emit(Resource.Error(e.message ?: "Lỗi khi upload ảnh"))
         }
     }
 
-    override suspend fun confirmPayment(
-        bookingId: String,
-        paymentProofUrl: String
-    ): Flow<Resource<BookingDetail>> = flow {
+    override suspend fun confirmPayment(bookingId: String, paymentProofUrl: String): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
             val request = ConfirmPaymentRequestDto(paymentProofUrl)
             val response = bookingApi.confirmPayment(bookingId, request)
-            val bookingDetail = response.data.toBookingDetail()
-            emit(Resource.Success(bookingDetail))
+            val bookingDetail = response.data?.toBookingDetail()
+            if (bookingDetail != null) emit(Resource.Success(bookingDetail)) else emit(Resource.Error("Response data is null"))
         } catch (e: Exception) {
             Log.e("BookingRepo", "Error confirming payment", e)
             emit(Resource.Error(e.message ?: "Lỗi khi xác nhận thanh toán"))
         }
     }
 
-    override suspend fun acceptBooking(
-        bookingId: String
-    ): Flow<Resource<BookingDetail>> = flow {
+    override suspend fun acceptBooking(bookingId: String): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
             val response = bookingApi.acceptBooking(bookingId)
-            val bookingDetail = response.data.toBookingDetail()
-            emit(Resource.Success(bookingDetail))
+            val bookingDetail = response.data?.toBookingDetail()
+            if (bookingDetail != null) emit(Resource.Success(bookingDetail)) else emit(Resource.Error("Response data is null"))
         } catch (e: Exception) {
             Log.e("BookingRepo", "Error accepting booking", e)
             emit(Resource.Error(e.message ?: "Lỗi khi chấp nhận booking"))
         }
     }
 
-    override suspend fun rejectBooking(
-        bookingId: String,
-        reason: String
-    ): Flow<Resource<BookingDetail>> = flow {
+    override suspend fun rejectBooking(bookingId: String, reason: String): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
             val request = RejectBookingRequestDto(reason)
             val response = bookingApi.rejectBooking(bookingId, request)
-            val bookingDetail = response.data.toBookingDetail()
-            emit(Resource.Success(bookingDetail))
+            val bookingDetail = response.data?.toBookingDetail()
+            if (bookingDetail != null) emit(Resource.Success(bookingDetail)) else emit(Resource.Error("Response data is null"))
         } catch (e: Exception) {
             Log.e("BookingRepo", "Error rejecting booking", e)
             emit(Resource.Error(e.message ?: "Lỗi khi từ chối booking"))
@@ -288,77 +290,28 @@ class BookingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getBookingDetail(
-        bookingId: String
-    ): Flow<Resource<BookingDetail>> = flow {
+    override suspend fun getBookingDetail(bookingId: String): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
-            Log.d("BookingRepo", "========== GET BOOKING DETAIL ==========")
-            Log.d("BookingRepo", "  Booking ID: $bookingId")
-            
             val response = bookingApi.getBookingDetail(bookingId)
-            
-            Log.d("BookingRepo", "  Response success: ${response.success}")
-            Log.d("BookingRepo", "  Response message: ${response.message}")
-            
-            if (response.data != null) {
-                // Log raw data để debug
-                try {
-                    val gson = com.google.gson.Gson()
-                    val jsonString = gson.toJson(response.data)
-                    Log.d("BookingRepo", "  Response data JSON: $jsonString")
-                } catch (e: Exception) {
-                    Log.e("BookingRepo", "  Cannot serialize to JSON: ${e.message}")
-                }
-                
-                val bookingDetail = response.data.toBookingDetail()
-                Log.d("BookingRepo", "✅ Successfully mapped booking detail")
-                emit(Resource.Success(bookingDetail))
-            } else {
-                Log.e("BookingRepo", "❌ Response data is null")
-                emit(Resource.Error("Không tìm thấy thông tin booking"))
-            }
-        } catch (e: com.google.gson.JsonSyntaxException) {
-            Log.e("BookingRepo", "❌ JSON Parse Error getting booking detail", e)
-            Log.e("BookingRepo", "  Error message: ${e.message}")
-            emit(Resource.Error("Lỗi parse dữ liệu từ server: ${e.message}"))
-        } catch (e: IllegalArgumentException) {
-            Log.e("BookingRepo", "❌ Invalid data getting booking detail", e)
-            Log.e("BookingRepo", "  Error message: ${e.message}")
-            emit(Resource.Error("Dữ liệu không hợp lệ: ${e.message}"))
+            val bookingDetail = response.data?.toBookingDetail()
+            if (bookingDetail != null) emit(Resource.Success(bookingDetail)) else emit(Resource.Error("Không tìm thấy thông tin booking"))
         } catch (e: Exception) {
-            Log.e("BookingRepo", "❌ Error getting booking detail", e)
-            Log.e("BookingRepo", "  Error type: ${e.javaClass.simpleName}")
-            Log.e("BookingRepo", "  Error message: ${e.message}")
+            Log.e("BookingRepo", "Error getting booking detail", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy chi tiết booking"))
         }
     }
 
-    override suspend fun getBookedSlots(
-        venueId: Long,
-        date: String
-    ): Flow<Resource<List<com.example.bookingcourt.domain.model.BookedSlot>>> = flow {
+    override suspend fun getBookedSlots(venueId: Long, date: String): Flow<Resource<List<BookedSlot>>> = flow {
         emit(Resource.Loading())
         try {
-            Log.d("BookingRepo", "📥 Fetching court availability for venue $venueId on $date")
-
-            // Chuyển date từ "yyyy-MM-dd" thành ISO DateTime range cho API
-            // VD: "2025-11-05" → startTime: "2025-11-05T00:00:00", endTime: "2025-11-05T23:59:59"
             val startTime = "${date}T00:00:00"
             val endTime = "${date}T23:59:59"
-
-            Log.d("BookingRepo", "  Query range: $startTime to $endTime")
-
-            // ✅ Gọi API availability có sẵn từ backend
             val response = venueApi.getCourtsAvailability(venueId, startTime, endTime)
-
             if (!response.isSuccessful || response.body() == null) {
-                val errorMsg = "API error: ${response.code()} - ${response.message()}"
-                Log.e("BookingRepo", "❌ $errorMsg")
-                emit(Resource.Error(errorMsg))
+                emit(Resource.Error("API error: ${response.code()} - ${response.message()}"))
                 return@flow
             }
-
             val apiResponse = response.body()!!
             if (!apiResponse.success || apiResponse.data == null) {
                 val errorMsg = apiResponse.message ?: "No data returned"
@@ -367,240 +320,177 @@ class BookingRepositoryImpl @Inject constructor(
                 return@flow
             }
 
+            // apiResponse.data is CourtAvailabilityResponseDto -> extract courts list
             val courts = apiResponse.data.courts
-            Log.d("BookingRepo", "  ✅ Received ${courts.size} courts from venue '${apiResponse.data.venueName}'")
-
-            // Chuyển đổi từ CourtAvailabilityDto sang BookedSlot domain model
-            val bookedSlots = mutableListOf<com.example.bookingcourt.domain.model.BookedSlot>()
+            val bookedSlots = mutableListOf<BookedSlot>()
 
             courts.forEachIndexed { index, court ->
-                val courtNumber = index + 1 // Court number theo thứ tự (1, 2, 3, ...)
-
+                // courtNumber is the index in the returned list (1-based)
+                val courtNumber = index + 1
                 Log.d("BookingRepo", "  Court ${court.id} (${court.description}): ${court.bookedSlots?.size ?: 0} booked slots")
 
-                // Nếu court có booked slots, thêm vào danh sách
                 court.bookedSlots?.forEach { slot ->
+                    // slot.startTime / slot.endTime are arrays [year, month, day, hour, minute]
+                    val s = slot.startTime
+                    val e = slot.endTime
+                    val startIso = if (s.size >= 5) String.format("%04d-%02d-%02dT%02d:%02d:00", s[0], s[1], s[2], s[3], s[4]) else "0000-01-01T00:00:00"
+                    val endIso = if (e.size >= 5) String.format("%04d-%02d-%02dT%02d:%02d:00", e[0], e[1], e[2], e[3], e[4]) else "0000-01-01T00:00:00"
+
                     bookedSlots.add(
-                        com.example.bookingcourt.domain.model.BookedSlot(
+                        BookedSlot(
                             courtId = court.id,
                             courtNumber = courtNumber,
-                            startTime = slot.getStartTimeString(),
-                            endTime = slot.getEndTimeString(),
-                            status = BookingStatus.CONFIRMED, // Assume confirmed nếu đã booked
+                            startTime = startIso,
+                            endTime = endIso,
+                            status = BookingStatus.CONFIRMED,
                             bookingId = slot.bookingId.toString()
                         )
                     )
-
-                    Log.d("BookingRepo", "    🔒 Blocked: $courtNumber - ${slot.getStartTimeString()} to ${slot.getEndTimeString()}")
                 }
             }
-
-            Log.d("BookingRepo", "  ✅ Total ${bookedSlots.size} booked slots generated")
             emit(Resource.Success(bookedSlots))
-
-        } catch (e: retrofit2.HttpException) {
-            val errorBody = try { e.response()?.errorBody()?.string() } catch (ex: Exception) { null }
-            Log.e("BookingRepo", "❌ HTTP Error getting booked slots: ${e.code()}")
-            Log.e("BookingRepo", "  Error body: $errorBody")
-            emit(Resource.Error("Lỗi HTTP ${e.code()}: ${e.message()}"))
         } catch (e: Exception) {
-            Log.e("BookingRepo", "❌ Error getting booked slots", e)
+            Log.e("BookingRepo", "Error getting booked slots", e)
             emit(Resource.Error(e.message ?: "Lỗi khi lấy thông tin slots đã đặt"))
         }
     }
 }
 
-// Mapper functions
+// ---------------- Mapper helpers ----------------
+
 private fun CreateBookingResponseDto.toBookingWithBankInfo(
     fallbackStartTime: String? = null,
     fallbackEndTime: String? = null
 ): BookingWithBankInfo {
-    // Helper function để parse time với xử lý lỗi và fallback
-    fun parseDateTime(timeString: String?, fallback: String? = null): LocalDateTime? {
-        val timeToParse = timeString ?: fallback
-        if (timeToParse.isNullOrBlank()) {
-            Log.w("BookingMapper", "⚠️ Time string is null and no fallback provided")
-            Log.w("BookingMapper", "  Response time: $timeString")
-            Log.w("BookingMapper", "  Fallback time: $fallback")
-            return null // Trả về null thay vì throw exception
-        }
-        
+
+    fun parseDateTimeSafe(s: String?, fallback: String? = null): LocalDateTime? {
+        val str = s ?: fallback
+        if (str.isNullOrBlank()) return null
         return try {
-            // Xử lý format có microseconds: 2025-11-03T23:00:09.5733903
-            // LocalDateTime.parse chỉ hỗ trợ format chuẩn ISO-8601
-            val cleanedTime = if (timeToParse.contains('.')) {
-                // Cắt bỏ phần microseconds, chỉ giữ lại đến giây
-                timeToParse.substringBefore('.')
-            } else {
-                timeToParse
-            }
-            
-            Log.d("BookingMapper", "✅ Parsing time: $cleanedTime")
-            LocalDateTime.parse(cleanedTime)
+            val cleaned = if (str.contains('.')) str.substringBefore('.') else str
+            LocalDateTime.parse(cleaned)
         } catch (e: Exception) {
-            Log.e("BookingMapper", "❌ Error parsing time: $timeToParse", e)
-            null // Trả về null thay vì throw exception
+            Log.e("BookingMapper", "Error parsing time: $str", e)
+            null
         }
-    }
-    
-    // Helper function để parse time bắt buộc (throw exception nếu null)
-    fun parseDateTimeRequired(timeString: String?, fallback: String? = null): LocalDateTime {
-        return parseDateTime(timeString, fallback) 
-            ?: throw IllegalArgumentException("Time string is null or empty and no fallback available. Response: $timeString, Fallback: $fallback")
     }
 
-    // ✅ Log chi tiết để debug
-    Log.d("BookingMapper", "========== MAPPING BOOKING RESPONSE ==========")
-    Log.d("BookingMapper", "  Response startTime: ${this.startTime}")
-    Log.d("BookingMapper", "  Response endTime: ${this.endTime}")
-    Log.d("BookingMapper", "  Response expireTime: ${this.expireTime}")
-    Log.d("BookingMapper", "  Fallback startTime: $fallbackStartTime")
-    Log.d("BookingMapper", "  Fallback endTime: $fallbackEndTime")
+    val mappedItems = this.bookingItems?.map { item ->
+        BookingItem(
+            courtId = item.courtId.toString(),
+            courtName = item.courtName ?: "Sân ${item.courtId}",
+            startTime = parseDateTimeSafe(item.startTime, fallbackStartTime) ?: parseDateTimeSafe(fallbackStartTime)
+                ?: throw IllegalArgumentException("Missing start time"),
+            endTime = parseDateTimeSafe(item.endTime, fallbackEndTime) ?: parseDateTimeSafe(fallbackEndTime)
+                ?: throw IllegalArgumentException("Missing end time"),
+            price = item.price.toLong()
+        )
+    }
+
+    val courtInfo = this.courtId?.let {
+        BookingCourtInfo(id = it.toString(), description = this.courtName ?: "Sân")
+    }
+
+    val start = parseDateTimeSafe(this.startTime, fallbackStartTime) ?: mappedItems?.firstOrNull()?.startTime
+        ?: throw IllegalArgumentException("Start time missing")
+    val end = parseDateTimeSafe(this.endTime, fallbackEndTime) ?: mappedItems?.firstOrNull()?.endTime
+        ?: throw IllegalArgumentException("End time missing")
+
+    val expire = parseDateTimeSafe(this.expireTime) ?: run {
+        val instant = start.toInstant(TimeZone.currentSystemDefault())
+        (instant + 5.minutes).toLocalDateTime(TimeZone.currentSystemDefault())
+    }
 
     return BookingWithBankInfo(
         id = this.id.toString(),
-        user = BookingUserInfo(
-            id = this.userId.toString(),
-            fullname = this.userName?.takeIf { it.isNotBlank() } ?: "Người dùng",
-            phone = null
-        ),
-        court = BookingCourtInfo(
-            id = this.courtId.toString(),
-            description = this.courtName?.takeIf { it.isNotBlank() } ?: "Sân"
-        ),
-        venue = BookingVenueInfo(
-            id = this.venueId?.toString() ?: "0",  // ✅ Dùng venueId từ API thay vì hardcode
-            name = this.venuesName?.takeIf { it.isNotBlank() } ?: "Venue"
-        ),
-        startTime = parseDateTimeRequired(this.startTime, fallbackStartTime),
-        endTime = parseDateTimeRequired(this.endTime, fallbackEndTime),
+        user = BookingUserInfo(id = this.userId.toString(), fullname = this.userName ?: "Người dùng", phone = null),
+        court = courtInfo ?: BookingCourtInfo(id = this.courtId?.toString() ?: "0", description = this.courtName ?: "Sân"),
+        venue = BookingVenueInfo(id = this.venueId?.toString() ?: "0", name = this.venuesName ?: "Venue"),
+        startTime = start,
+        endTime = end,
         totalPrice = this.totalPrice.toLong(),
-        status = when (this.status.uppercase()) {
-            "PENDING_PAYMENT" -> BookingStatus.PENDING
-            "CONFIRMED" -> BookingStatus.CONFIRMED
-            "CANCELLED" -> BookingStatus.CANCELLED
-            "COMPLETED" -> BookingStatus.COMPLETED
-            "NO_SHOW" -> BookingStatus.NO_SHOW
+        status = when {
+            this.status.equals("PENDING_PAYMENT", ignoreCase = true) -> BookingStatus.PENDING
+            this.status.equals("CONFIRMED", ignoreCase = true) -> BookingStatus.CONFIRMED
+            this.status.equals("CANCELLED", ignoreCase = true) -> BookingStatus.CANCELLED
+            this.status.equals("COMPLETED", ignoreCase = true) -> BookingStatus.COMPLETED
+            this.status.equals("NO_SHOW", ignoreCase = true) -> BookingStatus.NO_SHOW
             else -> BookingStatus.PENDING
         },
-        expireTime = parseDateTime(this.expireTime) 
-            ?: run {
-                // Fallback: Nếu expireTime null, tính từ startTime + 5 phút
-                val start = parseDateTimeRequired(this.startTime, fallbackStartTime)
-                // Convert LocalDateTime to Instant, add 5 minutes, convert back
-                val timeZone = TimeZone.currentSystemDefault()
-                val instant = start.toInstant(timeZone)
-                val expireInstant = instant + 5.minutes
-                val expireTimeFallback = expireInstant.toLocalDateTime(timeZone)
-                Log.w("BookingMapper", "⚠️ ExpireTime is null, using fallback: startTime + 5 minutes")
-                expireTimeFallback
-            },
-        ownerBankInfo = this.ownerBankInfo.toBankInfo(),
-        notes = null
+        expireTime = expire,
+        ownerBankInfo = this.ownerBankInfo?.toBankInfo() ?: BankInfo(
+            bankName = "Chưa có thông tin",
+            bankAccountNumber = "",
+            bankAccountName = ""
+        ),
+        notes = null,
+        bookingItems = mappedItems
     )
 }
 
-private fun BankInfoDto.toBankInfo(): BankInfo {
-    return BankInfo(
-        bankName = this.bankName,
-        bankAccountNumber = this.bankAccountNumber,
-        bankAccountName = this.bankAccountName
-    )
-}
+private fun BankInfoDto.toBankInfo(): BankInfo = BankInfo(
+    bankName = this.bankName,
+    bankAccountNumber = this.bankAccountNumber,
+    bankAccountName = this.bankAccountName
+)
 
 private fun BookingDto.toBooking(): Booking {
+    fun cleanParse(s: String): LocalDateTime = LocalDateTime.parse(if (s.contains('.')) s.substringBefore('.') else s)
+
     return Booking(
-        id = this.id,
-        courtId = this.courtId,
+        id = this.id.toString(),
+        courtId = this.courtId.toString(),
         courtName = this.courtName,
-        userId = this.userId,
+        userId = this.userId.toString(),
         userName = this.userName,
-        userPhone = this.userPhone,
-        startTime = LocalDateTime.parse(this.startTime),
-        endTime = LocalDateTime.parse(this.endTime),
-        totalPrice = this.totalPrice,
+        userPhone = this.userPhone ?: "",
+        startTime = cleanParse(this.startTime),
+        endTime = cleanParse(this.endTime),
+        totalPrice = this.totalPrice.toLong(),
         status = BookingStatus.valueOf(this.status.uppercase()),
         paymentStatus = PaymentStatus.valueOf(this.paymentStatus.uppercase()),
         paymentMethod = this.paymentMethod?.let { PaymentMethod.valueOf(it.uppercase()) },
         notes = this.notes,
-        createdAt = LocalDateTime.parse(this.createdAt),
-        updatedAt = LocalDateTime.parse(this.updatedAt),
+        createdAt = cleanParse(this.createdAt),
+        updatedAt = cleanParse(this.updatedAt),
         cancellationReason = this.cancellationReason,
         qrCode = this.qrCode
     )
 }
 
 private fun BookingDetailResponseDto.toBookingDetail(): BookingDetail {
-    // Helper function để parse time với xử lý lỗi
-    fun parseDateTime(timeString: String?): LocalDateTime? {
-        if (timeString.isNullOrBlank()) {
-            Log.w("BookingMapper", "⚠️ Time string is null or blank")
-            return null
-        }
-        return try {
-            val cleanedTime = if (timeString.contains('.')) {
-                timeString.substringBefore('.')
-            } else {
-                timeString
-            }
-            Log.d("BookingMapper", "✅ Parsing time: $cleanedTime")
-            LocalDateTime.parse(cleanedTime)
-        } catch (e: Exception) {
-            Log.e("BookingMapper", "❌ Error parsing time: $timeString", e)
-            null
-        }
+    fun parse(s: String?): LocalDateTime? {
+        if (s.isNullOrBlank()) return null
+        return try { LocalDateTime.parse(if (s.contains('.')) s.substringBefore('.') else s) } catch (e: Exception) { Log.e("BookingMapper","Error parsing: $s", e); null }
     }
 
-    // ✅ Log để debug
-    Log.d("BookingMapper", "========== MAPPING BOOKING DETAIL ==========")
-    Log.d("BookingMapper", "  Booking ID: ${this.id}")
-    Log.d("BookingMapper", "  StartTime: ${this.startTime} (${this.startTime?.javaClass?.simpleName})")
-    Log.d("BookingMapper", "  EndTime: ${this.endTime} (${this.endTime?.javaClass?.simpleName})")
-    Log.d("BookingMapper", "  ExpireTime: ${this.expireTime} (${this.expireTime?.javaClass?.simpleName})")
-    Log.d("BookingMapper", "  Status: ${this.status}")
-    Log.d("BookingMapper", "  Court ID: ${this.courtId}")
-    Log.d("BookingMapper", "  Venue ID: ${this.venueId}")
-    
-    // ✅ Kiểm tra nếu startTime/endTime null thì log cảnh báo
-    if (this.startTime.isNullOrBlank()) {
-        Log.e("BookingMapper", "❌ CRITICAL: StartTime is NULL or EMPTY!")
-        Log.e("BookingMapper", "  This means backend did not map startTime from BookingItem")
-    }
-    if (this.endTime.isNullOrBlank()) {
-        Log.e("BookingMapper", "❌ CRITICAL: EndTime is NULL or EMPTY!")
-        Log.e("BookingMapper", "  This means backend did not map endTime from BookingItem")
+    val start = parse(this.startTime) ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val end = parse(this.endTime) ?: start
+    val expire = parse(this.expireTime)
+
+    // ✅ Map bookingItems nếu có
+    val items = this.bookingItems?.map { item ->
+        BookingItem(
+            courtId = item.courtId.toString(),
+            courtName = item.courtName ?: "Sân ${item.courtId}",
+            startTime = parse(item.startTime) ?: start,
+            endTime = parse(item.endTime) ?: end,
+            price = item.price.toLong()
+        )
     }
 
     return BookingDetail(
         id = this.id.toString(),
-        user = BookingUserInfo(
-            id = this.userId.toString(),
-            fullname = this.userName ?: "Người dùng",
-            phone = this.userPhone
-        ),
-        court = BookingCourtInfo(
-            id = this.courtId.toString(),
-            description = this.courtName ?: "Sân"
-        ),
-        venue = BookingVenueInfo(
-            id = this.venueId?.toString() ?: "0",
-            name = this.venuesName ?: "Venue"
-        ),
+        user = BookingUserInfo(id = this.userId.toString(), fullname = this.userName ?: "Người dùng", phone = this.userPhone),
+
+        // ✅ Hỗ trợ cả bookingItems và court legacy
+        bookingItems = items,
+        court = if (this.courtId != null) BookingCourtInfo(id = this.courtId.toString(), description = this.courtName ?: "Sân") else null,
+
+        venue = BookingVenueInfo(id = this.venueId?.toString() ?: "0", name = this.venuesName ?: "Venue"),
         venueAddress = this.venueAddress,
-        startTime = parseDateTime(this.startTime) ?: run {
-            Log.w("BookingMapper", "⚠️ StartTime is null, using fallback: current time")
-            // Fallback: dùng thời gian hiện tại nếu startTime null
-            kotlinx.datetime.Clock.System.now()
-                .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-        },
-        endTime = parseDateTime(this.endTime) ?: run {
-            Log.w("BookingMapper", "⚠️ EndTime is null, using fallback: current time + 1 hour")
-            // Fallback: dùng thời gian hiện tại + 1 giờ nếu endTime null
-            val now = kotlinx.datetime.Clock.System.now()
-            val timeZone = kotlinx.datetime.TimeZone.currentSystemDefault()
-            (now + kotlin.time.Duration.parse("PT1H"))
-                .toLocalDateTime(timeZone)
-        },
+        startTime = start,
+        endTime = end,
         totalPrice = this.totalPrice.toLong(),
         status = when (this.status.uppercase()) {
             "PENDING_PAYMENT" -> BookingStatus.PENDING_PAYMENT
@@ -616,41 +506,32 @@ private fun BookingDetailResponseDto.toBookingDetail(): BookingDetail {
         paymentProofUrl = this.paymentProofUrl,
         paymentProofUploadedAt = this.paymentProofUploadedAt,
         rejectionReason = this.rejectionReason,
-        expireTime = parseDateTime(this.expireTime),
-        ownerBankInfo = this.ownerBankInfo?.let {
-            BankInfo(
-                bankName = it.bankName,
-                bankAccountNumber = it.bankAccountNumber,
-                bankAccountName = it.bankAccountName
-            )
-        }
+        expireTime = expire,
+        ownerBankInfo = this.ownerBankInfo?.let { BankInfo(bankName = it.bankName, bankAccountNumber = it.bankAccountNumber, bankAccountName = it.bankAccountName) }
     )
 }
 
-// Convert BookingDetail to Booking for backward compatibility
-private fun BookingDetail.toBooking(): Booking {
-    return Booking(
-        id = this.id,
-        courtId = this.court.id,
-        courtName = this.court.description,
-        userId = this.user.id,
-        userName = this.user.fullname,
-        userPhone = this.user.phone ?: "",
-        startTime = this.startTime,
-        endTime = this.endTime,
-        totalPrice = this.totalPrice,
-        status = this.status,
-        paymentStatus = when {
-            this.paymentProofUploaded && this.status == BookingStatus.PAYMENT_UPLOADED -> PaymentStatus.PENDING
-            this.status == BookingStatus.CONFIRMED -> PaymentStatus.PAID
-            else -> PaymentStatus.PENDING
-        },
-        paymentMethod = PaymentMethod.BANK_TRANSFER,
-        notes = null,
-        createdAt = this.startTime, // fallback
-        updatedAt = this.startTime, // fallback
-        cancellationReason = this.rejectionReason,
-        qrCode = null
-    )
-}
-
+private fun BookingDetail.toBooking(): Booking = Booking(
+    id = this.id,
+    // ✅ Lấy courtId từ bookingItems hoặc court legacy
+    courtId = this.bookingItems?.firstOrNull()?.courtId ?: this.court?.id ?: "0",
+    courtName = this.bookingItems?.firstOrNull()?.courtName ?: this.court?.description ?: "Sân",
+    userId = this.user.id,
+    userName = this.user.fullname,
+    userPhone = this.user.phone ?: "",
+    startTime = this.startTime,
+    endTime = this.endTime,
+    totalPrice = this.totalPrice,
+    status = this.status,
+    paymentStatus = when {
+        this.paymentProofUploaded && this.status == BookingStatus.PAYMENT_UPLOADED -> PaymentStatus.PENDING
+        this.status == BookingStatus.CONFIRMED -> PaymentStatus.PAID
+        else -> PaymentStatus.PENDING
+    },
+    paymentMethod = PaymentMethod.BANK_TRANSFER,
+    notes = null,
+    createdAt = this.startTime,
+    updatedAt = this.startTime,
+    cancellationReason = this.rejectionReason,
+    qrCode = null
+)

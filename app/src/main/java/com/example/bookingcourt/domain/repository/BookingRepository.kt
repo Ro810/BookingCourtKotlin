@@ -4,10 +4,18 @@ import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.Booking
 import com.example.bookingcourt.domain.model.BookingDetail
 import com.example.bookingcourt.domain.model.BookingWithBankInfo
+import com.example.bookingcourt.domain.model.BookingItemData
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 
 interface BookingRepository {
+
+    /**
+     * ✅ Tạo booking nhiều sân - method mới
+     */
+    suspend fun createBookingMultipleCourts(
+        bookingItems: List<BookingItemData>
+    ): Flow<Resource<BookingWithBankInfo>>
 
     /**
      * Tạo booking mới - trả về thông tin booking kèm thông tin ngân hàng của chủ sân

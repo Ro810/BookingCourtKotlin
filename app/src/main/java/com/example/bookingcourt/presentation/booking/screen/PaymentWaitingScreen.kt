@@ -132,18 +132,130 @@ private fun WaitingContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Show payment proof if available
-        if (bookingDetail is Resource.Success) {
-            bookingDetail.data?.paymentProofUrl?.let { url ->
+        // ✅ Show booking details
+        if (bookingDetail is Resource.Success && bookingDetail.data != null) {
+            val booking = bookingDetail.data
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Thông tin đặt sân",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Venue info
+                    InfoRow(label = "Địa điểm", value = booking.venue.name)
+                    booking.venueAddress?.let { InfoRow(label = "Địa chỉ", value = it) }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // ✅ Court info - Hiển thị tất cả các sân đã đặt
+                    if (!booking.bookingItems.isNullOrEmpty()) {
+                        Text(
+                            text = "Sân đã đặt:",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        booking.bookingItems.forEach { item ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF5F5F5)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = item.courtName,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Primary
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
+                                        fontSize = 13.sp,
+                                        color = Color.DarkGray
+                                    )
+                                    Text(
+                                        text = "${item.price.formatPrice()} đ",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Primary
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Legacy: 1 sân duy nhất
+                        booking.court?.let { court ->
+                            InfoRow(label = "Sân", value = court.description)
+                            InfoRow(
+                                label = "Thời gian",
+                                value = "${formatDateTime(booking.startTime)} - ${formatTime(booking.endTime)}"
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // ✅ Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Tổng tiền:",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "${booking.totalPrice.formatPrice()} đ",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Status
+                    InfoRow(
+                        label = "Trạng thái",
+                        value = booking.status.toVietnamese(),
+                        valueColor = Color(0xFFFF9800)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Show payment proof if available
+            booking.paymentProofUrl?.let { url ->
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Chứng minh chuyển khoản của bạn",
-                            fontWeight = FontWeight.Bold
+                            text = "Chứng minh chuyển khoản",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Image(
@@ -174,6 +286,58 @@ private fun WaitingContent(
         LinearProgressIndicator(
             modifier = Modifier.fillMaxWidth(0.6f)
         )
+    }
+}
+
+// ✅ Helper components
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    valueColor: Color = Color.Black
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = valueColor
+        )
+    }
+}
+
+// ✅ Helper functions
+private fun formatDateTime(dateTime: kotlinx.datetime.LocalDateTime): String {
+    return "${dateTime.dayOfMonth.toString().padStart(2, '0')}/${dateTime.monthNumber.toString().padStart(2, '0')}/${dateTime.year} ${formatTime(dateTime)}"
+}
+
+private fun formatTime(dateTime: kotlinx.datetime.LocalDateTime): String {
+    return "${dateTime.hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')}"
+}
+
+private fun Long.formatPrice(): String {
+    return "%,d".format(this).replace(',', '.')
+}
+
+private fun BookingStatus.toVietnamese(): String {
+    return when (this) {
+        BookingStatus.PENDING_PAYMENT -> "Chờ thanh toán"
+        BookingStatus.PAYMENT_UPLOADED -> "Chờ xác nhận"
+        BookingStatus.CONFIRMED -> "Đã xác nhận"
+        BookingStatus.REJECTED -> "Bị từ chối"
+        BookingStatus.CANCELLED -> "Đã hủy"
+        BookingStatus.COMPLETED -> "Hoàn thành"
+        else -> "Đang xử lý"
     }
 }
 
@@ -288,4 +452,3 @@ private fun RejectedContent(
         }
     }
 }
-

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.BookingWithBankInfo
+import com.example.bookingcourt.domain.model.BookingItemData
 import com.example.bookingcourt.domain.repository.BookingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,8 +22,24 @@ class PaymentViewModel @Inject constructor(
     val createBookingState: StateFlow<Resource<BookingWithBankInfo>?> = _createBookingState.asStateFlow()
 
     /**
-     * Tạo booking mới - được gọi từ PaymentScreen khi user xác nhận thanh toán
+     * ✅ Tạo booking mới - hỗ trợ nhiều sân
      */
+    fun createBooking(
+        bookingItems: List<BookingItemData>
+    ) {
+        viewModelScope.launch {
+            bookingRepository.createBookingMultipleCourts(
+                bookingItems = bookingItems
+            ).collect { result ->
+                _createBookingState.value = result
+            }
+        }
+    }
+
+    /**
+     * ⚠️ LEGACY: Tạo booking cho 1 sân duy nhất (backward compatible)
+     */
+    @Deprecated("Use createBooking(List<BookingItemData>) instead")
     fun createBooking(
         courtId: String,
         startTime: String,
@@ -50,4 +67,3 @@ class PaymentViewModel @Inject constructor(
         _createBookingState.value = null
     }
 }
-

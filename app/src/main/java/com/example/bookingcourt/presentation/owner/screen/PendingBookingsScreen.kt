@@ -152,8 +152,9 @@ private fun PendingBookingItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // ✅ Sử dụng helper method để lấy tên sân (hỗ trợ nhiều sân)
                 Text(
-                    text = booking.court.description,
+                    text = booking.getCourtsDisplayName(),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -206,6 +207,7 @@ private fun PendingBookingItem(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // ✅ Hiển thị thời gian cho tất cả sân hoặc sân đầu tiên
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.Schedule,
@@ -214,11 +216,41 @@ private fun PendingBookingItem(
                     tint = Color.Gray
                 )
                 Spacer(modifier = Modifier.width(4.dp))
+
+                val timeDisplay = if (!booking.bookingItems.isNullOrEmpty()) {
+                    // Nếu có nhiều sân, hiển thị thời gian của sân đầu tiên
+                    val firstItem = booking.bookingItems.first()
+                    formatDateTime(firstItem.startTime) + " - " + formatTime(firstItem.endTime)
+                } else {
+                    // Legacy: 1 sân duy nhất
+                    formatDateTime(booking.startTime) + " - " + formatTime(booking.endTime)
+                }
+
                 Text(
-                    text = formatDateTime(booking.startTime) + " - " + formatTime(booking.endTime),
+                    text = timeDisplay,
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
+            }
+
+            // ✅ Hiển thị số lượng sân nếu đặt nhiều sân
+            if (booking.getCourtsCount() > 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.SportsSoccer,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${booking.getCourtsCount()} sân",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -278,4 +310,3 @@ private fun formatTime(dateTime: LocalDateTime): String {
 private fun Long.formatPrice(): String {
     return "%,d".format(this).replace(',', '.')
 }
-

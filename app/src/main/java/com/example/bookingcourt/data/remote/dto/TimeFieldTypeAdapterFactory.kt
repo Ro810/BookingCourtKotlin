@@ -10,18 +10,18 @@ import java.io.IOException
 
 /**
  * TypeAdapterFactory để tự động xử lý các field time (startTime, endTime, expireTime)
- * khi backend trả về array thay vì string
+ * khi backend trả về array số nguyên thay vì string
  */
 class TimeFieldTypeAdapterFactory : TypeAdapterFactory {
     override fun <T : Any?> create(gson: Gson, type: TypeToken<T>): TypeAdapter<T>? {
         // Chỉ xử lý các class có chứa time fields
         val rawType = type.rawType
-        if (rawType == CreateBookingResponseDto::class.java || 
+        if (rawType == CreateBookingResponseDto::class.java ||
             rawType == BookingDetailResponseDto::class.java) {
-            
+
             // Lấy default adapter
             val delegate = gson.getDelegateAdapter(this, type)
-            
+
             return object : TypeAdapter<T>() {
                 @Throws(IOException::class)
                 override fun write(out: JsonWriter, value: T?) {
@@ -30,19 +30,18 @@ class TimeFieldTypeAdapterFactory : TypeAdapterFactory {
 
                 @Throws(IOException::class)
                 override fun read(`in`: JsonReader): T? {
-                    // Đọc JSON thành string, parse thành JsonObject, fix time fields, rồi parse lại
                     return try {
                         // Đọc toàn bộ JSON thành JsonElement
                         val jsonElement = JsonParser.parseReader(`in`)
-                        
+
                         if (jsonElement.isJsonObject) {
                             val jsonObject = jsonElement.asJsonObject
-                            
+
                             // Xử lý các time fields
                             fixTimeField(jsonObject, "startTime")
                             fixTimeField(jsonObject, "endTime")
                             fixTimeField(jsonObject, "expireTime")
-                            
+
                             // Parse lại với JsonObject đã được fix
                             delegate.fromJsonTree(jsonObject)
                         } else {
@@ -53,31 +52,46 @@ class TimeFieldTypeAdapterFactory : TypeAdapterFactory {
                         throw e
                     } catch (e: JsonSyntaxException) {
                         Log.e("TimeFieldFactory", "❌ JSON Syntax Error", e)
-                        // Nếu có lỗi syntax, thử parse lại với delegate để có error message rõ ràng
                         throw e
                     } catch (e: Exception) {
                         Log.e("TimeFieldFactory", "❌ Unexpected error parsing JSON", e)
                         throw e
                     }
                 }
-                
+
                 private fun fixTimeField(jsonObject: JsonObject, fieldName: String) {
                     val field = jsonObject.get(fieldName) ?: return
-                    
+
                     if (field.isJsonArray) {
                         val array = field.asJsonArray
                         Log.d("TimeFieldFactory", "⚠️ Found array for $fieldName with size: ${array.size()}")
-                        if (array.size() > 0) {
-                            val firstElement = array[0]
-                            if (firstElement.isJsonPrimitive && firstElement.asJsonPrimitive.isString) {
+
+                        if (array.size() >= 3) {
+                            try {
+                                // ✅ Chuyển đổi array số nguyên thành ISO-8601 string
+                                // Array format: [year, month, day, hour?, minute?, second?, nano?]
+                                val year = array[0].asInt
+                                val month = array[1].asInt
+                                val day = array[2].asInt
+                                val hour = if (array.size() > 3) array[3].asInt else 0
+                                val minute = if (array.size() > 4) array[4].asInt else 0
+                                val second = if (array.size() > 5) array[5].asInt else 0
+
+                                val isoString = String.format(
+                                    "%04d-%02d-%02dT%02d:%02d:%02d",
+                                    year, month, day, hour, minute, second
+                                )
+
                                 // Thay thế array bằng string
-                                jsonObject.add(fieldName, firstElement)
-                                Log.d("TimeFieldFactory", "✅ Fixed $fieldName: array -> string (${firstElement.asString})")
-                            } else {
-                                Log.e("TimeFieldFactory", "❌ First element of $fieldName array is not a string: $firstElement")
+                                jsonObject.addProperty(fieldName, isoString)
+
+                                Log.d("TimeFieldFactory", "✅ Fixed $fieldName: array $array -> string '$isoString'")
+                            } catch (e: Exception) {
+                                Log.e("TimeFieldFactory", "❌ Error converting $fieldName array to string", e)
+                                jsonObject.add(fieldName, JsonNull.INSTANCE)
                             }
                         } else {
-                            Log.e("TimeFieldFactory", "❌ Array for $fieldName is empty")
+                            Log.e("TimeFieldFactory", "❌ Array for $fieldName too short (size: ${array.size()})")
                             jsonObject.add(fieldName, JsonNull.INSTANCE)
                         }
                     } else if (field.isJsonPrimitive && field.asJsonPrimitive.isString) {
@@ -89,4 +103,3 @@ class TimeFieldTypeAdapterFactory : TypeAdapterFactory {
         return null
     }
 }
-

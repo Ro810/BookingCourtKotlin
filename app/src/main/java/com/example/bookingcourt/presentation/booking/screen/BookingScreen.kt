@@ -29,6 +29,7 @@ import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.domain.model.Address
 import com.example.bookingcourt.domain.model.User
 import com.example.bookingcourt.domain.model.BookingData
+import com.example.bookingcourt.domain.model.BookingItemData
 import com.example.bookingcourt.domain.model.CourtTimeSlot
 import com.example.bookingcourt.domain.model.CourtDetail
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingViewModel
@@ -660,146 +661,172 @@ fun BookingScreen(
             Button(
                 onClick = {
                     if (selectedSlots.isNotEmpty()) {
-                        val firstSlot = selectedSlots.first()
-                        val courtNumber = firstSlot.courtNumber
+                        // ✅ NHÓM SLOTS THEO SÂN để xử lý đúng khi đặt nhiều sân
+                        val slotsByCourtNumber = selectedSlots.groupBy { it.courtNumber }
 
-                        // ✅ Xác định court ID - Sử dụng thứ tự trong list (KHÔNG parse description)
-                        // ⚠️ QUAN TRỌNG: Backend yêu cầu format "venueId_courtId" (ví dụ: "5_6")
-                        // Strategy: Court Number từ UI (1, 2, 3...) → Index trong list (0, 1, 2...) → Court ID thực tế
                         Log.d("BookingScreen", "=".repeat(60))
-                        Log.d("BookingScreen", "========== COURT ID MAPPING ==========")
-                        Log.d("BookingScreen", "🎯 User selected Court Number (UI): $courtNumber")
-                        Log.d("BookingScreen", "🏢 Venue ID: ${venue.id}")
+                        Log.d("BookingScreen", "========== PROCESSING BOOKING ==========")
+                        Log.d("BookingScreen", "📋 Total slots selected: ${selectedSlots.size}")
+                        Log.d("BookingScreen", "🏟️ Number of courts: ${slotsByCourtNumber.size}")
+                        slotsByCourtNumber.forEach { (courtNum, slots) ->
+                            Log.d("BookingScreen", "  Court $courtNum: ${slots.size} slots")
+                        }
 
-                        // ✅ Lấy courts trực tiếp từ courtsState (KHÔNG dùng realCourts.value)
+                        // ✅ Lấy courts từ state
                         val availableCourts = when (courtsState) {
                             is Resource.Success -> (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
                             else -> emptyList()
                         }
 
-                        val realCourtId: String? = if (availableCourts.isNotEmpty()) {
-                            // ✅ Sort courts theo ID để đảm bảo thứ tự nhất quán
-                            val sortedCourts = availableCourts.sortedBy { it.id }
-                            val courtIndex = courtNumber - 1 // Court 1 → index 0, Court 2 → index 1, ...
-
-                            Log.d("BookingScreen", "📋 Available courts: ${sortedCourts.size}")
-                            Log.d("BookingScreen", "📋 Mapping strategy: Court Number $courtNumber → Index $courtIndex")
-
-                            // Log tất cả courts để debug
-                            sortedCourts.forEachIndexed { index, court ->
-                                Log.d("BookingScreen", "  [$index] Court ID=${court.id}, Description='${court.description}'")
-                            }
-
-                            if (courtIndex >= 0 && courtIndex < sortedCourts.size) {
-                                val selectedCourt = sortedCourts[courtIndex]
-                                Log.d("BookingScreen", "✅ COURT FOUND!")
-                                Log.d("BookingScreen", "  UI Court Number: $courtNumber")
-                                Log.d("BookingScreen", "  Array Index: $courtIndex")
-                                Log.d("BookingScreen", "  Real Court ID: ${selectedCourt.id}")
-                                Log.d("BookingScreen", "  Description: '${selectedCourt.description}'")
-
-                                // ✅ FORMAT: "venueId_courtId" như backend yêu cầu
-                                val formattedCourtId = "${venue.id}_${selectedCourt.id}"
-                                Log.d("BookingScreen", "  ✅ Formatted: ${venue.id}_${selectedCourt.id} = $formattedCourtId")
-                                formattedCourtId
-                            } else {
-                                Log.e("BookingScreen", "❌ INDEX OUT OF BOUNDS!")
-                                Log.e("BookingScreen", "  Court Number: $courtNumber")
-                                Log.e("BookingScreen", "  Calculated Index: $courtIndex")
-                                Log.e("BookingScreen", "  Available Courts: ${sortedCourts.size}")
-                                // Show error và return null để không tiếp tục
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = "Lỗi: Không tìm thấy sân. Vui lòng thử lại.",
-                                        duration = SnackbarDuration.Long
-                                    )
-                                }
-                                null
-                            }
-                        } else {
-                            Log.e("BookingScreen", "❌ NO COURTS LOADED!")
-                            Log.e("BookingScreen", "  Venue ID: ${venue.id}")
-                            Log.e("BookingScreen", "  CourtsState: $courtsState")
-                            Log.e("BookingScreen", "  Cannot map court number $courtNumber without court list")
-                            // Show error và return null để không tiếp tục
+                        if (availableCourts.isEmpty()) {
+                            Log.e("BookingScreen", "❌ No courts loaded!")
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(
                                     message = "Lỗi: Chưa tải được danh sách sân. Vui lòng thử lại.",
                                     duration = SnackbarDuration.Long
                                 )
                             }
-                            null
-                        }
-
-                        // ✅ Kiểm tra nếu realCourtId là null thì dừng lại, không thực hiện booking
-                        if (realCourtId == null) {
-                            Log.e("BookingScreen", "❌ Cannot proceed with booking - Court ID is null")
                             return@Button
                         }
 
-                        Log.d("BookingScreen", "🔑 FINAL Court ID to send (format: venueId_courtId): $realCourtId")
-                        Log.d("BookingScreen", "=".repeat(60))
+                        val sortedCourts = availableCourts.sortedBy { it.id }
+
+                        // ✅ XỬ LÝ TỪNG SÂN - Tính thời gian cho từng sân
+                        val allCourtBookings = mutableListOf<Pair<String, Pair<String, String>>>() // (courtId, startTime-endTime)
+
+                        slotsByCourtNumber.forEach { (courtNumber, courtSlots) ->
+                            val courtIndex = courtNumber - 1
+
+                            if (courtIndex >= 0 && courtIndex < sortedCourts.size) {
+                                val selectedCourt = sortedCourts[courtIndex]
+                                val formattedCourtId = "${venue.id}_${selectedCourt.id}"
+
+                                // Tính thời gian cho sân này
+                                val sortedSlots = courtSlots.sortedBy { it.timeSlot }
+                                val firstTimeSlot = sortedSlots.first().timeSlot
+                                val lastTimeSlot = sortedSlots.last().timeSlot
+
+                                val selectedDateFormatted = selectedDate.ifEmpty {
+                                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                                }
+
+                                val dateForApi = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                    .parse(selectedDateFormatted)
+                                val calendar = Calendar.getInstance()
+                                calendar.time = dateForApi ?: Date()
+
+                                val firstTimeParts = firstTimeSlot.split(":")
+                                val firstHour = firstTimeParts[0].toInt()
+                                val firstMinute = firstTimeParts[1].toInt()
+
+                                calendar.set(Calendar.HOUR_OF_DAY, firstHour)
+                                calendar.set(Calendar.MINUTE, firstMinute)
+                                calendar.set(Calendar.SECOND, 0)
+
+                                val now = Calendar.getInstance()
+                                if (calendar.before(now)) {
+                                    calendar.add(Calendar.DAY_OF_MONTH, 1)
+                                }
+
+                                val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                val startTime = apiDateFormat.format(calendar.time)
+
+                                val endTimeSlot = calculateEndTime(lastTimeSlot)
+                                val endTimeParts = endTimeSlot.split(":")
+                                val endHour = endTimeParts[0].toInt()
+                                val endMinute = endTimeParts[1].toInt()
+
+                                calendar.set(Calendar.HOUR_OF_DAY, endHour)
+                                calendar.set(Calendar.MINUTE, endMinute)
+                                val endTime = apiDateFormat.format(calendar.time)
+
+                                allCourtBookings.add(Pair(formattedCourtId, Pair(startTime, endTime)))
+
+                                Log.d("BookingScreen", "✅ Court $courtNumber processed:")
+                                Log.d("BookingScreen", "  Court ID: $formattedCourtId")
+                                Log.d("BookingScreen", "  Start: $startTime")
+                                Log.d("BookingScreen", "  End: $endTime")
+                                Log.d("BookingScreen", "  Slots: ${courtSlots.size}")
+                            }
+                        }
+
+                        if (allCourtBookings.isEmpty()) {
+                            Log.e("BookingScreen", "❌ Cannot map any courts!")
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Lỗi: Không tìm thấy sân. Vui lòng thử lại.",
+                                    duration = SnackbarDuration.Long
+                                )
+                            }
+                            return@Button
+                        }
+
+                        // ✅ Sử dụng booking đầu tiên để tạo BookingData
+                        // (Backend sẽ tính giá chính xác cho TẤT CẢ slots)
+                        val firstBooking = allCourtBookings.first()
+                        val firstCourtId = firstBooking.first
+                        val (startTime, endTime) = firstBooking.second
 
                         val selectedDateFormatted = selectedDate.ifEmpty {
                             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                         }
 
-                        val dateForApi = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                            .parse(selectedDateFormatted)
-                        val calendar = Calendar.getInstance()
-                        calendar.time = dateForApi ?: Date()
-
-                        val sortedSlots = selectedSlots.sortedBy { it.timeSlot }
-                        val firstTimeSlot = sortedSlots.first().timeSlot
-                        val lastTimeSlot = sortedSlots.last().timeSlot
-
-                        val firstTimeParts = firstTimeSlot.split(":")
-                        val firstHour = firstTimeParts[0].toInt()
-                        val firstMinute = firstTimeParts[1].toInt()
-
-                        calendar.set(Calendar.HOUR_OF_DAY, firstHour)
-                        calendar.set(Calendar.MINUTE, firstMinute)
-                        calendar.set(Calendar.SECOND, 0)
-
-                        val now = Calendar.getInstance()
-                        if (calendar.before(now)) {
-                            calendar.add(Calendar.DAY_OF_MONTH, 1)
-                            Log.w("BookingScreen", "Thời gian đã qua, tự động chuyển sang ngày mai")
-                        }
-
-                        val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                        val startTime = apiDateFormat.format(calendar.time)
-
-                        val endTimeSlot = calculateEndTime(lastTimeSlot)
-                        val endTimeParts = endTimeSlot.split(":")
-                        val endHour = endTimeParts[0].toInt()
-                        val endMinute = endTimeParts[1].toInt()
-
-                        calendar.set(Calendar.HOUR_OF_DAY, endHour)
-                        calendar.set(Calendar.MINUTE, endMinute)
-                        val endTime = apiDateFormat.format(calendar.time)
-
                         Log.d("BookingScreen", "📝 Final booking request:")
-                        Log.d("BookingScreen", "  Court ID: $realCourtId")
+                        Log.d("BookingScreen", "  Court ID: $firstCourtId")
                         Log.d("BookingScreen", "  Start: $startTime")
                         Log.d("BookingScreen", "  End: $endTime")
+                        Log.d("BookingScreen", "  Total slots: ${selectedSlots.size}")
+                        Log.d("BookingScreen", "  Total courts: ${slotsByCourtNumber.size}")
 
-                        // Chỉ chuẩn bị dữ liệu và navigate sang PaymentScreen
+                        // ✅ Tạo danh sách BookingItemData cho tất cả các sân
+                        val bookingItems = allCourtBookings.map { (courtId, times) ->
+                            val courtNumber = courtId.split("_").getOrNull(1)?.toIntOrNull() ?: 0
+                            val courtPrice = (venue.pricePerHour * 0.5).toLong() // Giá cho 30 phút
+
+                            BookingItemData(
+                                courtId = courtId,
+                                courtName = "Sân số $courtNumber",
+                                startTime = times.first,
+                                endTime = times.second,
+                                price = courtPrice
+                            )
+                        }
+
+                        Log.d("BookingScreen", "✅ Created ${bookingItems.size} booking items:")
+                        bookingItems.forEachIndexed { index, item ->
+                            Log.d("BookingScreen", "  [$index] ${item.courtName} (${item.courtId})")
+                            Log.d("BookingScreen", "       Price: ${item.price} VNĐ")
+                        }
+
+                        // ✅ Tạo BookingData với danh sách tất cả các sân
                         val bookingData = BookingData(
-                            courtId = realCourtId,
-                            courtName = "${venue.name} - Sân $courtNumber",
+                            courtId = firstCourtId,
+                            courtName = if (slotsByCourtNumber.size == 1) {
+                                "${venue.name} - Sân ${slotsByCourtNumber.keys.first()}"
+                            } else {
+                                "${venue.name} - ${slotsByCourtNumber.size} sân"
+                            },
                             courtAddress = venue.address.getFullAddress(),
                             selectedDate = selectedDateFormatted,
                             selectedSlots = selectedSlots,
                             playerName = playerName,
                             phoneNumber = phoneNumber,
                             pricePerHour = venue.pricePerHour,
+                            // ✅ TÍNH GIÁ DỰ KIẾN cho TẤT CẢ slots (backend sẽ tính chính xác)
                             totalPrice = (venue.pricePerHour * selectedSlots.size * 0.5).toLong(),
-                            ownerBankInfo = null, // Sẽ nhận được từ API khi gọi ở PaymentScreen
-                            expireTime = null, // Sẽ nhận được từ API khi gọi ở PaymentScreen
-                            startTime = startTime, // Thêm startTime cho API
-                            endTime = endTime // Thêm endTime cho API
+                            ownerBankInfo = null,
+                            expireTime = null,
+                            startTime = startTime,
+                            endTime = endTime,
+                            bookingItems = bookingItems  // ✅ THÊM DANH SÁCH TẤT CẢ CÁC SÂN
                         )
+
+                        Log.d("BookingScreen", "✅ Booking data prepared:")
+                        Log.d("BookingScreen", "  Estimated total: ${bookingData.totalPrice} VNĐ")
+                        Log.d("BookingScreen", "  Total booking items: ${bookingData.bookingItems?.size}")
+                        Log.d("BookingScreen", "  (Backend will calculate exact price)")
+                        Log.d("BookingScreen", "  Navigating to payment...")
+                        Log.d("BookingScreen", "=".repeat(60))
 
                         // Serialize to JSON for navigation
                         val gson = Gson()
@@ -817,7 +844,7 @@ fun BookingScreen(
                 enabled = selectedSlots.isNotEmpty() &&
                          playerName.isNotEmpty() &&
                          phoneNumber.isNotEmpty() &&
-                         courtsLoaded  // ✅ Chỉ enable khi courts đã được load
+                         courtsLoaded
             ) {
                 Text("Xác nhận đặt sân", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }

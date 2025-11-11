@@ -38,7 +38,9 @@ class PendingBookingsViewModel @Inject constructor(
                         val count = resource.data?.size ?: 0
                         Log.d("PendingBookingsVM", "✅ Success! Found $count pending bookings")
                         resource.data?.forEachIndexed { index, booking ->
-                            Log.d("PendingBookingsVM", "  📋 Booking ${index + 1}: ID=${booking.id}, Court=${booking.court.description}, User=${booking.user.fullname}, Status=${booking.status}")
+                            // ✅ Sử dụng getCourtsDisplayName() để hỗ trợ cả bookingItems và court legacy
+                            val courtInfo = booking.getCourtsDisplayName()
+                            Log.d("PendingBookingsVM", "  📋 Booking ${index + 1}: ID=${booking.id}, Court=$courtInfo, User=${booking.user.fullname}, Status=${booking.status}")
                         }
                     }
                     is Resource.Error -> {
