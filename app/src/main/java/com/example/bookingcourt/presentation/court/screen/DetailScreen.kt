@@ -20,8 +20,11 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.Primary
+import com.example.bookingcourt.presentation.review.viewmodel.ReviewViewModel
+import com.example.bookingcourt.presentation.review.components.ReviewCard
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,10 +32,18 @@ import java.util.*
 fun DetailScreen(
     venue: Venue,
     onBackClick: () -> Unit,
-    onBookClick: (Venue) -> Unit
+    onBookClick: (Venue) -> Unit,
+    reviewViewModel: ReviewViewModel = hiltViewModel() // ✅ Thêm ReviewViewModel
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Mô tả", "Hình ảnh", "Đánh giá")
+
+    // ✅ Load reviews khi màn hình được mở
+    val reviewsState by reviewViewModel.venueReviewsState.collectAsState()
+
+    LaunchedEffect(venue.id) {
+        reviewViewModel.loadVenueReviews(venue.id)
+    }
 
     Scaffold(
         topBar = {
@@ -84,7 +95,8 @@ fun DetailScreen(
                 venue = venue,
                 selectedTab = selectedTab,
                 tabs = tabs,
-                onTabSelected = { selectedTab = it }
+                onTabSelected = { selectedTab = it },
+                reviewsState = reviewsState // ✅ Truyền reviewsState
             )
         }
     }
@@ -95,7 +107,8 @@ private fun DetailScreenContent(
     venue: Venue,
     selectedTab: Int,
     tabs: List<String>,
-    onTabSelected: (Int) -> Unit
+    onTabSelected: (Int) -> Unit,
+    reviewsState: com.example.bookingcourt.presentation.review.viewmodel.VenueReviewsState
 ) {
     Column(
         modifier = Modifier
@@ -166,7 +179,7 @@ private fun DetailScreenContent(
             }
 
             // Số điện thoại
-            val phoneNumber = venue.phoneNumber ?: venue.ownerPhone ?: "Liên hệ để biết thêm"
+            val phoneNumber = venue.phoneNumber ?: "Liên hệ để biết thêm"
             InfoCard(
                 icon = Icons.Default.Phone,
                 title = "Số điện thoại",
@@ -272,7 +285,7 @@ private fun DetailScreenContent(
         when (selectedTab) {
             0 -> DescriptionTabContent(venue)
             1 -> ImagesTabContent(venue)
-            2 -> ReviewsTabContent(venue)
+            2 -> ReviewsTabContent(venue, reviewsState) // ✅ Truyền reviewsState vào ReviewsTabContent
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -453,12 +466,28 @@ fun ImagesTabContent(venue: Venue) {
 }
 
 @Composable
-fun ReviewsTabContent(venue: Venue) {
+fun ReviewsTabContent(
+    venue: Venue,
+    reviewsState: com.example.bookingcourt.presentation.review.viewmodel.VenueReviewsState
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
+        // ✅ Sử dụng dữ liệu từ reviewsState thay vì venue
+        val averageRating = reviewsState.averageRating
+        val totalReviews = reviewsState.totalReviews
+        val reviews = reviewsState.reviews
+
+        // ✅ Tính toán phân bố rating từ danh sách reviews thực tế
+        val ratingDistribution = if (reviews.isNotEmpty()) {
+            reviews.groupBy { it.rating }
+                .mapValues { (_, list) -> list.size.toFloat() / totalReviews }
+        } else {
+            emptyMap()
+        }
+
         // Rating Summary
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -469,7 +498,7 @@ fun ReviewsTabContent(venue: Venue) {
                 modifier = Modifier.padding(end = 24.dp)
             ) {
                 Text(
-                    text = "${venue.averageRating}",
+                    text = String.format("%.1f", averageRating),
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
@@ -477,7 +506,7 @@ fun ReviewsTabContent(venue: Venue) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     repeat(5) { index ->
                         Icon(
-                            imageVector = if (index < venue.averageRating.toInt()) Icons.Default.Star else Icons.Default.StarOutline,
+                            imageVector = if (index < averageRating.toInt()) Icons.Default.Star else Icons.Default.StarOutline,
                             contentDescription = null,
                             tint = Color(0xFFFFA000),
                             modifier = Modifier.size(20.dp)
@@ -486,20 +515,24 @@ fun ReviewsTabContent(venue: Venue) {
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${venue.totalReviews} đánh giá",
+                    text = "$totalReviews đánh giá",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
             }
 
             Column(modifier = Modifier.weight(1f)) {
+                // ✅ Hiển thị đúng phân bố rating từ 5 sao đến 1 sao
                 repeat(5) { index ->
+                    val starRating = 5 - index
+                    val progress = ratingDistribution[starRating] ?: 0f
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 3.dp)
                     ) {
                         Text(
-                            text = "${5 - index}",
+                            text = "$starRating",
                             fontSize = 12.sp,
                             color = Color.Gray,
                             modifier = Modifier.width(20.dp)
@@ -512,13 +545,20 @@ fun ReviewsTabContent(venue: Venue) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         LinearProgressIndicator(
-                            progress = { if (venue.totalReviews > 0) 0.1f else 0f },
+                            progress = { progress },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(8.dp)
                                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
                             color = Color(0xFFFFA000),
                             trackColor = Color.Gray.copy(alpha = 0.2f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${(progress * 100).toInt()}%",
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.width(35.dp)
                         )
                     }
                 }
@@ -527,9 +567,45 @@ fun ReviewsTabContent(venue: Venue) {
 
         Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        if (venue.totalReviews == 0) {
+        // ✅ Hiển thị trạng thái loading
+        if (reviewsState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        // ✅ Hiển thị lỗi nếu có
+        else if (reviewsState.error != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = null,
+                        tint = Color.Red,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = reviewsState.error ?: "Có lỗi xảy ra",
+                        fontSize = 14.sp,
+                        color = Color.Red
+                    )
+                }
+            }
+        }
+        // ✅ Hiển thị thông báo nếu chưa có đánh giá
+        else if (reviews.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -549,16 +625,33 @@ fun ReviewsTabContent(venue: Venue) {
                         fontSize = 16.sp,
                         color = Color.Gray
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Hãy là người đầu tiên đánh giá sân này!",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
                 }
             }
-        } else {
-            // TODO: Implement actual reviews list when API is ready
+        }
+        // ✅ Hiển thị danh sách đánh giá thực tế
+        else {
             Text(
-                text = "Danh sách đánh giá chi tiết sẽ được cập nhật sau",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                text = "Đánh giá từ khách hàng",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
+
+            // ✅ Sử dụng Column thay vì LazyColumn vì đã ở trong scroll view
+            reviews.forEach { review ->
+                ReviewCard(
+                    review = review,
+                    showVenueName = false,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
         }
     }
 }

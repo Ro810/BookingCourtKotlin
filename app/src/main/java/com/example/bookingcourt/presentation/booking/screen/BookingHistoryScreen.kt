@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.bookingcourt.domain.model.BookingDetail
+import com.example.bookingcourt.domain.model.Booking
 import com.example.bookingcourt.domain.model.BookingStatus
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingHistoryViewModel
 import kotlinx.datetime.toJavaLocalDateTime
@@ -115,23 +115,9 @@ fun BookingHistoryScreen(
 
 @Composable
 fun BookingHistoryItem(
-    booking: BookingDetail,
+    booking: Booking,
     onClick: () -> Unit
 ) {
-    // ✅ FIX: Kiểm tra xem booking đã hết hạn chưa
-    val isExpired = booking.expireTime?.let { expireTime ->
-        val now = Clock.System.now()
-        val expire = expireTime.toInstant(TimeZone.currentSystemDefault())
-        now > expire
-    } ?: false
-
-    // ✅ FIX: Nếu hết hạn và đang PENDING_PAYMENT thì hiển thị là CANCELLED
-    val displayStatus = if (isExpired && booking.status == BookingStatus.PENDING_PAYMENT) {
-        BookingStatus.CANCELLED
-    } else {
-        booking.status
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -147,9 +133,9 @@ fun BookingHistoryItem(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Venue Name
+            // Court Name
             Text(
-                text = booking.venue.name,
+                text = booking.courtName,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -157,46 +143,12 @@ fun BookingHistoryItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Booking Items hoặc Court Info
-            if (booking.bookingItems != null && booking.bookingItems.isNotEmpty()) {
-                // Hiển thị danh sách sân
-                booking.bookingItems.forEach { item ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "🏟️ ${item.courtName}",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = formatPrice(item.price),
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    // ✅ FIX: item.startTime và item.endTime là LocalDateTime, không phải String
-                    Text(
-                        text = "   ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-            } else {
-                // Legacy: hiển thị thông tin sân đơn
-                Text(
-                    text = "🏟️ ${booking.court?.description ?: "Sân"}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "${formatDateTime(booking.startTime)} - ${formatTime(booking.endTime)}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            }
+            // Booking Time
+            Text(
+                text = "${formatDateTime(booking.startTime)} - ${formatTime(booking.endTime)}",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -213,7 +165,10 @@ fun BookingHistoryItem(
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                BookingStatusChip(status = displayStatus, rejectionReason = booking.rejectionReason)
+                BookingStatusChip(
+                    status = booking.status,
+                    rejectionReason = booking.cancellationReason
+                )
             }
         }
     }

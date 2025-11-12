@@ -60,6 +60,11 @@ interface BookingRepository {
      */
     suspend fun getUpcomingBookings(): Flow<Resource<List<Booking>>>
 
+    /**
+     * Lấy TẤT CẢ bookings của user hiện tại (dùng endpoint my-bookings)
+     */
+    suspend fun getMyBookings(): Flow<Resource<List<Booking>>>
+
     // Payment confirmation flow methods
 
     /**
@@ -115,9 +120,4 @@ interface BookingRepository {
         venueId: Long,
         date: String
     ): Flow<Resource<List<com.example.bookingcourt.domain.model.BookedSlot>>>
-
-    /**
-     * Lấy danh sách booking của user hiện tại (my bookings)
-     */
-    suspend fun getMyBookings(): Flow<Resource<List<BookingDetail>>>
 }

@@ -9,7 +9,12 @@ import com.example.bookingcourt.domain.model.Review
 import com.example.bookingcourt.domain.repository.ReviewRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -243,11 +248,81 @@ class ReviewRepositoryImpl @Inject constructor(
 
     private fun parseDateTime(dateTimeString: String): LocalDateTime {
         return try {
-            LocalDateTime.parse(dateTimeString)
+            Log.d(TAG, "📅 Parsing datetime: '$dateTimeString'")
+
+            // Xử lý các format phổ biến từ backend
+            val cleanedString = dateTimeString.trim()
+
+            // TimeZone Việt Nam (UTC+7)
+            val vietnamTimeZone = TimeZone.of("Asia/Ho_Chi_Minh")
+
+            // Thử parse với nhiều format khác nhau
+            val result = when {
+                // Format: "2025-11-13 14:30:00" (space separator, no T)
+                cleanedString.matches(Regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}.*")) -> {
+                    val withT = cleanedString.replace(" ", "T")
+                    val withoutMillis = withT.substringBefore(".")
+                    // Parse as local time và assume là giờ Việt Nam
+                    LocalDateTime.parse(withoutMillis)
+                }
+                // Format ISO với milliseconds: "2025-11-13T14:30:00.123Z"
+                // Format ISO với Z: "2025-11-13T14:30:00Z"
+                cleanedString.contains("T") && cleanedString.endsWith("Z") -> {
+                    // Parse as UTC Instant rồi convert sang giờ Việt Nam
+                    val withoutMillis = cleanedString.substringBefore(".").removeSuffix("Z")
+                    val instant = Instant.parse("${withoutMillis}Z")
+                    val vietnamTime = instant.toLocalDateTime(vietnamTimeZone)
+                    Log.d(TAG, "   ✅ UTC -> Vietnam: ${withoutMillis}Z -> $vietnamTime")
+                    vietnamTime
+                }
+                // Format ISO với timezone offset: "2025-11-13T14:30:00+07:00"
+                cleanedString.contains("T") && cleanedString.contains("+") -> {
+                    val withoutMillis = cleanedString.substringBefore(".")
+                    // Parse với timezone info
+                    val instant = Instant.parse(withoutMillis)
+                    instant.toLocalDateTime(vietnamTimeZone)
+                }
+                // Format ISO với timezone offset âm: "2025-11-13T14:30:00-05:00"
+                cleanedString.contains("T") && cleanedString.lastIndexOf("-") > 10 -> {
+                    val withoutMillis = cleanedString.substringBefore(".")
+                    val instant = Instant.parse(withoutMillis)
+                    instant.toLocalDateTime(vietnamTimeZone)
+                }
+                // Format ISO chuẩn: "2025-11-13T14:30:00" (assume giờ Việt Nam)
+                cleanedString.contains("T") -> {
+                    val withoutMillis = cleanedString.substringBefore(".")
+                    LocalDateTime.parse(withoutMillis)
+                }
+                // Format ngày giờ Việt Nam: "13/11/2025 14:30:00"
+                cleanedString.matches(Regex("\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}")) -> {
+                    val parts = cleanedString.split(" ")
+                    val dateParts = parts[0].split("/")
+                    val isoFormat = "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${parts[1]}"
+                    LocalDateTime.parse(isoFormat)
+                }
+                // Thử parse trực tiếp
+                else -> {
+                    LocalDateTime.parse(cleanedString)
+                }
+            }
+
+            Log.d(TAG, "✅ Parsed successfully: $result")
+            result
+
         } catch (e: Exception) {
-            // Fallback to current time if parsing fails
-            LocalDateTime.parse("2025-11-13T00:00:00")
+            Log.e(TAG, "❌❌❌ CRITICAL: Failed to parse datetime ❌❌❌")
+            Log.e(TAG, "   Input: '$dateTimeString'")
+            Log.e(TAG, "   Error: ${e.message}")
+            Log.e(TAG, "   Type: ${e.javaClass.simpleName}")
+            Log.e(TAG, "   Stack trace:", e)
+
+            // ⚠️ KHÔNG dùng thời gian hiện tại làm fallback
+            // Thay vào đó dùng giá trị mặc định để dễ phát hiện lỗi
+            val fallbackTime = LocalDateTime.parse("2000-01-01T00:00:00")
+            Log.e(TAG, "   ⚠️ Using FALLBACK time (NOT current time): $fallbackTime")
+            Log.e(TAG, "   ⚠️ If you see year 2000, it means datetime parsing FAILED!")
+
+            fallbackTime
         }
     }
 }
-

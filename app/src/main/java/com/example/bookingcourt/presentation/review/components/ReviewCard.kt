@@ -15,8 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bookingcourt.domain.model.Review
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.datetime.LocalDateTime
 
 /**
  * Card component to display a single review
@@ -105,7 +104,7 @@ fun ReviewCard(
             // Date
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = formatDate(review.createdAt.toString()),
+                text = formatReviewDate(review.updatedAt),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -159,17 +158,18 @@ fun RatingStars(
 }
 
 /**
- * Format date for display
+ * Format LocalDateTime to readable Vietnamese format
+ * Displays in Vietnam timezone (assuming the datetime from API is already in Vietnam time)
  */
-private fun formatDate(dateString: String): String {
+private fun formatReviewDate(dateTime: LocalDateTime): String {
     return try {
-        // Giả sử format là ISO 8601
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-        val date = inputFormat.parse(dateString)
-        date?.let { outputFormat.format(it) } ?: dateString
-    } catch (e: Exception) {
-        dateString
+        // Format: DD/MM/YYYY HH:MM (giờ Việt Nam)
+        "${dateTime.dayOfMonth.toString().padStart(2, '0')}/" +
+        "${dateTime.monthNumber.toString().padStart(2, '0')}/" +
+        "${dateTime.year} " +
+        "${dateTime.hour.toString().padStart(2, '0')}:" +
+        dateTime.minute.toString().padStart(2, '0')
+    } catch (_: Exception) {
+        "N/A"
     }
 }
-

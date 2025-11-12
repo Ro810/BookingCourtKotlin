@@ -104,6 +104,8 @@ fun ProfileScreen(
                         ProfileContent(
                             user = user,
                             currentUserRole = currentUserRole, // Dùng effectiveRole từ state
+                            bookingsCount = state.bookingsCount, // ✅ Dùng dữ liệu thực
+                            reviewsCount = state.reviewsCount,   // ✅ Dùng dữ liệu thực
                             onNavigateToEditProfile = onNavigateToEditProfile,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
@@ -167,6 +169,8 @@ fun ProfileScreen(
                         ProfileContent(
                             user = user,
                             currentUserRole = currentUserRole, // Dùng effectiveRole từ state
+                            bookingsCount = state.bookingsCount, // ✅ Dùng dữ liệu thực
+                            reviewsCount = state.reviewsCount,   // ✅ Dùng dữ liệu thực
                             onNavigateToEditProfile = onNavigateToEditProfile,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
@@ -234,6 +238,8 @@ fun ProfileScreen(
 private fun LazyListScope.ProfileContent(
     user: User,
     currentUserRole: UserRole = UserRole.USER, // Thêm parameter currentUserRole
+    bookingsCount: Int,
+    reviewsCount: Int,
     onNavigateToEditProfile: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToBecomeOwner: () -> Unit,
@@ -253,9 +259,9 @@ private fun LazyListScope.ProfileContent(
     // Account Stats
     item {
         AccountStatsCard(
-            bookingsCount = 12,
+            bookingsCount = bookingsCount,
             favoritesCount = user.favoriteCourtIds.size,
-            reviewsCount = 5,
+            reviewsCount = reviewsCount,
         )
     }
 
