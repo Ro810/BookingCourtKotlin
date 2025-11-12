@@ -67,7 +67,14 @@ data class AddressDto(
 
     @SerializedName("detailAddress")
     val detailAddress: String
-)
+) {
+    /**
+     * Helper function to get full address string
+     */
+    fun getFullAddress(): String {
+        return "$detailAddress, $district, $provinceOrCity"
+    }
+}
 
 /**
  * Owner info in Venue response

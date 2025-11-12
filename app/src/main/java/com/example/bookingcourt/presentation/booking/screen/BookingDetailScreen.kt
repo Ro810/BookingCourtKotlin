@@ -272,25 +272,28 @@ private fun CountdownTimer(timeRemaining: Long) {
 private fun BookingInfoCard(booking: BookingDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             // ✅ Hiển thị tiêu đề với số lượng sân
             val courtsCount = booking.getCourtsCount()
             Text(
                 text = if (courtsCount > 1) "Thông tin đặt sân ($courtsCount sân)" else "Thông tin đặt sân",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Venue info
-            InfoRow(label = "Địa điểm", value = booking.venue.name)
-            booking.venueAddress?.let { InfoRow(label = "Địa chỉ", value = it) }
+            InfoRow(label = "Tên sân", value = booking.venue.name)
 
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFE0E0E0))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // ✅ Court info - Hiển thị tất cả các sân đã đặt
             if (!booking.bookingItems.isNullOrEmpty()) {
@@ -299,47 +302,45 @@ private fun BookingInfoCard(booking: BookingDetail) {
                         "Các sân đã đặt (${booking.bookingItems.size}):"
                     else
                         "Sân đã đặt:",
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.DarkGray
+                    color = Color(0xFF424242)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 booking.bookingItems.forEachIndexed { index, item ->
-                    Card(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF5F5F5)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            .padding(vertical = 6.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${index + 1}. ${item.courtName}",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Primary
-                                )
-                                Text(
-                                    text = "${item.price.formatPrice()} đ",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "⏰ ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
-                                fontSize = 13.sp,
-                                color = Color.DarkGray
+                                text = "${index + 1}. ${item.courtName}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
                             )
+                            Text(
+                                text = "${item.price.formatPrice()} đ",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF212121)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "⏰ ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
+                            fontSize = 13.sp,
+                            color = Color(0xFF757575)
+                        )
+                        if (index < booking.bookingItems.size - 1) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            HorizontalDivider(color = Color(0xFFF0F0F0))
                         }
                     }
                 }
@@ -354,9 +355,9 @@ private fun BookingInfoCard(booking: BookingDetail) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFE0E0E0))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // ✅ Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
             Row(
@@ -366,13 +367,13 @@ private fun BookingInfoCard(booking: BookingDetail) {
             ) {
                 Text(
                     text = "Tổng tiền:",
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = Color(0xFF212121)
                 )
                 Text(
                     text = "${booking.totalPrice.formatPrice()} đ",
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Primary
                 )
@@ -391,23 +392,28 @@ private fun BookingInfoCard(booking: BookingDetail) {
 private fun BankInfoCard(bankInfo: com.example.bookingcourt.domain.model.BankInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.AccountBalance,
                     contentDescription = null,
-                    tint = Primary
+                    tint = Primary,
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Thông tin chuyển khoản",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121)
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             InfoRow(label = "Ngân hàng", value = bankInfo.bankName)
             InfoRow(label = "Số tài khoản", value = bankInfo.bankAccountNumber)
@@ -427,27 +433,35 @@ private fun PaymentProofSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = "Chứng minh chuyển khoản",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             // Image preview
             if (selectedImageUri != null || uploadedPaymentProofUrl != null) {
-                Image(
-                    painter = rememberAsyncImagePainter(selectedImageUri ?: uploadedPaymentProofUrl),
-                    contentDescription = "Payment proof",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(Color.LightGray, RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Image(
+                        painter = rememberAsyncImagePainter(selectedImageUri ?: uploadedPaymentProofUrl),
+                        contentDescription = "Payment proof",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
@@ -455,7 +469,10 @@ private fun PaymentProofSection(
             Button(
                 onClick = onSelectImage,
                 enabled = !isUploading,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Primary
+                )
             ) {
                 if (isUploading) {
                     CircularProgressIndicator(
@@ -498,7 +515,7 @@ private fun PaymentProofSection(
 private fun InfoRow(
     label: String,
     value: String,
-    valueColor: Color = Color.Black
+    valueColor: Color = Color(0xFF212121)
 ) {
     Row(
         modifier = Modifier

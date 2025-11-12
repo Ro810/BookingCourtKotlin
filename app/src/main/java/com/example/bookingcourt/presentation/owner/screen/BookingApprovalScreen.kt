@@ -249,7 +249,7 @@ private fun BookingApprovalContent(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 InfoRow(label = "Địa điểm", value = booking.venue.name)
-                booking.venueAddress?.let { InfoRow(label = "Địa chỉ", value = it) }
+                InfoRow(label = "Địa chỉ", value = booking.venueAddress)
 
                 Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider(thickness = 1.dp, color = Color.LightGray)

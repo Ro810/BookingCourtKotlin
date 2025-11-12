@@ -1,6 +1,5 @@
 package com.example.bookingcourt.presentation.booking.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +20,9 @@ import com.example.bookingcourt.domain.model.BookingDetail
 import com.example.bookingcourt.domain.model.BookingStatus
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingHistoryViewModel
 import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.Clock
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -116,6 +118,20 @@ fun BookingHistoryItem(
     booking: BookingDetail,
     onClick: () -> Unit
 ) {
+    // ✅ FIX: Kiểm tra xem booking đã hết hạn chưa
+    val isExpired = booking.expireTime?.let { expireTime ->
+        val now = Clock.System.now()
+        val expire = expireTime.toInstant(TimeZone.currentSystemDefault())
+        now > expire
+    } ?: false
+
+    // ✅ FIX: Nếu hết hạn và đang PENDING_PAYMENT thì hiển thị là CANCELLED
+    val displayStatus = if (isExpired && booking.status == BookingStatus.PENDING_PAYMENT) {
+        BookingStatus.CANCELLED
+    } else {
+        booking.status
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -197,7 +213,7 @@ fun BookingHistoryItem(
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                BookingStatusChip(status = booking.status, rejectionReason = booking.rejectionReason)
+                BookingStatusChip(status = displayStatus, rejectionReason = booking.rejectionReason)
             }
         }
     }

@@ -517,15 +517,26 @@ fun BookingScreen(
                                             },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        if (isSelected) {
-                                            Text(
-                                                text = "✓",
-                                                color = Color.White,
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                        when {
+                                            isSelected -> {
+                                                Text(
+                                                    text = "✓",
+                                                    color = Color.White,
+                                                    fontSize = 18.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            isBooked -> {
+                                                // ✅ FIX: Hiển thị text "Đã đặt" cho ô đã được đặt
+                                                Text(
+                                                    text = "Đã đặt",
+                                                    color = Color(0xFFD32F2F),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
                                         }
-                                        // Ô đã đặt - chỉ hiển thị màu, không có text
                                     }
                                 }
                             }

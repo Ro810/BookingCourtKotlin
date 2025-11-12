@@ -106,28 +106,31 @@ private fun WaitingContent(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Icon with better styling
         Icon(
             Icons.Default.HourglassEmpty,
             contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = Color(0xFFFF9800)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Chờ chủ sân xác nhận",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+            modifier = Modifier.size(72.dp),
+            tint = Primary
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
+            text = "Chờ chủ sân xác nhận",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF212121)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
             text = "Chúng tôi đã gửi chứng minh chuyển khoản cho chủ sân. Vui lòng đợi xác nhận.",
             fontSize = 14.sp,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
+            color = Color(0xFF757575),
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -138,63 +141,71 @@ private fun WaitingContent(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Thông tin đặt sân",
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Venue info
                     InfoRow(label = "Địa điểm", value = booking.venue.name)
-                    booking.venueAddress?.let { InfoRow(label = "Địa chỉ", value = it) }
+                    InfoRow(label = "Địa chỉ", value = booking.venueAddress)
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // ✅ Court info - Hiển thị tất cả các sân đã đặt
                     if (!booking.bookingItems.isNullOrEmpty()) {
                         Text(
                             text = "Sân đã đặt:",
-                            fontSize = 14.sp,
-                            color = Color.Gray
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF424242)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         booking.bookingItems.forEach { item ->
-                            Card(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFFF5F5F5)
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                    .padding(vertical = 6.dp)
                             ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(
-                                        text = item.courtName,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Primary
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    // ✅ FIX: item.startTime và item.endTime là LocalDateTime
+                                Text(
+                                    text = item.courtName,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF212121)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(
                                         text = "${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
                                         fontSize = 13.sp,
-                                        color = Color.DarkGray
+                                        color = Color(0xFF757575)
                                     )
                                     Text(
                                         text = "${item.price.formatPrice()} đ",
-                                        fontSize = 13.sp,
+                                        fontSize = 14.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Primary
+                                        color = Color(0xFF212121)
                                     )
+                                }
+                                if (booking.bookingItems.lastOrNull() != item) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    HorizontalDivider(color = Color(0xFFF0F0F0))
                                 }
                             }
                         }
@@ -209,39 +220,52 @@ private fun WaitingContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // ✅ Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
+                    // ✅ Total price
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "Tổng tiền:",
-                            fontSize = 16.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color(0xFF212121)
                         )
                         Text(
                             text = "${booking.totalPrice.formatPrice()} đ",
-                            fontSize = 18.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = Primary
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Status
-                    InfoRow(
-                        label = "Trạng thái",
-                        value = booking.status.toVietnamese(),
-                        valueColor = Color(0xFFFF9800)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Trạng thái:",
+                            fontSize = 14.sp,
+                            color = Color(0xFF757575)
+                        )
+                        Text(
+                            text = booking.status.toVietnamese(),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFFF9800)
+                        )
+                    }
                 }
             }
 
@@ -250,22 +274,32 @@ private fun WaitingContent(
             // Show payment proof if available
             booking.paymentProofUrl?.let { url ->
                 Card(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    )
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = "Chứng minh chuyển khoản",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            color = Color(0xFF212121)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Image(
-                            painter = rememberAsyncImagePainter(url),
-                            contentDescription = "Payment proof",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(url),
+                                contentDescription = "Payment proof",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -275,17 +309,22 @@ private fun WaitingContent(
 
         Button(
             onClick = onRefresh,
-            modifier = Modifier.fillMaxWidth(0.6f)
+            modifier = Modifier.fillMaxWidth(0.7f),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Primary
+            )
         ) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Làm mới")
+            Text("Làm mới", fontSize = 15.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth(0.6f)
+            modifier = Modifier.fillMaxWidth(0.7f),
+            color = Primary,
+            trackColor = Color(0xFFE0E0E0)
         )
     }
 }
@@ -295,24 +334,26 @@ private fun WaitingContent(
 private fun InfoRow(
     label: String,
     value: String,
-    valueColor: Color = Color.Black
+    valueColor: Color = Color(0xFF212121)
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
             fontSize = 14.sp,
-            color = Color.Gray
+            color = Color(0xFF757575)
         )
         Text(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = valueColor
+            color = valueColor,
+            modifier = Modifier.weight(1f, fill = false),
+            textAlign = TextAlign.End
         )
     }
 }
