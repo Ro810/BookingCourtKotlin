@@ -262,9 +262,9 @@ fun BookingStatusChip(
         )
         // Bỏ PENDING - không hiển thị nữa
         else -> Triple(
-            "Chờ thanh toán",
-            Color(0xFFFFF3E0),
-            Color(0xFFF57C00)
+            "Đã hủy",
+            Color(0xFFF5F5F5),
+            Color(0xFF757575)
         )
     }
 

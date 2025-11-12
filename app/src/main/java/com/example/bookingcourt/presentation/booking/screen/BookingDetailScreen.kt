@@ -5,10 +5,8 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -379,11 +377,35 @@ private fun BookingInfoCard(booking: BookingDetail) {
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            InfoRow(
-                label = "Trạng thái",
-                value = booking.status.toVietnamese(),
-                valueColor = booking.status.toColor()
-            )
+            // Status display
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Trạng thái:",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = booking.status.toVietnamese(),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = booking.status.getStatusColor()
+                    )
+                    if (booking.status == BookingStatus.REJECTED && !booking.rejectionReason.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Lý do: ${booking.rejectionReason}",
+                            fontSize = 12.sp,
+                            color = Color(0xFFD32F2F),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -558,16 +580,17 @@ private fun BookingStatus.toVietnamese(): String {
         BookingStatus.REJECTED -> "Bị từ chối"
         BookingStatus.CANCELLED -> "Đã hủy"
         BookingStatus.COMPLETED -> "Hoàn thành"
-        else -> "Đang xử lý"
+        else -> "Đã hủy"
     }
 }
 
-private fun BookingStatus.toColor(): Color {
+private fun BookingStatus.getStatusColor(): Color {
     return when (this) {
-        BookingStatus.CONFIRMED -> Color(0xFF4CAF50)
-        BookingStatus.REJECTED, BookingStatus.CANCELLED -> Color(0xFFF44336)
-        BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800)
-        else -> Color.Gray
+        BookingStatus.CONFIRMED -> Color(0xFF4CAF50) // Green
+        BookingStatus.REJECTED -> Color(0xFFD32F2F) // Red
+        BookingStatus.CANCELLED -> Color(0xFFF44336) // Deep Orange
+        BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800) // Orange
+        else -> Color.Gray // Default for other statuses
     }
 }
 
