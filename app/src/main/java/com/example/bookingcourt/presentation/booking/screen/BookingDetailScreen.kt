@@ -28,6 +28,8 @@ import com.example.bookingcourt.domain.model.BookingDetail
 import com.example.bookingcourt.domain.model.BookingStatus
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingDetailViewModel
 import com.example.bookingcourt.presentation.theme.Primary
+import com.example.bookingcourt.presentation.review.viewmodel.ReviewViewModel
+import com.example.bookingcourt.presentation.review.components.CreateReviewDialog
 import kotlinx.datetime.LocalDateTime
 import java.io.File
 import java.io.FileOutputStream
@@ -37,14 +39,21 @@ import java.io.FileOutputStream
 fun BookingDetailScreen(
     bookingId: String,
     onNavigateBack: () -> Unit,
-    onNavigateToWaiting: ((String) -> Unit)? = null, // ✅ Làm optional
-    viewModel: BookingDetailViewModel = hiltViewModel()
+    onNavigateToWaiting: ((String) -> Unit)? = null,
+    onNavigateToReview: ((String, String) -> Unit)? = null,
+    viewModel: BookingDetailViewModel = hiltViewModel(),
+    reviewViewModel: ReviewViewModel = hiltViewModel() // ✅ Thêm ReviewViewModel
 ) {
     val bookingDetail by viewModel.bookingDetail.collectAsState()
     val uploadState by viewModel.uploadState.collectAsState()
     val confirmState by viewModel.confirmState.collectAsState()
     val cancelState by viewModel.cancelState.collectAsState()
     val timeRemaining by viewModel.timeRemaining.collectAsState()
+
+    // ✅ Review states
+    val bookingReviewState by reviewViewModel.bookingReviewState.collectAsState()
+    val createReviewState by reviewViewModel.createReviewState.collectAsState()
+    var showReviewDialog by remember { mutableStateOf(false) }
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var uploadedPaymentProofUrl by remember { mutableStateOf<String?>(null) }
@@ -54,6 +63,30 @@ fun BookingDetailScreen(
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // ✅ Kiểm tra xem booking đã có review chưa
+    LaunchedEffect(bookingId) {
+        reviewViewModel.loadBookingReview(bookingId.toLong())
+    }
+
+    // ✅ Xử lý khi tạo review thành công
+    LaunchedEffect(createReviewState.success) {
+        if (createReviewState.success) {
+            showReviewDialog = false
+            snackbarHostState.showSnackbar("Đánh giá thành công!")
+            reviewViewModel.resetCreateReviewState()
+            // Reload booking review state
+            reviewViewModel.loadBookingReview(bookingId.toLong())
+        }
+    }
+
+    // ✅ Hiển thị lỗi nếu có
+    LaunchedEffect(createReviewState.error) {
+        createReviewState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            reviewViewModel.resetCreateReviewState()
+        }
+    }
 
     // Image picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -172,6 +205,7 @@ fun BookingDetailScreen(
                         uploadedPaymentProofUrl = uploadedPaymentProofUrl ?: booking.paymentProofUrl,
                         isUploading = uploadState is Resource.Loading,
                         isConfirming = confirmState is Resource.Loading,
+                        hasReview = bookingReviewState.hasReview, // ✅ Thêm check đã review
                         onSelectImage = { imagePickerLauncher.launch("image/*") },
                         onConfirmPayment = {
                             val proofUrl = uploadedPaymentProofUrl ?: booking.paymentProofUrl
@@ -182,6 +216,7 @@ fun BookingDetailScreen(
                         onCancelBooking = {
                             showCancelDialog = true
                         },
+                        onOpenReviewDialog = { showReviewDialog = true }, // ✅ Hiển thị dialog review
                         modifier = Modifier.padding(padding)
                     )
 
@@ -245,6 +280,25 @@ fun BookingDetailScreen(
                             }
                         )
                     }
+
+                    // Review dialog - Hiển thị khi nhấn nút đánh giá
+                    if (showReviewDialog) {
+                        CreateReviewDialog(
+                            venueName = booking.venue.name,
+                            onDismiss = {
+                                showReviewDialog = false
+                                reviewViewModel.resetCreateReviewState()
+                            },
+                            onSubmit = { rating, comment ->
+                                reviewViewModel.createReview(
+                                    bookingId = bookingId.toLong(),
+                                    rating = rating,
+                                    comment = comment.ifBlank { null }
+                                )
+                            },
+                            isLoading = createReviewState.isLoading
+                        )
+                    }
                 }
             }
         }
@@ -259,9 +313,11 @@ private fun BookingDetailContent(
     uploadedPaymentProofUrl: String?,
     isUploading: Boolean,
     isConfirming: Boolean,
+    hasReview: Boolean = false, // ✅ Thêm parameter kiểm tra đã review
     onSelectImage: () -> Unit,
     onConfirmPayment: () -> Unit,
     onCancelBooking: () -> Unit,
+    onOpenReviewDialog: () -> Unit, // ✅ Đổi tên callback
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -310,6 +366,53 @@ private fun BookingDetailContent(
                 )
             ) {
                 Text("Hủy đặt sân")
+            }
+        }
+
+        // Leave review button - Hiển thị khi booking đã hoàn thành và chưa đánh giá
+        if ((booking.status == BookingStatus.COMPLETED || booking.status == BookingStatus.CONFIRMED) && !hasReview) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onOpenReviewDialog,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Đánh giá")
+            }
+        }
+
+        // Hiển thị thông báo nếu đã đánh giá
+        if (hasReview && (booking.status == BookingStatus.COMPLETED || booking.status == BookingStatus.CONFIRMED)) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Bạn đã đánh giá sân này",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -664,6 +767,7 @@ private fun BookingStatus.toVietnamese(): String {
 private fun BookingStatus.getStatusColor(): Color {
     return when (this) {
         BookingStatus.CONFIRMED -> Color(0xFF4CAF50) // Green
+        BookingStatus.COMPLETED -> Color(0xFF4CAF50) // Amber
         BookingStatus.REJECTED -> Color(0xFFD32F2F) // Red
         BookingStatus.CANCELLED -> Color(0xFFF44336) // Deep Orange
         BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800) // Orange

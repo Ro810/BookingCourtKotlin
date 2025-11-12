@@ -52,8 +52,10 @@ fun CourtDetailScreen(
     onNavigateToBooking: () -> Unit = {},
     onNavigateToBookingDetail: (String) -> Unit = {},
     viewModel: com.example.bookingcourt.presentation.court.viewmodel.CourtDetailViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    reviewViewModel: com.example.bookingcourt.presentation.review.viewmodel.ReviewViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val reviewsState by reviewViewModel.venueReviewsState.collectAsState()
 
     val todayRevenue = state.todayRevenue
     val venue = state.venue
@@ -518,6 +520,24 @@ fun CourtDetailScreen(
                             }
                         }
                     }
+                }
+            }
+
+            // Reviews Section - Hiển thị đánh giá của venue
+            item {
+                venue?.id?.let { venueId ->
+                    LaunchedEffect(venueId) {
+                        reviewViewModel.loadVenueReviews(venueId)
+                    }
+
+                    com.example.bookingcourt.presentation.review.components.VenueReviewsSection(
+                        reviews = reviewsState.reviews,
+                        averageRating = reviewsState.averageRating,
+                        totalReviews = reviewsState.totalReviews,
+                        isLoading = reviewsState.isLoading,
+                        error = reviewsState.error,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
                 }

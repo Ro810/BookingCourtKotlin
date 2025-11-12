@@ -44,6 +44,7 @@ fun ProfileScreen(
     onNavigateToBecomeOwner: () -> Unit = {},
     onNavigateToBecomeCustomer: () -> Unit = {},
     onNavigateToBookingHistory: () -> Unit = {},
+    onNavigateToMyReviews: () -> Unit = {},
     onLogout: () -> Unit = {},
     showBackButton: Boolean = true,
     showTopBar: Boolean = true,
@@ -108,6 +109,7 @@ fun ProfileScreen(
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
                             onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
                             onNavigateToBookingHistory = onNavigateToBookingHistory,
+                            onNavigateToMyReviews = onNavigateToMyReviews,
                             onShowLogoutDialog = { showLogoutDialog = true },
                         )
                     }
@@ -170,6 +172,7 @@ fun ProfileScreen(
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
                             onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
                             onNavigateToBookingHistory = onNavigateToBookingHistory,
+                            onNavigateToMyReviews = onNavigateToMyReviews,
                             onShowLogoutDialog = { showLogoutDialog = true },
                         )
                     }
@@ -236,6 +239,7 @@ private fun LazyListScope.ProfileContent(
     onNavigateToBecomeOwner: () -> Unit,
     onNavigateToBecomeCustomer: () -> Unit,
     onNavigateToBookingHistory: () -> Unit,
+    onNavigateToMyReviews: () -> Unit,
     onShowLogoutDialog: () -> Unit,
 ) {
     // User Profile Header
@@ -389,7 +393,7 @@ private fun LazyListScope.ProfileContent(
                 MenuItemRow(
                     icon = Icons.Default.Star,
                     title = "Đánh giá của tôi",
-                    onClick = { /* TODO */ },
+                    onClick = onNavigateToMyReviews,
                 )
             }
         }
