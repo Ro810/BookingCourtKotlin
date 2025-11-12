@@ -446,9 +446,17 @@ fun BookingScreen(
                                     val slot = CourtTimeSlot(courtNum, time)
                                     val isSelected = selectedSlots.contains(slot)
 
-                                    // ✅ Cải thiện logic kiểm tra slot đã đặt
+                                    // ✅ FIX: Map courtNum (UI index) sang courtId thực tế để so sánh với bookedSlots
+                                    val courtIndex = courtNum - 1
+                                    val realCourtId = if (courtIndex >= 0 && courtIndex < realCourts.value.size) {
+                                        val sortedCourts = realCourts.value.sortedBy { it.id }
+                                        sortedCourts.getOrNull(courtIndex)?.id?.toInt()
+                                    } else null
+
+                                    // ✅ Kiểm tra slot đã đặt - so sánh với courtId thực tế
                                     val isBooked = bookedSlots.value.any { bookedSlot ->
-                                        if (bookedSlot.courtNumber != courtNum) {
+                                        // So sánh với courtId thực tế (bookedSlot.courtId) thay vì courtNumber
+                                        if (bookedSlot.courtId.toInt() != realCourtId) {
                                             false
                                         } else {
                                             // So sánh startTime và endTime với format chính xác
@@ -471,7 +479,7 @@ fun BookingScreen(
                                             val matches = (slotStartTime == bookedStart && slotEndTime == bookedEnd)
 
                                             if (matches) {
-                                                Log.d("BookingScreen", "🔒 Slot blocked: Court $courtNum, Time $time ($slotStartTime-$slotEndTime) matches booked slot ($bookedStart-$bookedEnd)")
+                                                Log.d("BookingScreen", "🔒 Slot blocked: Court $courtNum (ID=$realCourtId), Time $time ($slotStartTime-$slotEndTime) matches booked slot (ID=${bookedSlot.courtId}, $bookedStart-$bookedEnd)")
                                             }
 
                                             matches
@@ -685,7 +693,8 @@ fun BookingScreen(
                         val sortedCourts = availableCourts.sortedBy { it.id }
 
                         // ✅ XỬ LÝ TỪNG SÂN - Tính thời gian cho từng sân
-                        val allCourtBookings = mutableListOf<Pair<String, Pair<String, String>>>() // (courtId, startTime-endTime)
+                        // ✅ FIX: Lưu cả courtNumber (UI index) để map chính xác với slots
+                        val allCourtBookings = mutableListOf<Triple<String, Pair<String, String>, Int>>() // (courtId, startTime-endTime, courtNumber)
 
                         slotsByCourtNumber.forEach { (courtNumber, courtSlots) ->
                             val courtIndex = courtNumber - 1
@@ -733,7 +742,8 @@ fun BookingScreen(
                                 calendar.set(Calendar.MINUTE, endMinute)
                                 val endTime = apiDateFormat.format(calendar.time)
 
-                                allCourtBookings.add(Pair(formattedCourtId, Pair(startTime, endTime)))
+                                // ✅ FIX: Lưu courtNumber (UI index) cùng với booking data
+                                allCourtBookings.add(Triple(formattedCourtId, Pair(startTime, endTime), courtNumber))
 
                                 Log.d("BookingScreen", "✅ Court $courtNumber processed:")
                                 Log.d("BookingScreen", "  Court ID: $formattedCourtId")
@@ -771,11 +781,10 @@ fun BookingScreen(
                         Log.d("BookingScreen", "  Total slots: ${selectedSlots.size}")
                         Log.d("BookingScreen", "  Total courts: ${slotsByCourtNumber.size}")
 
-                        // ✅ Tạo danh sách BookingItemData cho tất cả các sân
-                        val bookingItems = allCourtBookings.mapIndexed { index, (courtId, times) ->
-                            val courtNumber = courtId.split("_").getOrNull(1)?.toIntOrNull() ?: 0
-
-                            // ✅ FIX: Tính giá dựa trên số lượng slots của SÂN NÀY, không phải tổng slots
+                        // ✅ FIX: Tạo danh sách BookingItemData cho tất cả các sân
+                        // ✅ Sử dụng courtNumber từ Triple thay vì parse từ courtId
+                        val bookingItems = allCourtBookings.map { (courtId, times, courtNumber) ->
+                            // ✅ FIX: Dùng courtNumber từ UI (đã lưu trong Triple) để lấy đúng slots
                             val courtSlots = slotsByCourtNumber[courtNumber] ?: emptyList()
                             val courtPrice = (venue.pricePerHour * courtSlots.size * 0.5).toLong()
 

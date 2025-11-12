@@ -363,9 +363,10 @@ class BookingRepositoryImpl @Inject constructor(
             val courts = apiResponse.data.courts
             val bookedSlots = mutableListOf<BookedSlot>()
 
-            courts.forEachIndexed { index, court ->
-                // courtNumber is the index in the returned list (1-based)
-                val courtNumber = index + 1
+            courts.forEach { court ->
+                // ✅ FIX: Sử dụng court.id thực tế thay vì index
+                // Backend trả về court.id có thể không liên tiếp (1, 2, 5, 10...)
+                val courtNumber = court.id.toInt()
                 Log.d("BookingRepo", "  Court ${court.id} (${court.description}): ${court.bookedSlots?.size ?: 0} booked slots")
 
                 court.bookedSlots?.forEach { slot ->
