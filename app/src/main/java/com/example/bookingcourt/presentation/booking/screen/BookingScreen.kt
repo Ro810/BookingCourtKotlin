@@ -476,13 +476,17 @@ fun BookingScreen(
                                                 bookedSlot.endTime
                                             }
 
-                                            val matches = (slotStartTime == bookedStart && slotEndTime == bookedEnd)
+                                            // ✅ FIX: Check for overlap instead of exact match
+                                            // Two time ranges overlap if:
+                                            // - Slot start < Booked end AND
+                                            // - Slot end > Booked start
+                                            val overlaps = slotStartTime < bookedEnd && slotEndTime > bookedStart
 
-                                            if (matches) {
-                                                Log.d("BookingScreen", "🔒 Slot blocked: Court $courtNum (ID=$realCourtId), Time $time ($slotStartTime-$slotEndTime) matches booked slot (ID=${bookedSlot.courtId}, $bookedStart-$bookedEnd)")
+                                            if (overlaps) {
+                                                Log.d("BookingScreen", "🔒 Slot blocked: Court $courtNum (ID=$realCourtId), Time $time ($slotStartTime-$slotEndTime) overlaps with booked slot (ID=${bookedSlot.courtId}, $bookedStart-$bookedEnd)")
                                             }
 
-                                            matches
+                                            overlaps
                                         }
                                     }
 
