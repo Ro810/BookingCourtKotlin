@@ -38,5 +38,14 @@ interface ReviewRepository {
      * Chỉ người tạo review mới có thể xóa
      */
     suspend fun deleteReview(reviewId: Long): Flow<Resource<Unit>>
-}
 
+    /**
+     * Cập nhật đánh giá
+     * Chỉ người tạo review mới có thể cập nhật
+     */
+    suspend fun updateReview(
+        reviewId: Long,
+        rating: Int,
+        comment: String?
+    ): Flow<Resource<Review>>
+}

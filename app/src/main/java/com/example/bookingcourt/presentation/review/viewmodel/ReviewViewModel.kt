@@ -29,6 +29,9 @@ class ReviewViewModel @Inject constructor(
     private val _bookingReviewState = MutableStateFlow(BookingReviewState())
     val bookingReviewState: StateFlow<BookingReviewState> = _bookingReviewState.asStateFlow()
 
+    private val _updateReviewState = MutableStateFlow(UpdateReviewState())
+    val updateReviewState: StateFlow<UpdateReviewState> = _updateReviewState.asStateFlow()
+
     /**
      * Load all reviews for a venue
      * Public API - không cần authentication
@@ -204,10 +207,54 @@ class ReviewViewModel @Inject constructor(
     }
 
     /**
+     * Update a review
+     * Chỉ người tạo review mới có thể cập nhật
+     */
+    fun updateReview(reviewId: Long, rating: Int, comment: String?) {
+        viewModelScope.launch {
+            reviewRepository.updateReview(reviewId, rating, comment).collect { resource ->
+                when (resource) {
+                    is Resource.Loading -> {
+                        _updateReviewState.value = _updateReviewState.value.copy(
+                            isLoading = true,
+                            error = null,
+                            success = false
+                        )
+                    }
+                    is Resource.Success -> {
+                        _updateReviewState.value = _updateReviewState.value.copy(
+                            isLoading = false,
+                            success = true,
+                            review = resource.data,
+                            error = null
+                        )
+                        // Reload reviews after update
+                        loadMyReviews()
+                    }
+                    is Resource.Error -> {
+                        _updateReviewState.value = _updateReviewState.value.copy(
+                            isLoading = false,
+                            success = false,
+                            error = resource.message
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Reset create review state
      */
     fun resetCreateReviewState() {
         _createReviewState.value = CreateReviewState()
+    }
+
+    /**
+     * Reset update review state
+     */
+    fun resetUpdateReviewState() {
+        _updateReviewState.value = UpdateReviewState()
     }
 
     /**
@@ -247,3 +294,9 @@ data class BookingReviewState(
     val error: String? = null
 )
 
+data class UpdateReviewState(
+    val isLoading: Boolean = false,
+    val success: Boolean = false,
+    val review: Review? = null,
+    val error: String? = null
+)

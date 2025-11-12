@@ -3,6 +3,8 @@ package com.example.bookingcourt.presentation.review.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
@@ -24,7 +26,10 @@ import kotlinx.datetime.LocalDateTime
 fun ReviewCard(
     review: Review,
     modifier: Modifier = Modifier,
-    showVenueName: Boolean = false
+    showVenueName: Boolean = false,
+    canEdit: Boolean = false,
+    onEditClick: ((Review) -> Unit)? = null,
+    onDeleteClick: ((Review) -> Unit)? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -103,11 +108,51 @@ fun ReviewCard(
 
             // Date
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = formatReviewDate(review.updatedAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatReviewDate(review.updatedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Edit and Delete buttons (only show if canEdit is true)
+                if (canEdit && (onEditClick != null || onDeleteClick != null)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (onEditClick != null) {
+                            IconButton(
+                                onClick = { onEditClick(review) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Chỉnh sửa",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        if (onDeleteClick != null) {
+                            IconButton(
+                                onClick = { onDeleteClick(review) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Xóa",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             // Comment
             if (review.comment.isNotBlank()) {

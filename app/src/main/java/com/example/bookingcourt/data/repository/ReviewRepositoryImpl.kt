@@ -9,12 +9,7 @@ import com.example.bookingcourt.domain.model.Review
 import com.example.bookingcourt.domain.repository.ReviewRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -229,6 +224,89 @@ class ReviewRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateReview(
+        reviewId: Long,
+        rating: Int,
+        comment: String?
+    ): Flow<Resource<Review>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "========== UPDATE REVIEW (DELETE + CREATE) ==========")
+            Log.d(TAG, "Review ID: $reviewId")
+            Log.d(TAG, "Rating: $rating")
+            Log.d(TAG, "Comment: $comment")
+
+            // BƯỚC 1: Lấy thông tin review hiện tại để có bookingId
+            Log.d(TAG, "Step 1: Getting current review to extract bookingId...")
+            val getResponse = reviewApi.getMyReviews()
+
+            if (!getResponse.isSuccessful || getResponse.body()?.success != true) {
+                Log.e(TAG, "❌ Failed to get current reviews")
+                emit(Resource.Error("Không thể tải thông tin đánh giá"))
+                return@flow
+            }
+
+            val currentReview = getResponse.body()?.data?.find { it.id == reviewId }
+            if (currentReview == null) {
+                Log.e(TAG, "❌ Review not found in user's reviews")
+                emit(Resource.Error("Không tìm thấy đánh giá"))
+                return@flow
+            }
+
+            val bookingId = currentReview.bookingId
+            Log.d(TAG, "✓ Found review with bookingId: $bookingId")
+
+            // BƯỚC 2: Xóa review cũ
+            Log.d(TAG, "Step 2: Deleting old review...")
+            val deleteResponse = reviewApi.deleteReview(reviewId)
+
+            if (!deleteResponse.isSuccessful || deleteResponse.body()?.success != true) {
+                Log.e(TAG, "❌ Failed to delete old review: ${deleteResponse.code()}")
+                emit(Resource.Error("Không thể xóa đánh giá cũ"))
+                return@flow
+            }
+
+            Log.d(TAG, "✓ Old review deleted successfully")
+
+            // BƯỚC 3: Tạo review mới với rating và comment mới
+            Log.d(TAG, "Step 3: Creating new review...")
+            val request = CreateReviewRequest(rating = rating, comment = comment)
+            val createResponse = reviewApi.createReview(bookingId, request)
+
+            Log.d(TAG, "Create Response Code: ${createResponse.code()}")
+
+            if (createResponse.isSuccessful) {
+                val apiResponse = createResponse.body()
+                if (apiResponse != null && apiResponse.success) {
+                    val review = apiResponse.data.toDomain()
+                    Log.d(TAG, "✓ Review updated successfully (recreated) - ID: ${review.id}")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Success(review))
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể tạo đánh giá mới"
+                    Log.e(TAG, "⚠ API returned success=false: $errorMsg")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorMsg = when (createResponse.code()) {
+                    400 -> "Đánh giá không hợp lệ (rating phải từ 1-5)"
+                    403 -> "Bạn không có quyền đánh giá booking này"
+                    404 -> "Không tìm thấy booking"
+                    else -> "Lỗi khi tạo đánh giá mới: ${createResponse.code()}"
+                }
+                Log.e(TAG, "⚠ $errorMsg")
+                Log.d(TAG, "======================================")
+                emit(Resource.Error(errorMsg))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠ Exception during update: ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error(e.message ?: "Lỗi kết nối"))
+        }
+    }
+
     // Mapper function
     private fun ReviewDto.toDomain(): Review {
         return Review(
@@ -242,7 +320,8 @@ class ReviewRepositoryImpl @Inject constructor(
             images = emptyList(), // API không trả về images
             createdAt = parseDateTime(this.createdAt),
             updatedAt = parseDateTime(this.updatedAt ?: this.createdAt),
-            isVerifiedBooking = true // Vì review được tạo từ booking
+            isVerifiedBooking = true, // Vì review được tạo từ booking
+            bookingId = this.bookingId.toString() // ✅ Thêm bookingId
         )
     }
 

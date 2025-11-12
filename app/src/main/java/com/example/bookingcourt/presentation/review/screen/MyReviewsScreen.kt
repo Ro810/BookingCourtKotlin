@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.bookingcourt.domain.model.Review
+import com.example.bookingcourt.presentation.review.components.EditReviewDialog
 import com.example.bookingcourt.presentation.review.components.ReviewCard
 import com.example.bookingcourt.presentation.review.viewmodel.ReviewViewModel
 
@@ -25,8 +27,21 @@ fun MyReviewsScreen(
     viewModel: ReviewViewModel = hiltViewModel()
 ) {
     val state by viewModel.myReviewsState.collectAsState()
+    val updateState by viewModel.updateReviewState.collectAsState()
+
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var reviewToDelete by remember { mutableStateOf<String?>(null) }
+    var reviewToDelete by remember { mutableStateOf<Review?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var reviewToEdit by remember { mutableStateOf<Review?>(null) }
+
+    // Handle update success
+    LaunchedEffect(updateState.success) {
+        if (updateState.success) {
+            showEditDialog = false
+            reviewToEdit = null
+            viewModel.resetUpdateReviewState()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadMyReviews()
@@ -116,13 +131,58 @@ fun MyReviewsScreen(
                         items(state.reviews) { review ->
                             ReviewCard(
                                 review = review,
-                                showVenueName = true
+                                showVenueName = true,
+                                canEdit = true,
+                                onEditClick = {
+                                    reviewToEdit = it
+                                    showEditDialog = true
+                                },
+                                onDeleteClick = {
+                                    reviewToDelete = it
+                                    showDeleteDialog = true
+                                }
                             )
                         }
                     }
                 }
             }
+
+            // Show update error as snackbar
+            if (updateState.error != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp),
+                    action = {
+                        TextButton(onClick = { viewModel.resetUpdateReviewState() }) {
+                            Text("Đóng")
+                        }
+                    }
+                ) {
+                    Text(updateState.error ?: "Có lỗi xảy ra")
+                }
+            }
         }
+    }
+
+    // Edit review dialog
+    if (showEditDialog && reviewToEdit != null) {
+        EditReviewDialog(
+            review = reviewToEdit!!,
+            onDismiss = {
+                showEditDialog = false
+                reviewToEdit = null
+                viewModel.resetUpdateReviewState()
+            },
+            onConfirm = { rating, comment ->
+                viewModel.updateReview(
+                    reviewId = reviewToEdit!!.id.toLong(),
+                    rating = rating,
+                    comment = comment
+                )
+            },
+            isLoading = updateState.isLoading
+        )
     }
 
     // Delete confirmation dialog
@@ -134,19 +194,25 @@ fun MyReviewsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        reviewToDelete?.let { id ->
-                            viewModel.deleteReview(id.toLong()) {
+                        reviewToDelete?.let { review ->
+                            viewModel.deleteReview(review.id.toLong()) {
                                 showDeleteDialog = false
                                 reviewToDelete = null
                             }
                         }
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
                     Text("Xóa")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    reviewToDelete = null
+                }) {
                     Text("Hủy")
                 }
             }

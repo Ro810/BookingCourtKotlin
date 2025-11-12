@@ -70,4 +70,3 @@ interface ReviewApi {
         @Path("reviewId") reviewId: Long
     ): Response<ApiResponse<Any>>
 }
-
