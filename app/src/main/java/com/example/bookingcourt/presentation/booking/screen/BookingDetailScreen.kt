@@ -667,7 +667,7 @@ private fun BookingStatus.getStatusColor(): Color {
         BookingStatus.REJECTED -> Color(0xFFD32F2F) // Red
         BookingStatus.CANCELLED -> Color(0xFFF44336) // Deep Orange
         BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800) // Orange
-        else -> Color.Gray // Default for other statuses
+        else -> Color(0xFFF44336) // Default for other statuses
     }
 }
 

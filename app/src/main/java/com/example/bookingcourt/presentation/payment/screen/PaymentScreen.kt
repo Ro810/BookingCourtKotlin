@@ -402,66 +402,6 @@ fun BookingConfirmationScreenContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Thông tin ngân hàng của chủ sân (nếu có)
-            bookingData.ownerBankInfo?.let { bankInfo ->
-                InfoSection(
-                    title = "Thông tin chuyển khoản",
-                    icon = Icons.Default.AccountBalance
-                ) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF5F5F5)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            InfoRow(
-                                label = "Ngân hàng:",
-                                value = bankInfo.bankName
-                            )
-                            InfoRow(
-                                label = "Số tài khoản:",
-                                value = bankInfo.bankAccountNumber
-                            )
-                            InfoRow(
-                                label = "Chủ tài khoản:",
-                                value = bankInfo.bankAccountName
-                            )
-                            InfoRow(
-                                label = "Số tiền:",
-                                value = "${bookingData.totalPrice.formatPrice()} VNĐ",
-                                valueColor = Primary
-                            )
-                        }
-                    }
-
-                    bookingData.expireTime?.let { expireTime ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AccessTime,
-                                contentDescription = null,
-                                tint = Color(0xFFFF9800),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Vui lòng thanh toán trước: $expireTime",
-                                fontSize = 12.sp,
-                                color = Color(0xFFFF9800),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
             // Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
