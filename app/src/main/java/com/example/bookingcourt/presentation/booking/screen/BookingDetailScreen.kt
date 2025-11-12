@@ -43,11 +43,14 @@ fun BookingDetailScreen(
     val bookingDetail by viewModel.bookingDetail.collectAsState()
     val uploadState by viewModel.uploadState.collectAsState()
     val confirmState by viewModel.confirmState.collectAsState()
+    val cancelState by viewModel.cancelState.collectAsState()
     val timeRemaining by viewModel.timeRemaining.collectAsState()
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var uploadedPaymentProofUrl by remember { mutableStateOf<String?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelReason by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -98,6 +101,25 @@ fun BookingDetailScreen(
                     (confirmState as Resource.Error).message ?: "Lỗi xác nhận thanh toán"
                 )
                 viewModel.resetConfirmState()
+            }
+            else -> {}
+        }
+    }
+
+    // Handle cancel booking state
+    LaunchedEffect(cancelState) {
+        when (cancelState) {
+            is Resource.Success -> {
+                snackbarHostState.showSnackbar("Đã hủy đặt sân!")
+                viewModel.resetCancelState()
+                // Navigate back or to another screen
+                onNavigateBack()
+            }
+            is Resource.Error -> {
+                snackbarHostState.showSnackbar(
+                    (cancelState as Resource.Error).message ?: "Lỗi hủy đặt sân"
+                )
+                viewModel.resetCancelState()
             }
             else -> {}
         }
@@ -157,9 +179,13 @@ fun BookingDetailScreen(
                                 showConfirmDialog = true
                             }
                         },
+                        onCancelBooking = {
+                            showCancelDialog = true
+                        },
                         modifier = Modifier.padding(padding)
                     )
 
+                    // Confirm payment dialog
                     if (showConfirmDialog) {
                         AlertDialog(
                             onDismissRequest = { showConfirmDialog = false },
@@ -183,6 +209,42 @@ fun BookingDetailScreen(
                             }
                         )
                     }
+
+                    // Cancel booking dialog
+                    if (showCancelDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showCancelDialog = false },
+                            title = { Text("Hủy đặt sân") },
+                            text = {
+                                Column {
+                                    Text("Bạn có chắc chắn muốn hủy đặt sân này?")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    OutlinedTextField(
+                                        value = cancelReason,
+                                        onValueChange = { cancelReason = it },
+                                        label = { Text("Lý do hủy (tùy chọn)") },
+                                        placeholder = { Text("Nhập lý do hủy đặt sân") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showCancelDialog = false
+                                        viewModel.cancelBooking(cancelReason.ifBlank { "Người dùng hủy đặt sân" })
+                                    }
+                                ) {
+                                    Text("Xác nhận hủy", color = Color.Red)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showCancelDialog = false }) {
+                                    Text("Quay lại")
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -199,6 +261,7 @@ private fun BookingDetailContent(
     isConfirming: Boolean,
     onSelectImage: () -> Unit,
     onConfirmPayment: () -> Unit,
+    onCancelBooking: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -234,6 +297,20 @@ private fun BookingDetailContent(
                 onSelectImage = onSelectImage,
                 onConfirmPayment = onConfirmPayment
             )
+        }
+
+        // Cancel booking button
+        if (booking.status == BookingStatus.PENDING_PAYMENT) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onCancelBooking,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red
+                )
+            ) {
+                Text("Hủy đặt sân")
+            }
         }
     }
 }

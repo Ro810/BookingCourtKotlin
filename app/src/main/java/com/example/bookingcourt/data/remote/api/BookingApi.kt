@@ -35,7 +35,7 @@ interface BookingApi {
     suspend fun cancelBooking(
         @Path("id") bookingId: String,
         @Body reason: Map<String, String>,
-    ): BaseResponseDto
+    ): ApiResponse<BookingDto>
 
     @PUT("bookings/{id}/confirm")
     suspend fun confirmBooking(@Path("id") bookingId: String): BookingDto

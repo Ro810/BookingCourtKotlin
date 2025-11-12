@@ -36,6 +36,9 @@ class BookingDetailViewModel @Inject constructor(
     private val _confirmState = MutableStateFlow<Resource<BookingDetail>?>(null)
     val confirmState: StateFlow<Resource<BookingDetail>?> = _confirmState.asStateFlow()
 
+    private val _cancelState = MutableStateFlow<Resource<Unit>?>(null)
+    val cancelState: StateFlow<Resource<Unit>?> = _cancelState.asStateFlow()
+
     private val _timeRemaining = MutableStateFlow<Long>(0L)
     val timeRemaining: StateFlow<Long> = _timeRemaining.asStateFlow()
 
@@ -101,11 +104,23 @@ class BookingDetailViewModel @Inject constructor(
         }
     }
 
+    fun cancelBooking(reason: String) {
+        viewModelScope.launch {
+            bookingRepository.cancelBooking(bookingId, reason).collect { resource ->
+                _cancelState.value = resource
+            }
+        }
+    }
+
     fun resetConfirmState() {
         _confirmState.value = null
     }
 
     fun resetUploadState() {
         _uploadState.value = null
+    }
+
+    fun resetCancelState() {
+        _cancelState.value = null
     }
 }
