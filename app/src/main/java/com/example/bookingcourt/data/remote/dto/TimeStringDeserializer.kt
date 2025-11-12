@@ -33,25 +33,78 @@ class TimeStringDeserializer : JsonDeserializer<String?> {
                 Log.d(TAG, "✅ Parsed as string: $result")
                 result
             }
-            // Nếu là array, lấy phần tử đầu tiên
+            // ✅ FIX: Nếu là array, xử lý cả array string và array số
             json.isJsonArray -> {
                 val array = json.asJsonArray
                 Log.d(TAG, "⚠️ Found array with size: ${array.size()}")
-                if (array.size() > 0) {
-                    val firstElement = array[0]
-                    Log.d(TAG, "  First element type: ${firstElement.javaClass.simpleName}")
-                    if (firstElement.isJsonPrimitive && firstElement.asJsonPrimitive.isString) {
-                        val result = firstElement.asString
-                        Log.d(TAG, "✅ Extracted string from array: $result")
-                        result
-                    } else {
-                        Log.e(TAG, "❌ First element is not a string: $firstElement")
-                        null
-                    }
-                } else {
+
+                if (array.size() == 0) {
                     Log.e(TAG, "❌ Array is empty")
-                    null
+                    return null
                 }
+
+                val firstElement = array[0]
+
+                // ✅ Nếu phần tử đầu là string, lấy trực tiếp
+                if (firstElement.isJsonPrimitive && firstElement.asJsonPrimitive.isString) {
+                    val result = firstElement.asString
+                    Log.d(TAG, "✅ Extracted string from array: $result")
+                    return result
+                }
+
+                // ✅ Nếu phần tử đầu là số, đây là array format [year,month,day,hour,minute] hoặc [year,month,day,hour,minute,second,nano]
+                if (firstElement.isJsonPrimitive && firstElement.asJsonPrimitive.isNumber) {
+                    try {
+                        when (array.size()) {
+                            5 -> {
+                                // Format: [year, month, day, hour, minute]
+                                val year = array[0].asInt
+                                val month = array[1].asInt
+                                val day = array[2].asInt
+                                val hour = array[3].asInt
+                                val minute = array[4].asInt
+                                val result = String.format("%04d-%02d-%02dT%02d:%02d:00", year, month, day, hour, minute)
+                                Log.d(TAG, "✅ Converted array [5] to ISO string: $result")
+                                return result
+                            }
+                            6 -> {
+                                // Format: [year, month, day, hour, minute, second]
+                                val year = array[0].asInt
+                                val month = array[1].asInt
+                                val day = array[2].asInt
+                                val hour = array[3].asInt
+                                val minute = array[4].asInt
+                                val second = array[5].asInt
+                                val result = String.format("%04d-%02d-%02dT%02d:%02d:%02d", year, month, day, hour, minute, second)
+                                Log.d(TAG, "✅ Converted array [6] to ISO string: $result")
+                                return result
+                            }
+                            7 -> {
+                                // Format: [year, month, day, hour, minute, second, nano]
+                                val year = array[0].asInt
+                                val month = array[1].asInt
+                                val day = array[2].asInt
+                                val hour = array[3].asInt
+                                val minute = array[4].asInt
+                                val second = array[5].asInt
+                                // Bỏ qua nano seconds
+                                val result = String.format("%04d-%02d-%02dT%02d:%02d:%02d", year, month, day, hour, minute, second)
+                                Log.d(TAG, "✅ Converted array [7] to ISO string: $result")
+                                return result
+                            }
+                            else -> {
+                                Log.e(TAG, "❌ Unexpected array size: ${array.size()}")
+                                return null
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ Error converting array to ISO string: ${e.message}")
+                        return null
+                    }
+                }
+
+                Log.e(TAG, "❌ First element is neither string nor number: $firstElement")
+                null
             }
             // Các trường hợp khác
             else -> {
@@ -61,4 +114,3 @@ class TimeStringDeserializer : JsonDeserializer<String?> {
         }
     }
 }
-

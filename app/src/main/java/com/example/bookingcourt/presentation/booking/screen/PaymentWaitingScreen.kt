@@ -183,6 +183,7 @@ private fun WaitingContent(
                                         color = Primary
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
+                                    // ✅ FIX: item.startTime và item.endTime là LocalDateTime
                                     Text(
                                         text = "${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
                                         fontSize = 13.sp,

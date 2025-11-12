@@ -160,6 +160,7 @@ fun BookingHistoryItem(
                             color = Color.Gray
                         )
                     }
+                    // ✅ FIX: item.startTime và item.endTime là LocalDateTime, không phải String
                     Text(
                         text = "   ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
                         fontSize = 12.sp,

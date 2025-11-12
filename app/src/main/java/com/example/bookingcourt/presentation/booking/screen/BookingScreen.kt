@@ -772,15 +772,18 @@ fun BookingScreen(
                         Log.d("BookingScreen", "  Total courts: ${slotsByCourtNumber.size}")
 
                         // ✅ Tạo danh sách BookingItemData cho tất cả các sân
-                        val bookingItems = allCourtBookings.map { (courtId, times) ->
+                        val bookingItems = allCourtBookings.mapIndexed { index, (courtId, times) ->
                             val courtNumber = courtId.split("_").getOrNull(1)?.toIntOrNull() ?: 0
-                            val courtPrice = (venue.pricePerHour * 0.5).toLong() // Giá cho 30 phút
+
+                            // ✅ FIX: Tính giá dựa trên số lượng slots của SÂN NÀY, không phải tổng slots
+                            val courtSlots = slotsByCourtNumber[courtNumber] ?: emptyList()
+                            val courtPrice = (venue.pricePerHour * courtSlots.size * 0.5).toLong()
 
                             BookingItemData(
                                 courtId = courtId,
                                 courtName = "Sân số $courtNumber",
-                                startTime = times.first,
-                                endTime = times.second,
+                                startTime = times.first,  // ✅ Thời gian bắt đầu của sân này
+                                endTime = times.second,   // ✅ Thời gian kết thúc của sân này
                                 price = courtPrice
                             )
                         }
@@ -788,6 +791,7 @@ fun BookingScreen(
                         Log.d("BookingScreen", "✅ Created ${bookingItems.size} booking items:")
                         bookingItems.forEachIndexed { index, item ->
                             Log.d("BookingScreen", "  [$index] ${item.courtName} (${item.courtId})")
+                            Log.d("BookingScreen", "       Time: ${item.startTime} - ${item.endTime}")
                             Log.d("BookingScreen", "       Price: ${item.price} VNĐ")
                         }
 

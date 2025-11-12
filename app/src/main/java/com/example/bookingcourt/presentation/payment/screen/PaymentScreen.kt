@@ -269,37 +269,73 @@ fun BookingConfirmationScreenContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Nhóm theo sân
-                bookingData.selectedSlots.groupBy { it.courtNumber }.forEach { (courtNum, slots) ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF5F5F5)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "Sân $courtNum",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Primary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
+                // ✅ FIX: Hiển thị thời gian từ bookingItems nếu có, nếu không fallback về selectedSlots
+                if (!bookingData.bookingItems.isNullOrEmpty()) {
+                    // ✅ Hiển thị từ bookingItems - có thời gian chính xác cho từng sân
+                    bookingData.bookingItems.forEach { item ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFF5F5F5)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = item.courtName,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
 
-                            // Convert time slots to time ranges and display each on new line
-                            val sortedSlots = slots.map { it.timeSlot }.sorted()
-                            sortedSlots.forEach { timeSlot ->
-                                val startTime = timeSlot
-                                val endTime = formatEndTime(timeSlot)
+                                // Hiển thị thời gian từ startTime và endTime
+                                val startTime = formatDateTime(item.startTime, "HH:mm")
+                                val endTime = formatDateTime(item.endTime, "HH:mm")
                                 Text(
                                     text = "• $startTime - $endTime",
                                     fontSize = 13.sp,
                                     color = Color.DarkGray,
                                     modifier = Modifier.padding(vertical = 2.dp)
                                 )
+                            }
+                        }
+                    }
+                } else {
+                    // ✅ Fallback: Hiển thị từ selectedSlots (legacy mode)
+                    bookingData.selectedSlots.groupBy { it.courtNumber }.forEach { (courtNum, slots) ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFF5F5F5)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "Sân $courtNum",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Gộp các slot liên tiếp thành khung giờ tổng hợp
+                                val sortedSlots = slots.map { it.timeSlot }.sorted()
+                                if (sortedSlots.isNotEmpty()) {
+                                    val startTime = sortedSlots.first()
+                                    val endTime = calculateEndTimeFromSlots(sortedSlots.last())
+                                    Text(
+                                        text = "• $startTime - $endTime",
+                                        fontSize = 13.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -605,6 +641,40 @@ fun InfoRow(
 // ✅ Helper function để format giá tiền đúng
 private fun Long.formatPrice(): String {
     return "%,d".format(this).replace(',', '.')
+}
+
+// ✅ Helper function để format datetime từ ISO format sang định dạng mong muốn
+private fun formatDateTime(dateTimeString: String, pattern: String = "HH:mm"): String {
+    return try {
+        // Input format: "2025-11-11T04:00:00" hoặc "04:00:00"
+        if (dateTimeString.contains("T")) {
+            // ISO format: "2025-11-11T04:00:00"
+            dateTimeString.substring(11, 16) // Lấy "04:00"
+        } else if (dateTimeString.length >= 5) {
+            // Time only: "04:00:00"
+            dateTimeString.substring(0, 5) // Lấy "04:00"
+        } else {
+            dateTimeString
+        }
+    } catch (e: Exception) {
+        dateTimeString
+    }
+}
+
+// ✅ Helper function để tính thời gian kết thúc từ slot cuối cùng
+private fun calculateEndTimeFromSlots(lastSlot: String): String {
+    val parts = lastSlot.split(":")
+    if (parts.size < 2) return lastSlot
+
+    val hour = parts[0].toIntOrNull() ?: return lastSlot
+    val minute = parts[1].toIntOrNull() ?: return lastSlot
+
+    // Thêm 30 phút vào slot cuối cùng
+    val totalMinutes = hour * 60 + minute + 30
+    val endHour = (totalMinutes / 60) % 24
+    val endMinute = totalMinutes % 60
+
+    return String.format("%02d:%02d", endHour, endMinute)
 }
 
 private fun formatEndTime(timeSlot: String): String {
