@@ -163,16 +163,33 @@ fun HomeScreen(
                     // Hiển thị kết quả tìm kiếm nếu đang search
                     if (state.searchQuery.isNotEmpty()) {
                         item {
-                            Text(
-                                text = if (state.searchResults.isNotEmpty())
-                                    "Kết quả tìm kiếm (${state.searchResults.size})"
-                                else
-                                    "Đang tìm kiếm...",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (state.searchResults.isNotEmpty())
+                                        "Kết quả tìm kiếm (${state.searchResults.size})"
+                                    else if (state.isSearching)
+                                        "Đang tìm kiếm..."
+                                    else
+                                        "Không tìm thấy kết quả",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+
+                                if (state.isSearching) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = Primary,
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
                         }
 
                         if (state.searchResults.isNotEmpty()) {
@@ -184,16 +201,40 @@ fun HomeScreen(
                             }
                         } else if (!state.isSearching) {
                             item {
-                                Box(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Không tìm thấy kết quả",
-                                        color = Color.Gray
+                                        .padding(16.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFF5F5F5)
                                     )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(48.dp),
+                                            tint = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Không tìm thấy sân",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Thử tìm kiếm với từ khóa khác",
+                                            fontSize = 14.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
                                 }
                             }
                         }
