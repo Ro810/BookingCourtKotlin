@@ -1,6 +1,5 @@
 package com.example.bookingcourt.presentation.owner.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
@@ -22,38 +21,18 @@ class PendingBookingsViewModel @Inject constructor(
     val pendingBookings: StateFlow<Resource<List<BookingDetail>>> = _pendingBookings.asStateFlow()
 
     init {
-        Log.d("PendingBookingsVM", "🚀 ViewModel initialized - Loading pending bookings...")
         loadPendingBookings()
     }
 
     fun loadPendingBookings() {
-        Log.d("PendingBookingsVM", "📥 Loading pending bookings from repository...")
         viewModelScope.launch {
             bookingRepository.getPendingBookings().collect { resource ->
-                when (resource) {
-                    is Resource.Loading -> {
-                        Log.d("PendingBookingsVM", "⏳ Loading state...")
-                    }
-                    is Resource.Success -> {
-                        val count = resource.data?.size ?: 0
-                        Log.d("PendingBookingsVM", "✅ Success! Found $count pending bookings")
-                        resource.data?.forEachIndexed { index, booking ->
-                            // ✅ Sử dụng getCourtsDisplayName() để hỗ trợ cả bookingItems và court legacy
-                            val courtInfo = booking.getCourtsDisplayName()
-                            Log.d("PendingBookingsVM", "  📋 Booking ${index + 1}: ID=${booking.id}, Court=$courtInfo, User=${booking.user.fullname}, Status=${booking.status}")
-                        }
-                    }
-                    is Resource.Error -> {
-                        Log.e("PendingBookingsVM", "❌ Error loading pending bookings: ${resource.message}")
-                    }
-                }
                 _pendingBookings.value = resource
             }
         }
     }
 
     fun refreshPendingBookings() {
-        Log.d("PendingBookingsVM", "🔄 Refreshing pending bookings...")
         loadPendingBookings()
     }
 }
