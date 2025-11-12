@@ -462,36 +462,6 @@ fun BookingConfirmationScreenContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Ghi chú
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFF3E0)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Sau khi thanh toán, bạn sẽ nhận được mã đặt sân qua SMS. Vui lòng mang theo mã này khi đến sân.",
-                        fontSize = 13.sp,
-                        color = Color(0xFF6D4C41),
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             // Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
