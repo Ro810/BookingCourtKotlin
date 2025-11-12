@@ -88,8 +88,10 @@ fun BookingScreen(
     // ✅ Thêm coroutineScope để gọi suspend functions
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ Khai báo selectedDate sớm hơn để dùng trong LaunchedEffect
-    var selectedDate by remember { mutableStateOf("") }
+    // ✅ Khai báo selectedDate với ngày hiện tại ngay từ đầu để tự động fetch booked slots
+    var selectedDate by remember {
+        mutableStateOf(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
+    }
     var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
     var playerName by remember(currentUser) { mutableStateOf(currentUser?.fullName ?: "") }
     var phoneNumber by remember(currentUser) { mutableStateOf(currentUser?.phoneNumber ?: "") }
@@ -102,6 +104,30 @@ fun BookingScreen(
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
+
+    // ✅ Reset DatePicker về ngày hiện tại mỗi khi mở dialog
+    LaunchedEffect(showDatePicker) {
+        if (showDatePicker) {
+            // ✅ FIX: Tính toán timestamp UTC chính xác cho ngày hiện tại
+            // DatePicker hoạt động với UTC timezone, nên phải convert đúng cách
+            val localCalendar = Calendar.getInstance()
+
+            // Tạo calendar với UTC timezone
+            val utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            utcCalendar.set(Calendar.YEAR, localCalendar.get(Calendar.YEAR))
+            utcCalendar.set(Calendar.MONTH, localCalendar.get(Calendar.MONTH))
+            utcCalendar.set(Calendar.DAY_OF_MONTH, localCalendar.get(Calendar.DAY_OF_MONTH))
+            utcCalendar.set(Calendar.HOUR_OF_DAY, 0)
+            utcCalendar.set(Calendar.MINUTE, 0)
+            utcCalendar.set(Calendar.SECOND, 0)
+            utcCalendar.set(Calendar.MILLISECOND, 0)
+
+            datePickerState.selectedDateMillis = utcCalendar.timeInMillis
+
+            Log.d("BookingScreen", "📅 DatePicker reset to: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(localCalendar.time)}")
+            Log.d("BookingScreen", "📅 UTC timestamp: ${utcCalendar.timeInMillis}")
+        }
+    }
 
     // Fetch courts when screen is first composed
     LaunchedEffect(venue.id) {
