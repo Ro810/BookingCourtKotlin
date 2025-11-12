@@ -253,8 +253,10 @@ class ReviewRepositoryImpl @Inject constructor(
             // Xử lý các format phổ biến từ backend
             val cleanedString = dateTimeString.trim()
 
-            // TimeZone Việt Nam (UTC+7)
-            val vietnamTimeZone = TimeZone.of("Asia/Ho_Chi_Minh")
+            // ⚠️ QUAN TRỌNG: Backend trả về GIỜ VIỆT NAM (UTC+7) theo format:
+            // yyyy-MM-dd'T'HH:mm:ss (VD: 2025-11-07T14:00:00)
+            // KHÔNG CÓ Z hoặc +07:00 ở cuối
+            // KHÔNG CẦN convert timezone
 
             // Thử parse với nhiều format khác nhau
             val result = when {
@@ -262,37 +264,20 @@ class ReviewRepositoryImpl @Inject constructor(
                 cleanedString.matches(Regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}.*")) -> {
                     val withT = cleanedString.replace(" ", "T")
                     val withoutMillis = withT.substringBefore(".")
-                    // Parse as local time và assume là giờ Việt Nam
+                    // Parse trực tiếp - đã là giờ Việt Nam
                     LocalDateTime.parse(withoutMillis)
                 }
-                // Format ISO với milliseconds: "2025-11-13T14:30:00.123Z"
-                // Format ISO với Z: "2025-11-13T14:30:00Z"
-                cleanedString.contains("T") && cleanedString.endsWith("Z") -> {
-                    // Parse as UTC Instant rồi convert sang giờ Việt Nam
-                    val withoutMillis = cleanedString.substringBefore(".").removeSuffix("Z")
-                    val instant = Instant.parse("${withoutMillis}Z")
-                    val vietnamTime = instant.toLocalDateTime(vietnamTimeZone)
-                    Log.d(TAG, "   ✅ UTC -> Vietnam: ${withoutMillis}Z -> $vietnamTime")
-                    vietnamTime
-                }
-                // Format ISO với timezone offset: "2025-11-13T14:30:00+07:00"
-                cleanedString.contains("T") && cleanedString.contains("+") -> {
+
+                // Format chuẩn từ backend: "2025-11-07T14:00:00" (ISO 8601 without timezone)
+                // ĐÂY LÀ FORMAT CHÍNH từ backend - ĐÃ LÀ GIỜ VIỆT NAM
+                cleanedString.matches(Regex("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?")) -> {
                     val withoutMillis = cleanedString.substringBefore(".")
-                    // Parse với timezone info
-                    val instant = Instant.parse(withoutMillis)
-                    instant.toLocalDateTime(vietnamTimeZone)
+                    // Parse trực tiếp - backend đã trả về giờ Việt Nam
+                    val parsed = LocalDateTime.parse(withoutMillis)
+                    Log.d(TAG, "   ✅ Parsed Vietnam time: $parsed")
+                    parsed
                 }
-                // Format ISO với timezone offset âm: "2025-11-13T14:30:00-05:00"
-                cleanedString.contains("T") && cleanedString.lastIndexOf("-") > 10 -> {
-                    val withoutMillis = cleanedString.substringBefore(".")
-                    val instant = Instant.parse(withoutMillis)
-                    instant.toLocalDateTime(vietnamTimeZone)
-                }
-                // Format ISO chuẩn: "2025-11-13T14:30:00" (assume giờ Việt Nam)
-                cleanedString.contains("T") -> {
-                    val withoutMillis = cleanedString.substringBefore(".")
-                    LocalDateTime.parse(withoutMillis)
-                }
+
                 // Format ngày giờ Việt Nam: "13/11/2025 14:30:00"
                 cleanedString.matches(Regex("\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}")) -> {
                     val parts = cleanedString.split(" ")
@@ -300,9 +285,11 @@ class ReviewRepositoryImpl @Inject constructor(
                     val isoFormat = "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${parts[1]}"
                     LocalDateTime.parse(isoFormat)
                 }
+
                 // Thử parse trực tiếp
                 else -> {
-                    LocalDateTime.parse(cleanedString)
+                    val withoutMillis = cleanedString.substringBefore(".")
+                    LocalDateTime.parse(withoutMillis)
                 }
             }
 
