@@ -568,8 +568,9 @@ fun BookingScreen(
 
                         // Nhóm theo sân
                         selectedSlots.groupBy { it.courtNumber }.forEach { (courtNum, slots) ->
+                            val timeRanges = groupConsecutiveTimeSlots(slots.map { it.timeSlot })
                             Text(
-                                text = "• Sân $courtNum: ${slots.map { it.timeSlot }.sorted().joinToString(", ")}",
+                                text = "• Sân $courtNum: ${timeRanges.joinToString(", ")}",
                                 fontSize = 12.sp,
                                 color = Color.Black
                             )
@@ -707,9 +708,9 @@ fun BookingScreen(
 
                         val sortedCourts = availableCourts.sortedBy { it.id }
 
-                        // ✅ XỬ LÝ TỪNG SÂN - Tính thời gian cho từng sân
-                        // ✅ FIX: Lưu cả courtNumber (UI index) để map chính xác với slots
-                        val allCourtBookings = mutableListOf<Triple<String, Pair<String, String>, Int>>() // (courtId, startTime-endTime, courtNumber)
+                        // ✅ XỬ LÝ TỪNG SÂN - Nhóm slots liên tục và tạo booking items
+                        // ✅ FIX: Tạo nhiều bookingItems cho mỗi khoảng thời gian không liên tục
+                        val allCourtBookings = mutableListOf<Triple<String, Pair<String, String>, String>>() // (courtId, startTime-endTime, courtName)
 
                         slotsByCourtNumber.forEach { (courtNumber, courtSlots) ->
                             val courtIndex = courtNumber - 1
@@ -717,54 +718,57 @@ fun BookingScreen(
                             if (courtIndex >= 0 && courtIndex < sortedCourts.size) {
                                 val selectedCourt = sortedCourts[courtIndex]
                                 val formattedCourtId = "${venue.id}_${selectedCourt.id}"
+                                val courtName = "Sân số $courtNumber"
 
-                                // Tính thời gian cho sân này
-                                val sortedSlots = courtSlots.sortedBy { it.timeSlot }
-                                val firstTimeSlot = sortedSlots.first().timeSlot
-                                val lastTimeSlot = sortedSlots.last().timeSlot
+                                // ✅ FIX: Nhóm các slots liên tục thành các khoảng thời gian riêng biệt
+                                val timeSlots = courtSlots.map { it.timeSlot }.sorted()
+                                val consecutiveGroups = groupConsecutiveSlotsForBooking(timeSlots)
 
-                                val selectedDateFormatted = selectedDate.ifEmpty {
-                                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                                Log.d("BookingScreen", "✅ Court $courtNumber has ${consecutiveGroups.size} time ranges:")
+
+                                consecutiveGroups.forEach { group ->
+                                    val firstTimeSlot = group.first()
+                                    val lastTimeSlot = group.last()
+
+                                    val selectedDateFormatted = selectedDate.ifEmpty {
+                                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                                    }
+
+                                    val dateForApi = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                        .parse(selectedDateFormatted)
+                                    val calendar = Calendar.getInstance()
+                                    calendar.time = dateForApi ?: Date()
+
+                                    val firstTimeParts = firstTimeSlot.split(":")
+                                    val firstHour = firstTimeParts[0].toInt()
+                                    val firstMinute = firstTimeParts[1].toInt()
+
+                                    calendar.set(Calendar.HOUR_OF_DAY, firstHour)
+                                    calendar.set(Calendar.MINUTE, firstMinute)
+                                    calendar.set(Calendar.SECOND, 0)
+
+                                    val now = Calendar.getInstance()
+                                    if (calendar.before(now)) {
+                                        calendar.add(Calendar.DAY_OF_MONTH, 1)
+                                    }
+
+                                    val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                    val startTime = apiDateFormat.format(calendar.time)
+
+                                    val endTimeSlot = calculateEndTime(lastTimeSlot)
+                                    val endTimeParts = endTimeSlot.split(":")
+                                    val endHour = endTimeParts[0].toInt()
+                                    val endMinute = endTimeParts[1].toInt()
+
+                                    calendar.set(Calendar.HOUR_OF_DAY, endHour)
+                                    calendar.set(Calendar.MINUTE, endMinute)
+                                    val endTime = apiDateFormat.format(calendar.time)
+
+                                    // ✅ Thêm bookingItem cho khoảng thời gian này
+                                    allCourtBookings.add(Triple(formattedCourtId, Pair(startTime, endTime), courtName))
+
+                                    Log.d("BookingScreen", "  • ${group.first()}-${calculateEndTime(group.last())} → $startTime to $endTime (${group.size} slots)")
                                 }
-
-                                val dateForApi = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                                    .parse(selectedDateFormatted)
-                                val calendar = Calendar.getInstance()
-                                calendar.time = dateForApi ?: Date()
-
-                                val firstTimeParts = firstTimeSlot.split(":")
-                                val firstHour = firstTimeParts[0].toInt()
-                                val firstMinute = firstTimeParts[1].toInt()
-
-                                calendar.set(Calendar.HOUR_OF_DAY, firstHour)
-                                calendar.set(Calendar.MINUTE, firstMinute)
-                                calendar.set(Calendar.SECOND, 0)
-
-                                val now = Calendar.getInstance()
-                                if (calendar.before(now)) {
-                                    calendar.add(Calendar.DAY_OF_MONTH, 1)
-                                }
-
-                                val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                                val startTime = apiDateFormat.format(calendar.time)
-
-                                val endTimeSlot = calculateEndTime(lastTimeSlot)
-                                val endTimeParts = endTimeSlot.split(":")
-                                val endHour = endTimeParts[0].toInt()
-                                val endMinute = endTimeParts[1].toInt()
-
-                                calendar.set(Calendar.HOUR_OF_DAY, endHour)
-                                calendar.set(Calendar.MINUTE, endMinute)
-                                val endTime = apiDateFormat.format(calendar.time)
-
-                                // ✅ FIX: Lưu courtNumber (UI index) cùng với booking data
-                                allCourtBookings.add(Triple(formattedCourtId, Pair(startTime, endTime), courtNumber))
-
-                                Log.d("BookingScreen", "✅ Court $courtNumber processed:")
-                                Log.d("BookingScreen", "  Court ID: $formattedCourtId")
-                                Log.d("BookingScreen", "  Start: $startTime")
-                                Log.d("BookingScreen", "  End: $endTime")
-                                Log.d("BookingScreen", "  Slots: ${courtSlots.size}")
                             }
                         }
 
@@ -798,14 +802,14 @@ fun BookingScreen(
 
                         // ✅ FIX: Tạo danh sách BookingItemData cho tất cả các sân
                         // ✅ Sử dụng courtNumber từ Triple thay vì parse từ courtId
-                        val bookingItems = allCourtBookings.map { (courtId, times, courtNumber) ->
+                        val bookingItems = allCourtBookings.map { (courtId, times, courtName) ->
                             // ✅ FIX: Dùng courtNumber từ UI (đã lưu trong Triple) để lấy đúng slots
-                            val courtSlots = slotsByCourtNumber[courtNumber] ?: emptyList()
+                            val courtSlots = slotsByCourtNumber[courtName.split(" ")[2].toInt()] ?: emptyList()
                             val courtPrice = (venue.pricePerHour * courtSlots.size * 0.5).toLong()
 
                             BookingItemData(
                                 courtId = courtId,
-                                courtName = "Sân số $courtNumber",
+                                courtName = courtName,
                                 startTime = times.first,  // ✅ Thời gian bắt đầu của sân này
                                 endTime = times.second,   // ✅ Thời gian kết thúc của sân này
                                 price = courtPrice
@@ -925,4 +929,94 @@ private fun timeSlotToEndTime(timeSlot: String): String {
     val endMinute = totalMinutes % 60
 
     return String.format("%02d:%02d:00", endHour, endMinute)
+}
+
+/**
+ * Nhóm các time slots liên tục thành các khoảng thời gian
+ * Ví dụ: ["8:00", "8:30", "10:00", "10:30", "11:00"] -> ["8:00-9:00", "10:00-11:30"]
+ */
+private fun groupConsecutiveTimeSlots(timeSlots: List<String>): List<String> {
+    if (timeSlots.isEmpty()) return emptyList()
+
+    val sortedSlots = timeSlots.sorted()
+    val result = mutableListOf<String>()
+
+    var rangeStart = sortedSlots[0]
+    var previousSlot = sortedSlots[0]
+
+    for (i in 1 until sortedSlots.size) {
+        val currentSlot = sortedSlots[i]
+
+        // Kiểm tra xem currentSlot có liên tục với previousSlot không (cách nhau 30 phút)
+        if (!isConsecutive(previousSlot, currentSlot)) {
+            // Kết thúc range hiện tại
+            val rangeEnd = calculateEndTime(previousSlot)
+            result.add("$rangeStart-$rangeEnd")
+
+            // Bắt đầu range mới
+            rangeStart = currentSlot
+        }
+
+        previousSlot = currentSlot
+    }
+
+    // Thêm range cuối cùng
+    val rangeEnd = calculateEndTime(previousSlot)
+    result.add("$rangeStart-$rangeEnd")
+
+    return result
+}
+
+/**
+ * Nhóm các slots liên tục thành các khoảng thời gian cho việc đặt sân
+ * Ví dụ: ["8:00", "8:30", "9:00", "10:00", "10:30"] -> [["8:00", "9:00"], ["10:00", "10:30"]]
+ */
+private fun groupConsecutiveSlotsForBooking(timeSlots: List<String>): List<List<String>> {
+    if (timeSlots.isEmpty()) return emptyList()
+
+    val sortedSlots = timeSlots.sorted()
+    val result = mutableListOf<MutableList<String>>()
+
+    var currentGroup = mutableListOf<String>()
+    currentGroup.add(sortedSlots[0])
+
+    for (i in 1 until sortedSlots.size) {
+        val previousSlot = sortedSlots[i - 1]
+        val currentSlot = sortedSlots[i]
+
+        // Kiểm tra xem currentSlot có liên tục với previousSlot không (cách nhau 30 phút)
+        if (isConsecutive(previousSlot, currentSlot)) {
+            currentGroup.add(currentSlot)
+        } else {
+            // Kết thúc nhóm hiện tại và bắt đầu nhóm mới
+            result.add(currentGroup)
+            currentGroup = mutableListOf()
+            currentGroup.add(currentSlot)
+        }
+    }
+
+    // Thêm nhóm cuối cùng
+    result.add(currentGroup)
+
+    return result
+}
+
+/**
+ * Kiểm tra xem 2 time slots có liên tục không (cách nhau 30 phút)
+ */
+private fun isConsecutive(slot1: String, slot2: String): Boolean {
+    val parts1 = slot1.split(":")
+    val parts2 = slot2.split(":")
+
+    if (parts1.size != 2 || parts2.size != 2) return false
+
+    val hour1 = parts1[0].toIntOrNull() ?: return false
+    val minute1 = parts1[1].toIntOrNull() ?: return false
+    val hour2 = parts2[0].toIntOrNull() ?: return false
+    val minute2 = parts2[1].toIntOrNull() ?: return false
+
+    val totalMinutes1 = hour1 * 60 + minute1
+    val totalMinutes2 = hour2 * 60 + minute2
+
+    return (totalMinutes2 - totalMinutes1) == 30
 }

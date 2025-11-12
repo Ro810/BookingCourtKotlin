@@ -271,8 +271,10 @@ fun BookingConfirmationScreenContent(
 
                 // ✅ FIX: Hiển thị thời gian từ bookingItems nếu có, nếu không fallback về selectedSlots
                 if (!bookingData.bookingItems.isNullOrEmpty()) {
-                    // ✅ Hiển thị từ bookingItems - có thời gian chính xác cho từng sân
-                    bookingData.bookingItems.forEach { item ->
+                    // ✅ Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
+                    val itemsByCourtName = bookingData.bookingItems.groupBy { it.courtName }
+
+                    itemsByCourtName.forEach { (courtName, items) ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -284,22 +286,24 @@ fun BookingConfirmationScreenContent(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = item.courtName,
+                                    text = courtName,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Primary
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Hiển thị thời gian từ startTime và endTime
-                                val startTime = formatDateTime(item.startTime, "HH:mm")
-                                val endTime = formatDateTime(item.endTime, "HH:mm")
-                                Text(
-                                    text = "• $startTime - $endTime",
-                                    fontSize = 13.sp,
-                                    color = Color.DarkGray,
-                                    modifier = Modifier.padding(vertical = 2.dp)
-                                )
+                                // ✅ Hiển thị từng khoảng thời gian
+                                items.forEach { item ->
+                                    val startTime = formatDateTime(item.startTime, "HH:mm")
+                                    val endTime = formatDateTime(item.endTime, "HH:mm")
+                                    Text(
+                                        text = "• $startTime - $endTime",
+                                        fontSize = 13.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -324,13 +328,11 @@ fun BookingConfirmationScreenContent(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Gộp các slot liên tiếp thành khung giờ tổng hợp
-                                val sortedSlots = slots.map { it.timeSlot }.sorted()
-                                if (sortedSlots.isNotEmpty()) {
-                                    val startTime = sortedSlots.first()
-                                    val endTime = calculateEndTimeFromSlots(sortedSlots.last())
+                                // ✅ FIX: Nhóm các slot liên tục và hiển thị từng khoảng thời gian
+                                val timeRanges = groupConsecutiveTimeSlots(slots.map { it.timeSlot })
+                                timeRanges.forEach { range ->
                                     Text(
-                                        text = "• $startTime - $endTime",
+                                        text = "• $range",
                                         fontSize = 13.sp,
                                         color = Color.DarkGray,
                                         modifier = Modifier.padding(vertical = 2.dp)
@@ -599,6 +601,62 @@ private fun formatEndTime(timeSlot: String): String {
     val endMinute = totalMinutes % 60
 
     return String.format("%02d:%02d", endHour, endMinute)
+}
+
+/**
+ * Nhóm các time slots liên tục thành các khoảng thời gian
+ * Ví dụ: ["8:00", "8:30", "10:00", "10:30", "11:00"] -> ["8:00-9:00", "10:00-11:30"]
+ */
+private fun groupConsecutiveTimeSlots(timeSlots: List<String>): List<String> {
+    if (timeSlots.isEmpty()) return emptyList()
+
+    val sortedSlots = timeSlots.sorted()
+    val result = mutableListOf<String>()
+
+    var rangeStart = sortedSlots[0]
+    var previousSlot = sortedSlots[0]
+
+    for (i in 1 until sortedSlots.size) {
+        val currentSlot = sortedSlots[i]
+
+        // Kiểm tra xem currentSlot có liên tục với previousSlot không (cách nhau 30 phút)
+        if (!isConsecutiveSlot(previousSlot, currentSlot)) {
+            // Kết thúc range hiện tại
+            val rangeEnd = calculateEndTimeFromSlots(previousSlot)
+            result.add("$rangeStart-$rangeEnd")
+
+            // Bắt đầu range mới
+            rangeStart = currentSlot
+        }
+
+        previousSlot = currentSlot
+    }
+
+    // Thêm range cuối cùng
+    val rangeEnd = calculateEndTimeFromSlots(previousSlot)
+    result.add("$rangeStart-$rangeEnd")
+
+    return result
+}
+
+/**
+ * Kiểm tra xem 2 time slots có liên tục không (cách nhau 30 phút)
+ */
+private fun isConsecutiveSlot(slot1: String, slot2: String): Boolean {
+    val parts1 = slot1.split(":")
+    val parts2 = slot2.split(":")
+
+    if (parts1.size < 2 || parts2.size < 2) return false
+
+    val hour1 = parts1[0].toIntOrNull() ?: return false
+    val minute1 = parts1[1].toIntOrNull() ?: return false
+    val hour2 = parts2[0].toIntOrNull() ?: return false
+    val minute2 = parts2[1].toIntOrNull() ?: return false
+
+    val totalMinutes1 = hour1 * 60 + minute1
+    val totalMinutes2 = hour2 * 60 + minute2
+
+    return (totalMinutes2 - totalMinutes1) == 30
 }
 
 @Preview(showBackground = true)

@@ -143,7 +143,7 @@ fun BookingHistoryItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Booking Time
+            // Booking Time - Hiển thị thời gian tổng thể
             Text(
                 text = "${formatDateTime(booking.startTime)} - ${formatTime(booking.endTime)}",
                 fontSize = 14.sp,

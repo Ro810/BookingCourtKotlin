@@ -475,9 +475,12 @@ private fun BookingInfoCard(booking: BookingDetail) {
 
             // ✅ Court info - Hiển thị tất cả các sân đã đặt
             if (!booking.bookingItems.isNullOrEmpty()) {
+                // ✅ Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
+                val itemsByCourtName = booking.bookingItems.groupBy { it.courtName }
+
                 Text(
-                    text = if (booking.bookingItems.size > 1)
-                        "Các sân đã đặt (${booking.bookingItems.size}):"
+                    text = if (itemsByCourtName.size > 1)
+                        "Các sân đã đặt (${itemsByCourtName.size}):"
                     else
                         "Sân đã đặt:",
                     fontSize = 15.sp,
@@ -486,7 +489,7 @@ private fun BookingInfoCard(booking: BookingDetail) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                booking.bookingItems.forEachIndexed { index, item ->
+                itemsByCourtName.entries.forEachIndexed { index, (courtName, items) ->
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -498,25 +501,31 @@ private fun BookingInfoCard(booking: BookingDetail) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${index + 1}. ${item.courtName}",
+                                text = "${index + 1}. $courtName",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF212121)
                             )
                             Text(
-                                text = "${item.price.formatPrice()} đ",
+                                text = "${items.sumOf { it.price }.formatPrice()} đ",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF212121)
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "⏰ ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
-                            fontSize = 13.sp,
-                            color = Color(0xFF757575)
-                        )
-                        if (index < booking.bookingItems.size - 1) {
+
+                        // ✅ Hiển thị tất cả các khoảng thời gian cho sân này
+                        items.forEach { item ->
+                            Text(
+                                text = "⏰ ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
+                                fontSize = 13.sp,
+                                color = Color(0xFF757575),
+                                modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                            )
+                        }
+
+                        if (index < itemsByCourtName.size - 1) {
                             Spacer(modifier = Modifier.height(4.dp))
                             HorizontalDivider(color = Color(0xFFF0F0F0))
                         }
