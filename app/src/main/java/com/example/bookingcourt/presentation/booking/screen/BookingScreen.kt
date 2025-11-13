@@ -530,17 +530,16 @@ fun BookingScreen(
                                             val slotHour = timeParts[0].toIntOrNull() ?: 0
                                             val slotMinute = timeParts[1].toIntOrNull() ?: 0
 
-                                            val slotTime = Calendar.getInstance()
-                                            slotTime.set(Calendar.HOUR_OF_DAY, slotHour)
-                                            slotTime.set(Calendar.MINUTE, slotMinute)
-                                            slotTime.set(Calendar.SECOND, 0)
+                                            val slotStartTime = Calendar.getInstance()
+                                            slotStartTime.set(Calendar.HOUR_OF_DAY, slotHour)
+                                            slotStartTime.set(Calendar.MINUTE, slotMinute)
+                                            slotStartTime.set(Calendar.SECOND, 0)
+                                            slotStartTime.set(Calendar.MILLISECOND, 0)
 
-                                            // Slot đã qua nếu thời gian kết thúc (slot + 30 phút) < hiện tại
-                                            val slotEndTime = Calendar.getInstance()
-                                            slotEndTime.timeInMillis = slotTime.timeInMillis
-                                            slotEndTime.add(Calendar.MINUTE, 30)
-
-                                            slotEndTime.before(now)
+                                            // Slot đã qua nếu thời gian BẮT ĐẦU của slot <= hiện tại
+                                            // Ví dụ: Nếu bây giờ là 12:35, thì slot 12:30 đã qua (vì 12:30 < 12:35)
+                                            // và slot 12:00 cũng đã qua
+                                            slotStartTime.before(now) || slotStartTime.equals(now)
                                         } else {
                                             false
                                         }
