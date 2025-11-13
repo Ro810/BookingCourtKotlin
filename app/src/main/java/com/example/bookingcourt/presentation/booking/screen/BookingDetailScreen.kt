@@ -42,7 +42,7 @@ fun BookingDetailScreen(
     onNavigateToWaiting: ((String) -> Unit)? = null,
     onNavigateToReview: ((String, String) -> Unit)? = null,
     viewModel: BookingDetailViewModel = hiltViewModel(),
-    reviewViewModel: ReviewViewModel = hiltViewModel() // ✅ Thêm ReviewViewModel
+    reviewViewModel: ReviewViewModel = hiltViewModel() // Thêm ReviewViewModel
 ) {
     val bookingDetail by viewModel.bookingDetail.collectAsState()
     val uploadState by viewModel.uploadState.collectAsState()
@@ -50,7 +50,7 @@ fun BookingDetailScreen(
     val cancelState by viewModel.cancelState.collectAsState()
     val timeRemaining by viewModel.timeRemaining.collectAsState()
 
-    // ✅ Review states
+    // Review states
     val bookingReviewState by reviewViewModel.bookingReviewState.collectAsState()
     val createReviewState by reviewViewModel.createReviewState.collectAsState()
     var showReviewDialog by remember { mutableStateOf(false) }
@@ -64,12 +64,12 @@ fun BookingDetailScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ✅ Kiểm tra xem booking đã có review chưa
+    // Kiểm tra xem booking đã có review chưa
     LaunchedEffect(bookingId) {
         reviewViewModel.loadBookingReview(bookingId.toLong())
     }
 
-    // ✅ Xử lý khi tạo review thành công
+    // Xử lý khi tạo review thành công
     LaunchedEffect(createReviewState.success) {
         if (createReviewState.success) {
             showReviewDialog = false
@@ -80,7 +80,7 @@ fun BookingDetailScreen(
         }
     }
 
-    // ✅ Hiển thị lỗi nếu có
+    // Hiển thị lỗi nếu có
     LaunchedEffect(createReviewState.error) {
         createReviewState.error?.let { error ->
             snackbarHostState.showSnackbar(error)
@@ -205,7 +205,7 @@ fun BookingDetailScreen(
                         uploadedPaymentProofUrl = uploadedPaymentProofUrl ?: booking.paymentProofUrl,
                         isUploading = uploadState is Resource.Loading,
                         isConfirming = confirmState is Resource.Loading,
-                        hasReview = bookingReviewState.hasReview, // ✅ Thêm check đã review
+                        hasReview = bookingReviewState.hasReview, // Thêm check đã review
                         onSelectImage = { imagePickerLauncher.launch("image/*") },
                         onConfirmPayment = {
                             val proofUrl = uploadedPaymentProofUrl ?: booking.paymentProofUrl
@@ -216,7 +216,7 @@ fun BookingDetailScreen(
                         onCancelBooking = {
                             showCancelDialog = true
                         },
-                        onOpenReviewDialog = { showReviewDialog = true }, // ✅ Hiển thị dialog review
+                        onOpenReviewDialog = { showReviewDialog = true }, // Hiển thị dialog review
                         modifier = Modifier.padding(padding)
                     )
 
@@ -313,11 +313,11 @@ private fun BookingDetailContent(
     uploadedPaymentProofUrl: String?,
     isUploading: Boolean,
     isConfirming: Boolean,
-    hasReview: Boolean = false, // ✅ Thêm parameter kiểm tra đã review
+    hasReview: Boolean = false, // Thêm parameter kiểm tra đã review
     onSelectImage: () -> Unit,
     onConfirmPayment: () -> Unit,
     onCancelBooking: () -> Unit,
-    onOpenReviewDialog: () -> Unit, // ✅ Đổi tên callback
+    onOpenReviewDialog: () -> Unit, // Đổi tên callback
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -456,7 +456,7 @@ private fun BookingInfoCard(booking: BookingDetail) {
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // ✅ Hiển thị tiêu đề với số lượng sân
+            // Hiển thị tiêu đề với số lượng sân
             val courtsCount = booking.getCourtsCount()
             Text(
                 text = if (courtsCount > 1) "Thông tin đặt sân ($courtsCount sân)" else "Thông tin đặt sân",
@@ -473,9 +473,9 @@ private fun BookingInfoCard(booking: BookingDetail) {
             HorizontalDivider(color = Color(0xFFE0E0E0))
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ Court info - Hiển thị tất cả các sân đã đặt
+            // Court info - Hiển thị tất cả các sân đã đặt
             if (!booking.bookingItems.isNullOrEmpty()) {
-                // ✅ Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
+                // Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
                 val itemsByCourtName = booking.bookingItems.groupBy { it.courtName }
 
                 Text(
@@ -515,7 +515,7 @@ private fun BookingInfoCard(booking: BookingDetail) {
                         }
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // ✅ Hiển thị tất cả các khoảng thời gian cho sân này
+                        // Hiển thị tất cả các khoảng thời gian cho sân này
                         items.forEach { item ->
                             Text(
                                 text = "⏰ ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
@@ -546,7 +546,7 @@ private fun BookingInfoCard(booking: BookingDetail) {
             HorizontalDivider(color = Color(0xFFE0E0E0))
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
+            // Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -791,7 +791,7 @@ private fun uriToFile(context: android.content.Context, uri: Uri): File? {
 
         val contentResolver = context.contentResolver
 
-        // ✅ Get file extension from MIME type
+        // Get file extension from MIME type
         val mimeType = contentResolver.getType(uri)
         Log.d("BookingDetailScreen", "  MIME Type: $mimeType")
 
@@ -821,7 +821,7 @@ private fun uriToFile(context: android.content.Context, uri: Uri): File? {
         inputStream.close()
         outputStream.close()
 
-        // ✅ Verify file was created successfully
+        // Verify file was created successfully
         if (file.exists() && file.length() > 0) {
             Log.d("BookingDetailScreen", "  ✅ File created successfully:")
             Log.d("BookingDetailScreen", "    Name: ${file.name}")
