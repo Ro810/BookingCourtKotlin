@@ -33,12 +33,12 @@ fun DetailScreen(
     venue: Venue,
     onBackClick: () -> Unit,
     onBookClick: (Venue) -> Unit,
-    reviewViewModel: ReviewViewModel = hiltViewModel() // ✅ Thêm ReviewViewModel
+    reviewViewModel: ReviewViewModel = hiltViewModel() // Thêm ReviewViewModel
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Mô tả", "Hình ảnh", "Đánh giá")
 
-    // ✅ Load reviews khi màn hình được mở
+    // Load reviews khi màn hình được mở
     val reviewsState by reviewViewModel.venueReviewsState.collectAsState()
 
     LaunchedEffect(venue.id) {
@@ -96,7 +96,7 @@ fun DetailScreen(
                 selectedTab = selectedTab,
                 tabs = tabs,
                 onTabSelected = { selectedTab = it },
-                reviewsState = reviewsState // ✅ Truyền reviewsState
+                reviewsState = reviewsState // Truyền reviewsState
             )
         }
     }
@@ -269,7 +269,7 @@ private fun DetailScreenContent(
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTab == index,
-                    onClick = { onTabSelected(index) }, // ✅ Sử dụng callback thay vì gán trực tiếp
+                    onClick = { onTabSelected(index) }, // Sử dụng callback thay vì gán trực tiếp
                     text = {
                         Text(
                             text = title,
@@ -285,7 +285,7 @@ private fun DetailScreenContent(
         when (selectedTab) {
             0 -> DescriptionTabContent(venue)
             1 -> ImagesTabContent(venue)
-            2 -> ReviewsTabContent(venue, reviewsState) // ✅ Truyền reviewsState vào ReviewsTabContent
+            2 -> ReviewsTabContent(venue, reviewsState) // Truyền reviewsState vào ReviewsTabContent
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -475,12 +475,12 @@ fun ReviewsTabContent(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // ✅ Sử dụng dữ liệu từ reviewsState thay vì venue
+        // Sử dụng dữ liệu từ reviewsState thay vì venue
         val averageRating = reviewsState.averageRating
         val totalReviews = reviewsState.totalReviews
         val reviews = reviewsState.reviews
 
-        // ✅ Tính toán phân bố rating từ danh sách reviews thực tế
+        // Tính toán phân bố rating từ danh sách reviews thực tế
         val ratingDistribution = if (reviews.isNotEmpty()) {
             reviews.groupBy { it.rating }
                 .mapValues { (_, list) -> list.size.toFloat() / totalReviews }
@@ -522,7 +522,7 @@ fun ReviewsTabContent(
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                // ✅ Hiển thị đúng phân bố rating từ 5 sao đến 1 sao
+                // Hiển thị đúng phân bố rating từ 5 sao đến 1 sao
                 repeat(5) { index ->
                     val starRating = 5 - index
                     val progress = ratingDistribution[starRating] ?: 0f
@@ -569,7 +569,7 @@ fun ReviewsTabContent(
         HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ✅ Hiển thị trạng thái loading
+        // Hiển thị trạng thái loading
         if (reviewsState.isLoading) {
             Box(
                 modifier = Modifier
@@ -580,7 +580,7 @@ fun ReviewsTabContent(
                 CircularProgressIndicator()
             }
         }
-        // ✅ Hiển thị lỗi nếu có
+        // Hiển thị lỗi nếu có
         else if (reviewsState.error != null) {
             Box(
                 modifier = Modifier
@@ -604,7 +604,7 @@ fun ReviewsTabContent(
                 }
             }
         }
-        // ✅ Hiển thị thông báo nếu chưa có đánh giá
+        // Hiển thị thông báo nếu chưa có đánh giá
         else if (reviews.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -634,7 +634,7 @@ fun ReviewsTabContent(
                 }
             }
         }
-        // ✅ Hiển thị danh sách đánh giá thực tế
+        // Hiển thị danh sách đánh giá thực tế
         else {
             Text(
                 text = "Đánh giá từ khách hàng",
@@ -644,7 +644,7 @@ fun ReviewsTabContent(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // ✅ Sử dụng Column thay vì LazyColumn vì đã ở trong scroll view
+            // Sử dụng Column thay vì LazyColumn vì đã ở trong scroll view
             reviews.forEach { review ->
                 ReviewCard(
                     review = review,
