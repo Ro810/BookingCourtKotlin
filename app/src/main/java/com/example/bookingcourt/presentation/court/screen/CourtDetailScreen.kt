@@ -9,10 +9,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.*
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.example.bookingcourt.core.util.FileUtils
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,12 +67,52 @@ fun CourtDetailScreen(
     val venue = state.venue
     val actualVenueName = venue?.name ?: venueName
     val actualCourtCount = venue?.courtsCount ?: courtCount
+    val context = LocalContext.current
 
     // State cho booking grid
     var selectedDate by remember { mutableStateOf("") }
     var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
     var showDatePicker by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    // State cho image picker
+    val snackbarHostState = remember { SnackbarHostState() }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            Log.d("CourtDetailScreen", "Selected image URI: $uri")
+
+            // Convert URI to File
+            val imageFile = FileUtils.uriToFile(context, uri)
+
+            if (imageFile != null && venue?.id != null) {
+                Log.d("CourtDetailScreen", "Uploading image file: ${imageFile.absolutePath}")
+                viewModel.handleIntent(
+                    com.example.bookingcourt.presentation.court.viewmodel.CourtDetailIntent.UploadImage(
+                        venueId = venue.id,
+                        imageFile = imageFile
+                    )
+                )
+            } else {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Không thể chọn ảnh. Vui lòng thử lại.")
+                }
+            }
+        }
+    }
+
+    // Listen to UI events
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is com.example.bookingcourt.core.common.UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                else -> {}
+            }
+        }
+    }
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis()
@@ -199,6 +245,7 @@ fun CourtDetailScreen(
                 ),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -281,45 +328,107 @@ fun CourtDetailScreen(
                 }
             }
 
-            // Revenue Card
+            // Venue Images Card
             item {
-                val displayDate = selectedDate.ifEmpty { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
-                val revenueAmount = state.selectedDateRevenue
-
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                            .padding(16.dp)
                     ) {
-                        Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                "Doanh thu ngày $displayDate",
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 14.sp,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                currencyFormat.format(revenueAmount),
-                                color = Color.White,
-                                fontSize = 24.sp,
+                                "Ảnh cơ sở",
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                             )
+                            IconButton(onClick = {
+                                imagePickerLauncher.launch("image/*")
+                            }) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Chỉnh sửa ảnh",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
-                        Icon(
-                            Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp),
-                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Image display
+                        if (venue?.images != null && venue.images.isNotEmpty()) {
+                            // Display first image
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFE0E0E0))
+                            ) {
+                                AsyncImage(
+                                    model = venue.images[0],
+                                    contentDescription = "Ảnh cơ sở",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                // Show image count badge if there are multiple images
+                                if (venue.images.size > 1) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(8.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.6f),
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "+${venue.images.size - 1} ảnh",
+                                            color = Color.White,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Placeholder when no image
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFE0E0E0)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.AddPhotoAlternate,
+                                        contentDescription = "Add photo",
+                                        modifier = Modifier.size(48.dp),
+                                        tint = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Chưa có ảnh",
+                                        color = Color.Gray,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

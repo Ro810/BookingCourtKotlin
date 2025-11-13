@@ -6,12 +6,15 @@ import com.example.bookingcourt.data.remote.dto.CourtAvailabilityResponseDto
 import com.example.bookingcourt.data.remote.dto.CreateVenueRequest
 import com.example.bookingcourt.data.remote.dto.UpdateVenueRequest
 import com.example.bookingcourt.data.remote.dto.VenueDetailDto
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -106,4 +109,19 @@ interface VenueApi {
         @Query("startTime") startTime: String,
         @Query("endTime") endTime: String
     ): Response<ApiResponse<CourtAvailabilityResponseDto>>
+
+    /**
+     * Upload venue image (Owner only)
+     * POST /api/venues/{id}/upload-image
+     *
+     * @param venueId ID của venue
+     * @param image File ảnh để upload
+     * @return Venue detail sau khi upload
+     */
+    @Multipart
+    @POST("venues/{id}/upload-image")
+    suspend fun uploadVenueImage(
+        @Path("id") venueId: Long,
+        @Part image: MultipartBody.Part
+    ): Response<ApiResponse<VenueDetailDto>>
 }

@@ -36,6 +36,7 @@ sealed interface CourtDetailIntent {
     object NavigateBack : CourtDetailIntent
     object Refresh : CourtDetailIntent
     data class CheckIn(val bookingId: String) : CourtDetailIntent // Thêm từ bên phải
+    data class UploadImage(val venueId: Long, val imageFile: java.io.File) : CourtDetailIntent
 }
 
 @HiltViewModel
@@ -71,6 +72,7 @@ class CourtDetailViewModel @Inject constructor(
             CourtDetailIntent.NavigateBack -> navigateBack()
             CourtDetailIntent.Refresh -> refresh()
             is CourtDetailIntent.CheckIn -> checkIn(intent.bookingId) // Thêm từ P2
+            is CourtDetailIntent.UploadImage -> uploadVenueImage(intent.venueId, intent.imageFile)
         }
     }
     private fun loadVenueDetail(venueId: Long) {
@@ -269,6 +271,35 @@ class CourtDetailViewModel @Inject constructor(
                     }
                     is Resource.Loading -> {
                         android.util.Log.d("CourtDetailVM", "⏳ Loading courts availability...")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Upload venue image
+     * @param venueId ID của venue
+     * @param imageFile File ảnh để upload
+     */
+    private fun uploadVenueImage(venueId: Long, imageFile: java.io.File) {
+        viewModelScope.launch {
+            android.util.Log.d("CourtDetailVM", "📤 Uploading image for venue $venueId")
+
+            venueRepository.uploadVenueImage(venueId, imageFile).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Image uploaded successfully")
+                        // Cập nhật state với venue mới (có ảnh)
+                        _state.value = _state.value.copy(venue = result.data)
+                        _uiEvent.emit(UiEvent.ShowSnackbar("Upload ảnh thành công"))
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error uploading image: ${result.message}")
+                        _uiEvent.emit(UiEvent.ShowSnackbar(result.message ?: "Lỗi upload ảnh"))
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Uploading image...")
                     }
                 }
             }

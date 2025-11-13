@@ -168,6 +168,9 @@ fun NavigationGraph(
                     onNavigateToEditProfile = {
                         navController.navigate(Screen.EditProfile.route)
                     },
+                    onNavigateToChangePassword = {
+                        navController.navigate(Screen.ChangePassword.route)
+                    },
                     onNavigateToCreateVenue = {
                         navController.navigate(Screen.CreateVenue.route)
                     },

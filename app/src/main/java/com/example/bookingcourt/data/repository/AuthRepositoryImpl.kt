@@ -350,13 +350,14 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun changePassword(currentPassword: String, newPassword: String): Flow<Resource<Unit>> = flow {
+    override suspend fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String): Flow<Resource<Unit>> = flow {
         try {
             emit(Resource.Loading())
             val response = authApi.changePassword(
                 com.example.bookingcourt.data.remote.dto.ChangePasswordRequest(
                     currentPassword = currentPassword,
-                    newPassword = newPassword
+                    newPassword = newPassword,
+                    confirmPassword = confirmPassword
                 )
             )
             if (response.isSuccessful) {
@@ -493,10 +494,12 @@ class AuthRepositoryImpl @Inject constructor(
             Log.d(TAG, "========== UPDATE PROFILE ==========")
             Log.d(TAG, "Fullname: ${user.fullName}")
             Log.d(TAG, "Email: ${user.email}")
+            Log.d(TAG, "Phone: ${user.phoneNumber}")
 
             val updateRequest = com.example.bookingcourt.data.remote.dto.UpdateUserRequest(
                 fullname = user.fullName,
-                email = user.email.takeIf { it.isNotEmpty() }
+                email = user.email.takeIf { it.isNotEmpty() },
+                phone = user.phoneNumber.takeIf { it.isNotEmpty() }
             )
 
             val response = userApi.updateUser(updateRequest)

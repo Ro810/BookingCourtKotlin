@@ -8,6 +8,8 @@ data class ChangePasswordRequest(
     val currentPassword: String,
     @SerializedName("newPassword")
     val newPassword: String,
+    @SerializedName("confirmPassword")
+    val confirmPassword: String,
 )
 
 // Response DTO

@@ -16,7 +16,7 @@ interface AuthRepository {
     suspend fun logout(): Flow<Resource<Unit>>
     suspend fun forgotPassword(email: String): Flow<Resource<String>>
     suspend fun resetPassword(token: String, newPassword: String): Flow<Resource<String>>
-    suspend fun changePassword(currentPassword: String, newPassword: String): Flow<Resource<Unit>>
+    suspend fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String): Flow<Resource<Unit>>
     suspend fun getCurrentUser(): Flow<Resource<User?>>
     suspend fun updateProfile(user: User): Flow<Resource<User>>
     suspend fun updateBankInfo(bankName: String, accountNumber: String, accountHolderName: String): Flow<Resource<User>>

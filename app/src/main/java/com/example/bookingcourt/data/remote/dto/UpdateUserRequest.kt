@@ -7,6 +7,8 @@ data class UpdateUserRequest(
     val fullname: String? = null,
     @SerializedName("email")
     val email: String? = null,
+    @SerializedName("phone")
+    val phone: String? = null,
     @SerializedName("bankName")
     val bankName: String? = null,
     @SerializedName("bankAccountNumber")

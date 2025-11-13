@@ -19,9 +19,9 @@ class ChangePasswordViewModel @Inject constructor(
     private val _changePasswordState = MutableStateFlow<ChangePasswordState>(ChangePasswordState.Idle)
     val changePasswordState: StateFlow<ChangePasswordState> = _changePasswordState.asStateFlow()
 
-    fun changePassword(currentPassword: String, newPassword: String) {
+    fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String) {
         viewModelScope.launch {
-            authRepository.changePassword(currentPassword, newPassword).collect { resource ->
+            authRepository.changePassword(currentPassword, newPassword, confirmPassword).collect { resource ->
                 when (resource) {
                     is Resource.Loading -> {
                         _changePasswordState.value = ChangePasswordState.Loading
