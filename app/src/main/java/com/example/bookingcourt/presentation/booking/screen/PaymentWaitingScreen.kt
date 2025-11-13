@@ -135,7 +135,7 @@ private fun WaitingContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ✅ Show booking details
+        // Show booking details
         if (bookingDetail is Resource.Success && bookingDetail.data != null) {
             val booking = bookingDetail.data
 
@@ -163,7 +163,7 @@ private fun WaitingContent(
                     HorizontalDivider(color = Color(0xFFE0E0E0))
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // ✅ Court info - Hiển thị tất cả các sân đã đặt
+                    // Court info - Hiển thị tất cả các sân đã đặt
                     if (!booking.bookingItems.isNullOrEmpty()) {
                         Text(
                             text = "Sân đã đặt:",
@@ -224,7 +224,7 @@ private fun WaitingContent(
                     HorizontalDivider(color = Color(0xFFE0E0E0))
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // ✅ Total price
+                    // Total price
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -329,7 +329,7 @@ private fun WaitingContent(
     }
 }
 
-// ✅ Helper components
+// Helper components
 @Composable
 private fun InfoRow(
     label: String,
@@ -358,7 +358,7 @@ private fun InfoRow(
     }
 }
 
-// ✅ Helper functions
+// Helper functions
 private fun formatDateTime(dateTime: kotlinx.datetime.LocalDateTime): String {
     return "${dateTime.dayOfMonth.toString().padStart(2, '0')}/${dateTime.monthNumber.toString().padStart(2, '0')}/${dateTime.year} ${formatTime(dateTime)}"
 }

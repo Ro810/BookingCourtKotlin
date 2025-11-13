@@ -73,41 +73,41 @@ fun PaymentScreen(
             is Resource.Success -> {
                 val bookingWithBankInfo = state.data
                 if (bookingWithBankInfo != null) {
-                    // ✅ LOG CHI TIẾT để debug vấn đề thông tin sân bị nhầm
+                    // LOG: Detailed booking creation success information
                     Log.d("PaymentScreen", "========== BOOKING CREATED SUCCESSFULLY ==========")
-                    Log.d("PaymentScreen", "  📋 Booking ID: ${bookingWithBankInfo.id}")
-                    // ✅ Hỗ trợ cả bookingItems và court legacy
+                    Log.d("PaymentScreen", "  Booking ID: ${bookingWithBankInfo.id}")
+                    // Support both bookingItems and legacy court model
                     if (!bookingWithBankInfo.bookingItems.isNullOrEmpty()) {
-                        Log.d("PaymentScreen", "  🏟️ Booking Items (${bookingWithBankInfo.bookingItems.size} courts):")
+                        Log.d("PaymentScreen", "  Booking Items (${bookingWithBankInfo.bookingItems.size} courts):")
                         bookingWithBankInfo.bookingItems.forEach { item ->
                             Log.d("PaymentScreen", "     - Court ID: ${item.courtId}, Name: ${item.courtName}")
                         }
                     } else {
-                        Log.d("PaymentScreen", "  🏟️ Court ID: ${bookingWithBankInfo.court?.id}")
-                        Log.d("PaymentScreen", "  🏟️ Court Name: ${bookingWithBankInfo.court?.description}")
+                        Log.d("PaymentScreen", "  Court ID: ${bookingWithBankInfo.court?.id}")
+                        Log.d("PaymentScreen", "  Court Name: ${bookingWithBankInfo.court?.description}")
                     }
-                    Log.d("PaymentScreen", "  🏢 Venue ID: ${bookingWithBankInfo.venue.id}")
-                    Log.d("PaymentScreen", "  🏢 Venue Name: ${bookingWithBankInfo.venue.name}")
-                    Log.d("PaymentScreen", "  💰 Total Price (from API): ${bookingWithBankInfo.totalPrice}")
-                    Log.d("PaymentScreen", "  💰 Total Price (client calculated): ${bookingData.totalPrice}")
-                    Log.d("PaymentScreen", "  🏦 Bank Name: ${bookingWithBankInfo.ownerBankInfo.bankName}")
-                    Log.d("PaymentScreen", "  🏦 Account Number: ${bookingWithBankInfo.ownerBankInfo.bankAccountNumber}")
-                    Log.d("PaymentScreen", "  🏦 Account Name: ${bookingWithBankInfo.ownerBankInfo.bankAccountName}")
-                    Log.d("PaymentScreen", "  ⏰ Start Time: ${bookingWithBankInfo.startTime}")
-                    Log.d("PaymentScreen", "  ⏰ End Time: ${bookingWithBankInfo.endTime}")
+                    Log.d("PaymentScreen", "  Venue ID: ${bookingWithBankInfo.venue.id}")
+                    Log.d("PaymentScreen", "  Venue Name: ${bookingWithBankInfo.venue.name}")
+                    Log.d("PaymentScreen", "  Total Price (from API): ${bookingWithBankInfo.totalPrice}")
+                    Log.d("PaymentScreen", "  Total Price (client calculated): ${bookingData.totalPrice}")
+                    Log.d("PaymentScreen", "  Bank Name: ${bookingWithBankInfo.ownerBankInfo.bankName}")
+                    Log.d("PaymentScreen", "  Account Number: ${bookingWithBankInfo.ownerBankInfo.bankAccountNumber}")
+                    Log.d("PaymentScreen", "  Account Name: ${bookingWithBankInfo.ownerBankInfo.bankAccountName}")
+                    Log.d("PaymentScreen", "  Start Time: ${bookingWithBankInfo.startTime}")
+                    Log.d("PaymentScreen", "  End Time: ${bookingWithBankInfo.endTime}")
                     Log.d("PaymentScreen", "====================================================")
 
-                    // ✅ CẬP NHẬT bookingData với GIÁ CHÍNH XÁC từ API (không dùng giá tính ở client)
-                    // ✅ Sử dụng helper method để lấy tên sân (hỗ trợ cả bookingItems và court legacy)
+                    // UPDATE: Use exact price from API instead of client-calculated price
+                    // Get display name for courts (supports both bookingItems and legacy court model)
                     val courtsDisplayName = bookingWithBankInfo.getCourtsDisplayName()
                     bookingData = bookingData.copy(
                         courtName = "${bookingWithBankInfo.venue.name} - $courtsDisplayName",
-                        totalPrice = bookingWithBankInfo.totalPrice, // ✅ SỬ DỤNG GIÁ TỪ API
+                        totalPrice = bookingWithBankInfo.totalPrice, // Use price from API
                         ownerBankInfo = bookingWithBankInfo.ownerBankInfo,
                         expireTime = bookingWithBankInfo.expireTime.toString()
                     )
 
-                    Log.d("PaymentScreen", "✅ Updated totalPrice: ${bookingData.totalPrice} VNĐ")
+                    Log.d("PaymentScreen", "Updated totalPrice: ${bookingData.totalPrice} VND")
 
                     snackbarHostState.showSnackbar(
                         message = "Đặt sân thành công!",
@@ -119,7 +119,7 @@ fun PaymentScreen(
                 }
             }
             is Resource.Error -> {
-                Log.e("PaymentScreen", "❌ Error creating booking: ${state.message}")
+                Log.e("PaymentScreen", "Error creating booking: ${state.message}")
                 snackbarHostState.showSnackbar(
                     message = state.message ?: "Đã xảy ra lỗi khi đặt sân",
                     duration = SnackbarDuration.Long
@@ -134,8 +134,8 @@ fun PaymentScreen(
         bookingData = bookingData,
         onNavigateBack = onNavigateBack,
         onConfirmPayment = {
-            // ✅ Gọi API tạo booking với tất cả các sân đã chọn
-            Log.d("PaymentScreen", "📝 Calling API to create booking:")
+            // Call API to create booking with all selected courts
+            Log.d("PaymentScreen", "Calling API to create booking:")
 
             // Sử dụng bookingItems nếu có, nếu không fallback về legacy mode
             val items = bookingData.bookingItems ?: listOf(
@@ -152,9 +152,9 @@ fun PaymentScreen(
             items.forEachIndexed { index, item ->
                 Log.d("PaymentScreen", "  [$index] ${item.courtName} (${item.courtId})")
                 Log.d("PaymentScreen", "       Time: ${item.startTime} - ${item.endTime}")
-                Log.d("PaymentScreen", "       Price: ${item.price} VNĐ")
+                Log.d("PaymentScreen", "       Price: ${item.price} VND")
             }
-            Log.d("PaymentScreen", "  Total Price: ${bookingData.totalPrice} VNĐ")
+            Log.d("PaymentScreen", "  Total Price: ${bookingData.totalPrice} VND")
 
             paymentViewModel.createBookingWithItems(bookingItems = items)
         },
@@ -269,9 +269,9 @@ fun BookingConfirmationScreenContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ✅ FIX: Hiển thị thời gian từ bookingItems nếu có, nếu không fallback về selectedSlots
+                // Hiển thị thời gian từ bookingItems nếu có, nếu không fallback về selectedSlots
                 if (!bookingData.bookingItems.isNullOrEmpty()) {
-                    // ✅ Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
+                    // Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
                     val itemsByCourtName = bookingData.bookingItems.groupBy { it.courtName }
 
                     itemsByCourtName.forEach { (courtName, items) ->
@@ -293,7 +293,7 @@ fun BookingConfirmationScreenContent(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // ✅ Hiển thị từng khoảng thời gian
+                                // Hiển thị từng khoảng thời gian
                                 items.forEach { item ->
                                     val startTime = formatDateTime(item.startTime, "HH:mm")
                                     val endTime = formatDateTime(item.endTime, "HH:mm")
@@ -308,7 +308,7 @@ fun BookingConfirmationScreenContent(
                         }
                     }
                 } else {
-                    // ✅ Fallback: Hiển thị từ selectedSlots (legacy mode)
+                    // Fallback: Hiển thị từ selectedSlots (legacy mode)
                     bookingData.selectedSlots.groupBy { it.courtNumber }.forEach { (courtNum, slots) ->
                         Card(
                             modifier = Modifier
@@ -328,7 +328,7 @@ fun BookingConfirmationScreenContent(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // ✅ FIX: Nhóm các slot liên tục và hiển thị từng khoảng thời gian
+                                // Nhóm các slot liên tục và hiển thị từng khoảng thời gian
                                 val timeRanges = groupConsecutiveTimeSlots(slots.map { it.timeSlot })
                                 timeRanges.forEach { range ->
                                     Text(
@@ -550,12 +550,12 @@ fun InfoRow(
     }
 }
 
-// ✅ Helper function để format giá tiền đúng
+// Helper function để format giá tiền đúng
 private fun Long.formatPrice(): String {
     return "%,d".format(this).replace(',', '.')
 }
 
-// ✅ Helper function để format datetime từ ISO format sang định dạng mong muốn
+// Helper function để format datetime từ ISO format sang định dạng mong muốn
 private fun formatDateTime(dateTimeString: String, pattern: String = "HH:mm"): String {
     return try {
         // Input format: "2025-11-11T04:00:00" hoặc "04:00:00"
@@ -573,7 +573,7 @@ private fun formatDateTime(dateTimeString: String, pattern: String = "HH:mm"): S
     }
 }
 
-// ✅ Helper function để tính thời gian kết thúc từ slot cuối cùng
+// Helper function để tính thời gian kết thúc từ slot cuối cùng
 private fun calculateEndTimeFromSlots(lastSlot: String): String {
     val parts = lastSlot.split(":")
     if (parts.size < 2) return lastSlot

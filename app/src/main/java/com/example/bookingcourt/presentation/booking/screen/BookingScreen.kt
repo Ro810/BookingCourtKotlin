@@ -81,14 +81,14 @@ fun BookingScreen(
     val courtsState by bookingViewModel.courtsState.collectAsState()
     val realCourts = remember { mutableStateOf<List<CourtDetail>>(emptyList()) }
 
-    // ✅ State cho booked slots
+    // State cho booked slots
     val bookedSlotsState by bookingViewModel.bookedSlotsState.collectAsState()
     val bookedSlots = remember { mutableStateOf<List<com.example.bookingcourt.domain.model.BookedSlot>>(emptyList()) }
 
-    // ✅ Thêm coroutineScope để gọi suspend functions
+    // Thêm coroutineScope để gọi suspend functions
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ Khai báo selectedDate với ngày hiện tại ngay từ đầu để tự động fetch booked slots
+    // Khai báo selectedDate với ngày hiện tại ngay từ đầu để tự động fetch booked slots
     var selectedDate by remember {
         mutableStateOf(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
     }
@@ -124,8 +124,8 @@ fun BookingScreen(
 
             datePickerState.selectedDateMillis = utcCalendar.timeInMillis
 
-            Log.d("BookingScreen", "📅 DatePicker reset to: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(localCalendar.time)}")
-            Log.d("BookingScreen", "📅 UTC timestamp: ${utcCalendar.timeInMillis}")
+            Log.d("BookingScreen", "DatePicker reset to: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(localCalendar.time)}")
+            Log.d("BookingScreen", "UTC timestamp: ${utcCalendar.timeInMillis}")
         }
     }
 
@@ -134,14 +134,14 @@ fun BookingScreen(
         bookingViewModel.getCourtsByVenueId(venue.id)
     }
 
-    // ✅ Fetch booked slots khi selectedDate thay đổi
+    // Fetch booked slots khi selectedDate thay đổi
     LaunchedEffect(selectedDate, venue.id) {
         if (selectedDate.isNotEmpty()) {
             // Convert date from dd/MM/yyyy to yyyy-MM-dd for API
             val parts = selectedDate.split("/")
             if (parts.size == 3) {
                 val apiDate = "${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}"
-                Log.d("BookingScreen", "🔍 Fetching booked slots for venue ${venue.id} on $apiDate")
+                Log.d("BookingScreen", "Fetching booked slots for venue ${venue.id} on $apiDate")
                 bookingViewModel.getBookedSlots(venue.id, apiDate)
             }
         }
@@ -152,9 +152,9 @@ fun BookingScreen(
         when (courtsState) {
             is Resource.Success -> {
                 realCourts.value = (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
-                Log.d("BookingScreen", "✅ Loaded ${realCourts.value.size} real courts for venue ${venue.id}")
+                Log.d("BookingScreen", "Loaded ${realCourts.value.size} real courts for venue ${venue.id}")
 
-                // ✅ DETAILED LOG: Show all courts with their IDs
+                // DETAILED LOG: Show all courts with their IDs
                 Log.d("BookingScreen", "========== AVAILABLE COURTS FOR VENUE ${venue.id} ==========")
                 realCourts.value.forEachIndexed { index, court ->
                     Log.d("BookingScreen", "  Court ${index + 1}: ID=${court.id}, Description='${court.description}'")
@@ -162,32 +162,32 @@ fun BookingScreen(
                 Log.d("BookingScreen", "=========================================================")
             }
             is Resource.Error -> {
-                Log.e("BookingScreen", "❌ Error loading courts: ${(courtsState as Resource.Error).message}")
-                Log.w("BookingScreen", "⚠️ Will use fallback: sequential court numbers")
+                Log.e("BookingScreen", "Error loading courts: ${(courtsState as Resource.Error).message}")
+                Log.w("BookingScreen", "Will use fallback: sequential court numbers")
                 // Fallback: Không có courts từ API, sẽ dùng số thứ tự
             }
             is Resource.Loading -> {
-                Log.d("BookingScreen", "⏳ Loading courts for venue ${venue.id}...")
+                Log.d("BookingScreen", "Loading courts for venue ${venue.id}...")
             }
             else -> {}
         }
     }
 
-    // ✅ Update booked slots khi bookedSlotsState thay đổi
+    // Update booked slots khi bookedSlotsState thay đổi
     LaunchedEffect(bookedSlotsState) {
         when (bookedSlotsState) {
             is Resource.Success -> {
                 bookedSlots.value = (bookedSlotsState as Resource.Success<List<com.example.bookingcourt.domain.model.BookedSlot>>).data ?: emptyList()
-                Log.d("BookingScreen", "✅ Loaded ${bookedSlots.value.size} booked slots")
+                Log.d("BookingScreen", "Loaded ${bookedSlots.value.size} booked slots")
                 bookedSlots.value.forEach { slot ->
-                    Log.d("BookingScreen", "  📅 Slot: Court ${slot.courtNumber}, ${slot.startTime} - ${slot.endTime}, Status: ${slot.status}")
+                    Log.d("BookingScreen", "  Slot: Court ${slot.courtNumber}, ${slot.startTime} - ${slot.endTime}, Status: ${slot.status}")
                 }
             }
             is Resource.Error -> {
-                Log.e("BookingScreen", "❌ Error loading booked slots: ${(bookedSlotsState as Resource.Error).message}")
+                Log.e("BookingScreen", "Error loading booked slots: ${(bookedSlotsState as Resource.Error).message}")
             }
             is Resource.Loading -> {
-                Log.d("BookingScreen", "⏳ Loading booked slots...")
+                Log.d("BookingScreen", "Loading booked slots...")
             }
             else -> {}
         }
@@ -208,7 +208,7 @@ fun BookingScreen(
             if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 6, parts[1].toIntOrNull() ?: 0)
             else Pair(6, 0)
         } ?: Pair(6, 0)
-        Log.d("BookingScreen", "📍 Opening time: ${venue.openingTime} → Parsed: ${result.first}:${result.second}")
+        Log.d("BookingScreen", "Opening time: ${venue.openingTime} -> Parsed: ${result.first}:${result.second}")
         result
     }
 
@@ -217,7 +217,7 @@ fun BookingScreen(
             if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 22, parts[1].toIntOrNull() ?: 0)
             else Pair(22, 0)
         } ?: Pair(22, 0)
-        Log.d("BookingScreen", "📍 Closing time: ${venue.closingTime} → Parsed: ${result.first}:${result.second}")
+        Log.d("BookingScreen", "Closing time: ${venue.closingTime} -> Parsed: ${result.first}:${result.second}")
         result
     }
 
@@ -256,13 +256,13 @@ fun BookingScreen(
     // Log venue and court info
     LaunchedEffect(venue, actualNumberOfCourts) {
         Log.d("BookingScreen", "========== BOOKING SCREEN DEBUG ==========")
-        Log.d("BookingScreen", "📍 Venue: ${venue.name} (ID: ${venue.id})")
-        Log.d("BookingScreen", "📍 Venue courtsCount: ${venue.courtsCount}")
-        Log.d("BookingScreen", "📍 Venue numberOfCourt: ${venue.numberOfCourt}")
-        Log.d("BookingScreen", "📍 Actual number of courts: $actualNumberOfCourts")
-        Log.d("BookingScreen", "📍 Opening time: ${venue.openingTime}")
-        Log.d("BookingScreen", "📍 Closing time: ${venue.closingTime}")
-        Log.d("BookingScreen", "📍 Time slots count: ${timeSlots.size}")
+        Log.d("BookingScreen", "Venue: ${venue.name} (ID: ${venue.id})")
+        Log.d("BookingScreen", "Venue courtsCount: ${venue.courtsCount}")
+        Log.d("BookingScreen", "Venue numberOfCourt: ${venue.numberOfCourt}")
+        Log.d("BookingScreen", "Actual number of courts: $actualNumberOfCourts")
+        Log.d("BookingScreen", "Opening time: ${venue.openingTime}")
+        Log.d("BookingScreen", "Closing time: ${venue.closingTime}")
+        Log.d("BookingScreen", "Time slots count: ${timeSlots.size}")
         Log.d("BookingScreen", "==========================================")
     }
 
@@ -472,14 +472,14 @@ fun BookingScreen(
                                     val slot = CourtTimeSlot(courtNum, time)
                                     val isSelected = selectedSlots.contains(slot)
 
-                                    // ✅ FIX: Map courtNum (UI index) sang courtId thực tế để so sánh với bookedSlots
+                                    // Map courtNum (UI index) sang courtId thực tế để so sánh với bookedSlots
                                     val courtIndex = courtNum - 1
                                     val realCourtId = if (courtIndex >= 0 && courtIndex < realCourts.value.size) {
                                         val sortedCourts = realCourts.value.sortedBy { it.id }
                                         sortedCourts.getOrNull(courtIndex)?.id?.toInt()
                                     } else null
 
-                                    // ✅ Kiểm tra slot đã đặt - so sánh với courtId thực tế
+                                    // Kiểm tra slot đã đặt - so sánh với courtId thực tế
                                     val isBooked = bookedSlots.value.any { bookedSlot ->
                                         // So sánh với courtId thực tế (bookedSlot.courtId) thay vì courtNumber
                                         if (bookedSlot.courtId.toInt() != realCourtId) {
@@ -502,7 +502,7 @@ fun BookingScreen(
                                                 bookedSlot.endTime
                                             }
 
-                                            // ✅ FIX: Check for overlap instead of exact match
+                                            // FIX: Check for overlap instead of exact match
                                             // Two time ranges overlap if:
                                             // - Slot start < Booked end AND
                                             // - Slot end > Booked start
@@ -536,7 +536,7 @@ fun BookingScreen(
                                                         selectedSlots + slot
                                                     }
                                                 } else {
-                                                    // ✅ Thông báo khi click vào slot đã đặt
+                                                    // Thông báo khi click vào slot đã đặt
                                                     coroutineScope.launch {
                                                         snackbarHostState.showSnackbar(
                                                             message = "Khung giờ này đã có người đặt",
@@ -557,7 +557,7 @@ fun BookingScreen(
                                                 )
                                             }
                                             isBooked -> {
-                                                // ✅ FIX: Hiển thị text "Đã đặt" cho ô đã được đặt
+                                                // FIX: Hiển thị text "Đã đặt" cho ô đã được đặt
                                                 Text(
                                                     text = "Đã đặt",
                                                     color = Color(0xFFD32F2F),
@@ -697,14 +697,14 @@ fun BookingScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Confirm Button
-            // ✅ Disable button nếu courts chưa được load hoặc đang loading
+            // Disable button nếu courts chưa được load hoặc đang loading
             val courtsLoaded = courtsState is Resource.Success &&
                                (courtsState as? Resource.Success<List<CourtDetail>>)?.data?.isNotEmpty() == true
 
             Button(
                 onClick = {
                     if (selectedSlots.isNotEmpty()) {
-                        // ✅ NHÓM SLOTS THEO SÂN để xử lý đúng khi đặt nhiều sân
+                        // NHÓM SLOTS THEO SÂN để xử lý đúng khi đặt nhiều sân
                         val slotsByCourtNumber = selectedSlots.groupBy { it.courtNumber }
 
                         Log.d("BookingScreen", "=".repeat(60))
@@ -715,7 +715,7 @@ fun BookingScreen(
                             Log.d("BookingScreen", "  Court $courtNum: ${slots.size} slots")
                         }
 
-                        // ✅ Lấy courts từ state
+                        // Lấy courts từ state
                         val availableCourts = when (courtsState) {
                             is Resource.Success -> (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
                             else -> emptyList()
@@ -734,8 +734,8 @@ fun BookingScreen(
 
                         val sortedCourts = availableCourts.sortedBy { it.id }
 
-                        // ✅ XỬ LÝ TỪNG SÂN - Nhóm slots liên tục và tạo booking items
-                        // ✅ FIX: Tạo nhiều bookingItems cho mỗi khoảng thời gian không liên tục
+                        // XỬ LÝ TỪNG SÂN - Nhóm slots liên tục và tạo booking items
+                        // Tạo nhiều bookingItems cho mỗi khoảng thời gian không liên tục
                         val allCourtBookings = mutableListOf<Triple<String, Pair<String, String>, String>>() // (courtId, startTime-endTime, courtName)
 
                         slotsByCourtNumber.forEach { (courtNumber, courtSlots) ->
@@ -746,7 +746,7 @@ fun BookingScreen(
                                 val formattedCourtId = "${venue.id}_${selectedCourt.id}"
                                 val courtName = "Sân số $courtNumber"
 
-                                // ✅ FIX: Nhóm các slots liên tục thành các khoảng thời gian riêng biệt
+                                // Nhóm các slots liên tục thành các khoảng thời gian riêng biệt
                                 val timeSlots = courtSlots.map { it.timeSlot }.sorted()
                                 val consecutiveGroups = groupConsecutiveSlotsForBooking(timeSlots)
 
@@ -790,7 +790,7 @@ fun BookingScreen(
                                     calendar.set(Calendar.MINUTE, endMinute)
                                     val endTime = apiDateFormat.format(calendar.time)
 
-                                    // ✅ Thêm bookingItem cho khoảng thời gian này
+                                    // Thêm bookingItem cho khoảng thời gian này
                                     allCourtBookings.add(Triple(formattedCourtId, Pair(startTime, endTime), courtName))
 
                                     Log.d("BookingScreen", "  • ${group.first()}-${calculateEndTime(group.last())} → $startTime to $endTime (${group.size} slots)")
@@ -809,7 +809,7 @@ fun BookingScreen(
                             return@Button
                         }
 
-                        // ✅ Sử dụng booking đầu tiên để tạo BookingData
+                        // Sử dụng booking đầu tiên để tạo BookingData
                         // (Backend sẽ tính giá chính xác cho TẤT CẢ slots)
                         val firstBooking = allCourtBookings.first()
                         val firstCourtId = firstBooking.first
@@ -826,30 +826,30 @@ fun BookingScreen(
                         Log.d("BookingScreen", "  Total slots: ${selectedSlots.size}")
                         Log.d("BookingScreen", "  Total courts: ${slotsByCourtNumber.size}")
 
-                        // ✅ FIX: Tạo danh sách BookingItemData cho tất cả các sân
-                        // ✅ Sử dụng courtNumber từ Triple thay vì parse từ courtId
+                        // Tạo danh sách BookingItemData cho tất cả các sân
+                        // Sử dụng courtNumber từ Triple thay vì parse từ courtId
                         val bookingItems = allCourtBookings.map { (courtId, times, courtName) ->
-                            // ✅ FIX: Dùng courtNumber từ UI (đã lưu trong Triple) để lấy đúng slots
+                            // Dùng courtNumber từ UI (đã lưu trong Triple) để lấy đúng slots
                             val courtSlots = slotsByCourtNumber[courtName.split(" ")[2].toInt()] ?: emptyList()
                             val courtPrice = (venue.pricePerHour * courtSlots.size * 0.5).toLong()
 
                             BookingItemData(
                                 courtId = courtId,
                                 courtName = courtName,
-                                startTime = times.first,  // ✅ Thời gian bắt đầu của sân này
-                                endTime = times.second,   // ✅ Thời gian kết thúc của sân này
+                                startTime = times.first,  // Thời gian bắt đầu của sân này
+                                endTime = times.second,   // Thời gian kết thúc của sân này
                                 price = courtPrice
                             )
                         }
 
-                        Log.d("BookingScreen", "✅ Created ${bookingItems.size} booking items:")
+                        Log.d("BookingScreen", "Created ${bookingItems.size} booking items:")
                         bookingItems.forEachIndexed { index, item ->
                             Log.d("BookingScreen", "  [$index] ${item.courtName} (${item.courtId})")
                             Log.d("BookingScreen", "       Time: ${item.startTime} - ${item.endTime}")
                             Log.d("BookingScreen", "       Price: ${item.price} VNĐ")
                         }
 
-                        // ✅ Tạo BookingData với danh sách tất cả các sân
+                        // Tạo BookingData với danh sách tất cả các sân
                         val bookingData = BookingData(
                             courtId = firstCourtId,
                             courtName = if (slotsByCourtNumber.size == 1) {
@@ -863,13 +863,13 @@ fun BookingScreen(
                             playerName = playerName,
                             phoneNumber = phoneNumber,
                             pricePerHour = venue.pricePerHour,
-                            // ✅ TÍNH GIÁ DỰ KIẾN cho TẤT CẢ slots (backend sẽ tính chính xác)
+                            // TÍNH GIÁ DỰ KIẾN cho TẤT CẢ slots (backend sẽ tính chính xác)
                             totalPrice = (venue.pricePerHour * selectedSlots.size * 0.5).toLong(),
                             ownerBankInfo = null,
                             expireTime = null,
                             startTime = startTime,
                             endTime = endTime,
-                            bookingItems = bookingItems  // ✅ THÊM DANH SÁCH TẤT CẢ CÁC SÂN
+                            bookingItems = bookingItems  // THÊM DANH SÁCH TẤT CẢ CÁC SÂN
                         )
 
                         Log.d("BookingScreen", "✅ Booking data prepared:")
