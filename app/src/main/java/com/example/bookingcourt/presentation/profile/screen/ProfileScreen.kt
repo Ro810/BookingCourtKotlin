@@ -260,7 +260,6 @@ private fun LazyListScope.ProfileContent(
     item {
         AccountStatsCard(
             bookingsCount = bookingsCount,
-            favoritesCount = user.favoriteCourtIds.size,
             reviewsCount = reviewsCount,
         )
     }
@@ -361,13 +360,6 @@ private fun LazyListScope.ProfileContent(
                     icon = Icons.Default.Lock,
                     title = "Đổi mật khẩu",
                     onClick = onNavigateToChangePassword,
-                )
-                HorizontalDivider()
-                MenuItemRow(
-                    icon = Icons.Default.Favorite,
-                    title = "Sân yêu thích",
-                    subtitle = "${user.favoriteCourtIds.size} sân",
-                    onClick = { /* TODO */ },
                 )
             }
         }
@@ -600,7 +592,6 @@ fun UserProfileHeader(
 @Composable
 fun AccountStatsCard(
     bookingsCount: Int,
-    favoritesCount: Int,
     reviewsCount: Int,
 ) {
     Card(
@@ -617,12 +608,6 @@ fun AccountStatsCard(
                 icon = Icons.Default.DateRange,
                 value = bookingsCount.toString(),
                 label = "Đặt sân",
-            )
-            VerticalDivider(modifier = Modifier.height(50.dp))
-            StatItem(
-                icon = Icons.Default.Favorite,
-                value = favoritesCount.toString(),
-                label = "Yêu thích",
             )
             VerticalDivider(modifier = Modifier.height(50.dp))
             StatItem(
