@@ -101,8 +101,38 @@ fun BookingScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Lấy ngày hiện tại để so sánh
+    val today = remember {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        cal.timeInMillis
+    }
+
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
+        initialSelectedDateMillis = System.currentTimeMillis(),
+        // Chặn không cho chọn ngày trong quá khứ
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                // Chuyển UTC time thành local date để so sánh
+                val selectedCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                selectedCal.timeInMillis = utcTimeMillis
+
+                val todayCal = Calendar.getInstance()
+
+                // So sánh năm, tháng, ngày
+                return selectedCal.get(Calendar.YEAR) > todayCal.get(Calendar.YEAR) ||
+                       (selectedCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                        selectedCal.get(Calendar.DAY_OF_YEAR) >= todayCal.get(Calendar.DAY_OF_YEAR))
+            }
+
+            override fun isSelectableYear(year: Int): Boolean {
+                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+                return year >= currentYear
+            }
+        }
     )
 
     // Reset DatePicker về ngày hiện tại mỗi khi mở dialog
@@ -472,6 +502,50 @@ fun BookingScreen(
                                     val slot = CourtTimeSlot(courtNum, time)
                                     val isSelected = selectedSlots.contains(slot)
 
+                                    // Kiểm tra xem slot này đã qua giờ chưa (chỉ áp dụng cho ngày hôm nay)
+                                    val isPastTime = remember(selectedDate, time) {
+                                        val selectedDateParsed = try {
+                                            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(selectedDate)
+                                        } catch (e: Exception) {
+                                            Date()
+                                        }
+
+                                        val todayDate = Calendar.getInstance()
+                                        todayDate.set(Calendar.HOUR_OF_DAY, 0)
+                                        todayDate.set(Calendar.MINUTE, 0)
+                                        todayDate.set(Calendar.SECOND, 0)
+                                        todayDate.set(Calendar.MILLISECOND, 0)
+
+                                        val selectedCal = Calendar.getInstance()
+                                        selectedCal.time = selectedDateParsed ?: Date()
+                                        selectedCal.set(Calendar.HOUR_OF_DAY, 0)
+                                        selectedCal.set(Calendar.MINUTE, 0)
+                                        selectedCal.set(Calendar.SECOND, 0)
+                                        selectedCal.set(Calendar.MILLISECOND, 0)
+
+                                        // Chỉ check past time nếu là ngày hôm nay
+                                        if (selectedCal.timeInMillis == todayDate.timeInMillis) {
+                                            val now = Calendar.getInstance()
+                                            val timeParts = time.split(":")
+                                            val slotHour = timeParts[0].toIntOrNull() ?: 0
+                                            val slotMinute = timeParts[1].toIntOrNull() ?: 0
+
+                                            val slotTime = Calendar.getInstance()
+                                            slotTime.set(Calendar.HOUR_OF_DAY, slotHour)
+                                            slotTime.set(Calendar.MINUTE, slotMinute)
+                                            slotTime.set(Calendar.SECOND, 0)
+
+                                            // Slot đã qua nếu thời gian kết thúc (slot + 30 phút) < hiện tại
+                                            val slotEndTime = Calendar.getInstance()
+                                            slotEndTime.timeInMillis = slotTime.timeInMillis
+                                            slotEndTime.add(Calendar.MINUTE, 30)
+
+                                            slotEndTime.before(now)
+                                        } else {
+                                            false
+                                        }
+                                    }
+
                                     // Map courtNum (UI index) sang courtId thực tế để so sánh với bookedSlots
                                     val courtIndex = courtNum - 1
                                     val realCourtId = if (courtIndex >= 0 && courtIndex < realCourts.value.size) {
@@ -524,16 +598,25 @@ fun BookingScreen(
                                             .background(
                                                 when {
                                                     isSelected -> Primary
+                                                    isPastTime -> Color(0xFFBDBDBD) // Màu xám cho slot đã qua
                                                     isBooked -> Color(0xFFFFCDD2) // Màu đỏ nhạt cho slot đã đặt
                                                     else -> Color.White
                                                 }
                                             )
                                             .clickable {
-                                                if (!isBooked) {
+                                                if (!isBooked && !isPastTime) {
                                                     selectedSlots = if (isSelected) {
                                                         selectedSlots - slot
                                                     } else {
                                                         selectedSlots + slot
+                                                    }
+                                                } else if (isPastTime) {
+                                                    // Thông báo khi click vào slot đã qua giờ
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar(
+                                                            message = "Không thể đặt khung giờ đã qua",
+                                                            duration = SnackbarDuration.Short
+                                                        )
                                                     }
                                                 } else {
                                                     // Thông báo khi click vào slot đã đặt
@@ -554,6 +637,16 @@ fun BookingScreen(
                                                     color = Color.White,
                                                     fontSize = 18.sp,
                                                     fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            isPastTime -> {
+                                                // Hiển thị text cho ô đã qua giờ
+                                                Text(
+                                                    text = "Đã qua",
+                                                    color = Color.Gray,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    textAlign = TextAlign.Center
                                                 )
                                             }
                                             isBooked -> {
