@@ -53,7 +53,7 @@ fun BookingScreen(
     onNavigateToPayment: (String) -> Unit,
     bookingViewModel: BookingViewModel = hiltViewModel()
 ) {
-    // ✅ Venue object - reactive to court parameter changes
+    // Venue object - reactive to court parameter changes
     val venue = remember(court, courtId) {
         court ?: Venue(
             id = courtId.toLongOrNull() ?: 0L,
@@ -105,10 +105,10 @@ fun BookingScreen(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
 
-    // ✅ Reset DatePicker về ngày hiện tại mỗi khi mở dialog
+    // Reset DatePicker về ngày hiện tại mỗi khi mở dialog
     LaunchedEffect(showDatePicker) {
         if (showDatePicker) {
-            // ✅ FIX: Tính toán timestamp UTC chính xác cho ngày hiện tại
+            // Tính toán timestamp UTC chính xác cho ngày hiện tại
             // DatePicker hoạt động với UTC timezone, nên phải convert đúng cách
             val localCalendar = Calendar.getInstance()
 
@@ -230,7 +230,7 @@ fun BookingScreen(
         var closeHour = closingTime.first
         var closeMinute = closingTime.second
 
-        // ✅ Special case: Nếu thời gian là 00:00 - 00:00 → Hiểu là mở cả ngày (00:00 - 23:59)
+        // Special case: Nếu thời gian là 00:00 - 00:00 → Hiểu là mở cả ngày (00:00 - 23:59)
         if (currentHour == 0 && currentMinute == 0 && closeHour == 0 && closeMinute == 0) {
             Log.d("BookingScreen", "📍 Detected 00:00 - 00:00 → Treating as FULL DAY (00:00 - 23:59)")
             closeHour = 23

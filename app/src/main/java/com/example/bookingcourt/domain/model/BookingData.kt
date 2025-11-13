@@ -27,10 +27,10 @@ data class BookingData(
     val totalPrice: Long,
     val ownerBankInfo: BankInfo? = null,  // Thông tin ngân hàng của chủ sân
     val expireTime: String? = null,       // Thời gian hết hạn thanh toán
-    val startTime: String = "",           // ⚠️ LEGACY: Thời gian bắt đầu sân đầu tiên
-    val endTime: String = "",             // ⚠️ LEGACY: Thời gian kết thúc sân đầu tiên
+    val startTime: String = "",           // LEGACY: Thời gian bắt đầu sân đầu tiên
+    val endTime: String = "",             // LEGACY: Thời gian kết thúc sân đầu tiên
 
-    // ✅ NEW: Danh sách các sân đã đặt (hỗ trợ nhiều sân)
+    //Danh sách các sân đã đặt (hỗ trợ nhiều sân)
     val bookingItems: List<BookingItemData>? = null
 )
 
