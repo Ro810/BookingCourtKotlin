@@ -211,7 +211,7 @@ fun NavigationGraph(
                     },
                     onNavigateToBookingDetail = { bookingId ->
                         navController.navigate(
-                            Screen.BookingDetail.createRoute(bookingId),
+                            Screen.OwnerBookingDetail.createRoute(bookingId),
                         )
                     },
                 )
@@ -640,6 +640,22 @@ fun NavigationGraph(
             ) { backStackEntry ->
                 val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
                 com.example.bookingcourt.presentation.owner.screen.BookingApprovalScreen(
+                    bookingId = bookingId,
+                    onNavigateBack = { navController.navigateUp() }
+                )
+            }
+
+            // Owner: Màn hình chi tiết booking cho owner (xem và approve/reject)
+            composable(
+                route = Screen.OwnerBookingDetail.route,
+                arguments = listOf(
+                    navArgument("bookingId") {
+                        type = NavType.StringType
+                    },
+                ),
+            ) { backStackEntry ->
+                val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+                com.example.bookingcourt.presentation.booking.screen.OwnerBookingDetailScreen(
                     bookingId = bookingId,
                     onNavigateBack = { navController.navigateUp() }
                 )

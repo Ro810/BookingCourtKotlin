@@ -308,6 +308,34 @@ class BookingRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getVenuePendingBookings(venueId: Long): Flow<Resource<List<BookingDetail>>> = flow {
+        emit(Resource.Loading())
+        try {
+            Log.d("BookingRepo", "🔍 Getting pending bookings for venue: $venueId")
+            val response = bookingApi.getVenuePendingBookings(venueId)
+            val bookings = response.data.map { it.toBookingDetail(venueApi) }
+            Log.d("BookingRepo", "✅ Got ${bookings.size} pending bookings for venue $venueId")
+            emit(Resource.Success(bookings))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "❌ Error getting venue pending bookings", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách chờ xác nhận"))
+        }
+    }
+
+    override suspend fun getBookingsByVenue(venueId: Long, status: String?): Flow<Resource<List<BookingDetail>>> = flow {
+        emit(Resource.Loading())
+        try {
+            Log.d("BookingRepo", "🔍 Getting bookings for venue: $venueId, status: $status")
+            val response = bookingApi.getBookingsByVenue(venueId, status)
+            val bookings = response.data.map { it.toBookingDetail(venueApi) }
+            Log.d("BookingRepo", "✅ Got ${bookings.size} bookings for venue $venueId")
+            emit(Resource.Success(bookings))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "❌ Error getting bookings by venue", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách booking"))
+        }
+    }
+
     override suspend fun getBookingDetail(bookingId: String): Flow<Resource<BookingDetail>> = flow {
         emit(Resource.Loading())
         try {
@@ -464,8 +492,11 @@ private fun CreateBookingResponseDto.toBookingWithBankInfo(
         endTime = end,
         totalPrice = this.totalPrice.toLong(),
         status = when {
-            this.status.equals("PENDING_PAYMENT", ignoreCase = true) -> BookingStatus.PENDING
+            this.status.equals("PENDING", ignoreCase = true) -> BookingStatus.PENDING
+            this.status.equals("PENDING_PAYMENT", ignoreCase = true) -> BookingStatus.PENDING_PAYMENT
+            this.status.equals("PAYMENT_UPLOADED", ignoreCase = true) -> BookingStatus.PAYMENT_UPLOADED
             this.status.equals("CONFIRMED", ignoreCase = true) -> BookingStatus.CONFIRMED
+            this.status.equals("REJECTED", ignoreCase = true) -> BookingStatus.REJECTED
             this.status.equals("CANCELLED", ignoreCase = true) -> BookingStatus.CANCELLED
             this.status.equals("COMPLETED", ignoreCase = true) -> BookingStatus.COMPLETED
             this.status.equals("NO_SHOW", ignoreCase = true) -> BookingStatus.NO_SHOW

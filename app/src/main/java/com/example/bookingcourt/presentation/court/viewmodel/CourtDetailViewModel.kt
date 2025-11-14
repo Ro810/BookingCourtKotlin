@@ -28,6 +28,7 @@ data class CourtDetailState(
     val bookedSlots: List<com.example.bookingcourt.domain.model.BookedSlot> = emptyList(),
     val selectedDateRevenue: Long = 0, // Doanh thu của ngày được chọn
     val courtsAvailability: List<com.example.bookingcourt.domain.model.CourtAvailability> = emptyList(), // Tình trạng sân theo API mới
+    val pendingBookings: List<com.example.bookingcourt.domain.model.BookingDetail> = emptyList(), // Danh sách booking chờ xác nhận
 )
 
 sealed interface CourtDetailIntent {
@@ -124,7 +125,7 @@ class CourtDetailViewModel @Inject constructor(
             }
         }
     }
-    
+
 
 
     private fun navigateToBooking(courtId: Long) {
@@ -300,6 +301,43 @@ class CourtDetailViewModel @Inject constructor(
                     }
                     is Resource.Loading -> {
                         android.util.Log.d("CourtDetailVM", "⏳ Uploading image...")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Lấy danh sách booking chờ xác nhận (PAYMENT_UPLOADED) theo venue ID
+     * Chỉ lấy pending bookings của venue hiện tại
+     */
+    fun getPendingBookings() {
+        viewModelScope.launch {
+            // Lấy venueId từ state hiện tại
+            val currentVenueId = _state.value.venue?.id
+
+            if (currentVenueId == null) {
+                android.util.Log.w("CourtDetailVM", "⚠️ Cannot get pending bookings - venue not loaded yet")
+                return@launch
+            }
+
+            android.util.Log.d("CourtDetailVM", "📋 Getting pending bookings for venue: $currentVenueId")
+            bookingRepository.getVenuePendingBookings(currentVenueId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Pending bookings loaded: ${result.data?.size} bookings for venue $currentVenueId")
+                        _state.value = _state.value.copy(
+                            pendingBookings = result.data ?: emptyList()
+                        )
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error loading pending bookings: ${result.message}")
+                        _state.value = _state.value.copy(
+                            pendingBookings = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Loading pending bookings...")
                     }
                 }
             }

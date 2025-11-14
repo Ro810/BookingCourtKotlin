@@ -142,6 +142,9 @@ fun CourtDetailScreen(
 
                 // Cập nhật doanh thu theo ngày được chọn
                 viewModel.updateSelectedDateRevenue(currentDate)
+
+                // Fetch pending bookings for owner
+                viewModel.getPendingBookings()
             } else {
                 Log.e("CourtDetailScreen", "❌ Failed to parse date: $currentDate")
             }
@@ -203,6 +206,21 @@ fun CourtDetailScreen(
     }
 
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("vi", "VN")) }
+
+    // Filter pending bookings to show only bookings for current venue
+    val filteredPendingBookings = remember(state.pendingBookings, venue?.id) {
+        state.pendingBookings.filter { booking ->
+            booking.venue.id == venue?.id?.toString()
+        }
+    }
+
+    // Filter confirmed bookings for check-in schedule (only show upcoming confirmed bookings)
+    val upcomingConfirmedBookings = remember(state.pendingBookings, venue?.id) {
+        state.pendingBookings.filter { booking ->
+            booking.venue.id == venue?.id?.toString() &&
+            booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED
+        }.sortedBy { it.startTime }
+    }
 
     // DatePickerDialog
     if (showDatePicker) {
@@ -433,6 +451,143 @@ fun CourtDetailScreen(
                 }
             }
 
+            // Pending Bookings Section - Danh sách booking chờ xác nhận
+            if (state.pendingBookings.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF3E0)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF9800),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Đặt sân chờ xác nhận",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFE65100)
+                                    )
+                                }
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFFF9800)
+                                ) {
+                                    Text(
+                                        text = state.pendingBookings.size.toString(),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            state.pendingBookings.take(5).forEach { booking ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onNavigateToBookingDetail(booking.id)
+                                        },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.White
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = booking.user.fullname,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = booking.getCourtsDisplayName(),
+                                                fontSize = 14.sp,
+                                                color = Color.Gray
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.DateRange,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp),
+                                                    tint = Color.Gray
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "${booking.startTime.dayOfMonth}/${booking.startTime.monthNumber} • ${String.format("%02d:%02d", booking.startTime.hour, booking.startTime.minute)}-${String.format("%02d:%02d", booking.endTime.hour, booking.endTime.minute)}",
+                                                    fontSize = 13.sp,
+                                                    color = Color.Gray
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = currencyFormat.format(booking.totalPrice),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
+                                        Icon(
+                                            Icons.Default.KeyboardArrowRight,
+                                            contentDescription = "Xem chi tiết",
+                                            tint = Color.Gray
+                                        )
+                                    }
+                                }
+
+                                if (booking != state.pendingBookings.take(5).last()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+
+                            if (state.pendingBookings.size > 5) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                TextButton(
+                                    onClick = { /* TODO: Navigate to full list */ },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Xem tất cả ${state.pendingBookings.size} booking")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Booking Grid Table
             item {
                 Card(
@@ -617,15 +772,30 @@ fun CourtDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        checkInSchedules.forEach { schedule ->
-                            CheckInItem(
-                                schedule = schedule,
-                                onCustomerClick = {
-                                    onNavigateToBookingDetail(schedule.bookingId)
-                                },
-                            )
-                            if (schedule != checkInSchedules.last()) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        if (upcomingConfirmedBookings.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Chưa có lịch check-in",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        } else {
+                            upcomingConfirmedBookings.take(5).forEach { booking ->
+                                CheckInItem(
+                                    booking = booking,
+                                    onCustomerClick = {
+                                        onNavigateToBookingDetail(booking.id)
+                                    },
+                                )
+                                if (booking != upcomingConfirmedBookings.take(5).last()) {
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                }
                             }
                         }
                     }
@@ -750,6 +920,71 @@ fun CheckInItem(
                 Text(
                     text = "${schedule.time} - ${schedule.duration}",
                     fontSize = 14.sp,
+                    color = Color.Gray,
+                )
+            }
+        }
+
+        IconButton(onClick = { /* TODO */ }) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = "Check-in",
+                tint = Color(0xFF4CAF50),
+            )
+        }
+    }
+}
+
+// Overload for BookingDetail
+@Composable
+fun CheckInItem(
+    booking: com.example.bookingcourt.domain.model.BookingDetail,
+    onCustomerClick: () -> Unit = {},
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onCustomerClick() },
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        shape = CircleShape,
+                    ),
+            ) {
+                Icon(
+                    Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = booking.user.fullname,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp,
+                )
+                Text(
+                    text = booking.getCourtsDisplayName(),
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                )
+                Text(
+                    text = "${booking.startTime.dayOfMonth}/${booking.startTime.monthNumber} • ${String.format("%02d:%02d", booking.startTime.hour, booking.startTime.minute)}-${String.format("%02d:%02d", booking.endTime.hour, booking.endTime.minute)}",
+                    fontSize = 13.sp,
                     color = Color.Gray,
                 )
             }

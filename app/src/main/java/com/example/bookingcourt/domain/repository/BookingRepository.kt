@@ -104,6 +104,24 @@ interface BookingRepository {
     suspend fun getPendingBookings(): Flow<Resource<List<BookingDetail>>>
 
     /**
+     * Lấy danh sách booking chờ xác nhận theo venue ID (cho chủ sân)
+     * @param venueId ID của venue
+     * @return Flow với danh sách bookings có status PAYMENT_UPLOADED
+     */
+    suspend fun getVenuePendingBookings(venueId: Long): Flow<Resource<List<BookingDetail>>>
+
+    /**
+     * Lấy danh sách bookings theo venue ID (cho chủ sân)
+     * @param venueId ID của venue
+     * @param status Filter theo status (optional): PENDING_PAYMENT, PAYMENT_UPLOADED, CONFIRMED, etc.
+     * @return Flow với danh sách bookings của venue
+     */
+    suspend fun getBookingsByVenue(
+        venueId: Long,
+        status: String? = null
+    ): Flow<Resource<List<BookingDetail>>>
+
+    /**
      * Lấy chi tiết booking (phiên bản mới với đầy đủ thông tin)
      */
     suspend fun getBookingDetail(

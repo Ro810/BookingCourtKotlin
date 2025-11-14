@@ -785,13 +785,14 @@ private fun Long.formatPrice(): String {
 
 private fun BookingStatus.toVietnamese(): String {
     return when (this) {
+        BookingStatus.PENDING -> "Chờ xác nhận"
         BookingStatus.PENDING_PAYMENT -> "Chờ thanh toán"
         BookingStatus.PAYMENT_UPLOADED -> "Đã gửi xác nhận"
         BookingStatus.CONFIRMED -> "Đã xác nhận"
         BookingStatus.REJECTED -> "Bị từ chối"
         BookingStatus.CANCELLED -> "Đã hủy"
         BookingStatus.COMPLETED -> "Hoàn thành"
-        else -> "Đã hủy"
+        BookingStatus.NO_SHOW -> "Không đến"
     }
 }
 

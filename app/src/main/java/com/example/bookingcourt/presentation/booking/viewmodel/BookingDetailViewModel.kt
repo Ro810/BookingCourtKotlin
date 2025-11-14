@@ -39,6 +39,12 @@ class BookingDetailViewModel @Inject constructor(
     private val _cancelState = MutableStateFlow<Resource<Unit>?>(null)
     val cancelState: StateFlow<Resource<Unit>?> = _cancelState.asStateFlow()
 
+    private val _acceptState = MutableStateFlow<Resource<BookingDetail>?>(null)
+    val acceptState: StateFlow<Resource<BookingDetail>?> = _acceptState.asStateFlow()
+
+    private val _rejectState = MutableStateFlow<Resource<BookingDetail>?>(null)
+    val rejectState: StateFlow<Resource<BookingDetail>?> = _rejectState.asStateFlow()
+
     private val _timeRemaining = MutableStateFlow<Long>(0L)
     val timeRemaining: StateFlow<Long> = _timeRemaining.asStateFlow()
 
@@ -122,5 +128,35 @@ class BookingDetailViewModel @Inject constructor(
 
     fun resetCancelState() {
         _cancelState.value = null
+    }
+
+    fun acceptBooking() {
+        viewModelScope.launch {
+            bookingRepository.acceptBooking(bookingId).collect { resource ->
+                _acceptState.value = resource
+                if (resource is Resource.Success) {
+                    loadBookingDetail() // Refresh booking detail
+                }
+            }
+        }
+    }
+
+    fun rejectBooking(reason: String) {
+        viewModelScope.launch {
+            bookingRepository.rejectBooking(bookingId, reason).collect { resource ->
+                _rejectState.value = resource
+                if (resource is Resource.Success) {
+                    loadBookingDetail() // Refresh booking detail
+                }
+            }
+        }
+    }
+
+    fun resetAcceptState() {
+        _acceptState.value = null
+    }
+
+    fun resetRejectState() {
+        _rejectState.value = null
     }
 }
