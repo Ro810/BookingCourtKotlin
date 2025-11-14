@@ -178,15 +178,15 @@ private fun DetailScreenContent(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Số điện thoại
-            val phoneNumber = venue.phoneNumber ?: "Liên hệ để biết thêm"
-            InfoCard(
-                icon = Icons.Default.Phone,
-                title = "Số điện thoại",
-                value = phoneNumber
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
+            // Số điện thoại chủ sân
+            if (!venue.ownerPhone.isNullOrBlank()) {
+                InfoCard(
+                    icon = Icons.Default.ContactPhone,
+                    title = "Số điện thoại chủ sân",
+                    value = venue.ownerPhone
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Địa chỉ chi tiết
             InfoCard(
@@ -370,7 +370,7 @@ fun DescriptionTabContent(venue: Venue) {
             )
         }
 
-        if (venue.phoneNumber != null || venue.ownerPhone != null) {
+        if (venue.ownerPhone != null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(vertical = 4.dp)

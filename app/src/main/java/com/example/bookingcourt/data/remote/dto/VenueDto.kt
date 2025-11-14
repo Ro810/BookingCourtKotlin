@@ -48,6 +48,12 @@ data class VenueDetailDto(
     @SerializedName("closingTime")
     val closingTime: String? = null,
 
+    @SerializedName("images")
+    val images: List<String>? = null,
+
+    @SerializedName("ownerPhoneNumber")
+    val ownerPhoneNumber: String? = null,
+
     @SerializedName("owner")
     val owner: OwnerDto? = null
 )

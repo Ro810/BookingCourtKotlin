@@ -408,6 +408,7 @@ class VenueRepositoryImpl @Inject constructor(
         Log.d(TAG, "  - email: $email")
         Log.d(TAG, "  - owner: $owner")
         Log.d(TAG, "  - owner?.phone: ${owner?.phone}")
+        Log.d(TAG, "  - ownerPhoneNumber: $ownerPhoneNumber")
 
         return Venue(
             id = id,
@@ -423,8 +424,8 @@ class VenueRepositoryImpl @Inject constructor(
             closingTime = closingTime,
             phoneNumber = phoneNumber,
             email = email,
-            ownerPhone = owner?.phone, // Lấy số điện thoại từ owner
-            images = null // Backend chưa trả về images trong list, sẽ cập nhật sau
+            ownerPhone = ownerPhoneNumber ?: owner?.phone, // Ưu tiên ownerPhoneNumber từ API response
+            images = images // Sử dụng images từ API response
         )
     }
 
