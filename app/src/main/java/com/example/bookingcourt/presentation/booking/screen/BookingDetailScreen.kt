@@ -469,6 +469,28 @@ private fun BookingInfoCard(booking: BookingDetail) {
             // Venue info
             InfoRow(label = "Tên sân", value = booking.venue.name)
 
+            // Thêm địa chỉ sân
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Địa chỉ:",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = booking.venueAddress,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF212121),
+                    fontSize = 14.sp,
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider(color = Color(0xFFE0E0E0))
             Spacer(modifier = Modifier.height(12.dp))

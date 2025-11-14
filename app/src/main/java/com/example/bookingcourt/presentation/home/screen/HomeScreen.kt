@@ -316,19 +316,6 @@ fun HeaderSection(
                     )
                 }
             }
-
-            IconButton(
-                onClick = { },
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(Color.White, CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Thông báo",
-                    tint = Primary
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
