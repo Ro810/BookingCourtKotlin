@@ -1,5 +1,7 @@
 package com.example.bookingcourt.presentation.home.screen
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -286,12 +289,21 @@ fun HeaderSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Avatar với chữ cái đầu
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.3f))
-                )
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = userName.firstOrNull()?.uppercase() ?: "U",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -450,7 +462,19 @@ fun VenueCard(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    IconButton(onClick = { }) {
+                    val context = LocalContext.current
+                    IconButton(
+                        onClick = {
+                            // Gọi điện thoại đến số điện thoại chủ sân
+                            val phoneNumber = venue.ownerPhone
+                            if (!phoneNumber.isNullOrBlank()) {
+                                val intent = Intent(Intent.ACTION_DIAL).apply {
+                                    data = Uri.parse("tel:$phoneNumber")
+                                }
+                                context.startActivity(intent)
+                            }
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Phone,
                             contentDescription = "Call",

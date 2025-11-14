@@ -1,5 +1,7 @@
 package com.example.bookingcourt.presentation.court.screen
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -180,10 +183,17 @@ private fun DetailScreenContent(
 
             // Số điện thoại chủ sân
             if (!venue.ownerPhone.isNullOrBlank()) {
-                InfoCard(
+                val context = LocalContext.current
+                InfoCardClickable(
                     icon = Icons.Default.ContactPhone,
                     title = "Số điện thoại chủ sân",
-                    value = venue.ownerPhone
+                    value = venue.ownerPhone,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                            data = Uri.parse("tel:${venue.ownerPhone}")
+                        }
+                        context.startActivity(intent)
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -325,6 +335,55 @@ fun InfoCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: Strin
                     color = Color.Black
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun InfoCardClickable(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = Primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = value,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.Phone,
+                contentDescription = "Call",
+                tint = Primary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
