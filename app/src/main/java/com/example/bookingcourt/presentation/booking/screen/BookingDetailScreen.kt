@@ -791,6 +791,7 @@ private fun BookingStatus.toVietnamese(): String {
         BookingStatus.CONFIRMED -> "Đã xác nhận"
         BookingStatus.REJECTED -> "Bị từ chối"
         BookingStatus.CANCELLED -> "Đã hủy"
+        BookingStatus.EXPIRED -> "Hết hạn"
         BookingStatus.COMPLETED -> "Hoàn thành"
         BookingStatus.NO_SHOW -> "Không đến"
     }
@@ -799,9 +800,10 @@ private fun BookingStatus.toVietnamese(): String {
 private fun BookingStatus.getStatusColor(): Color {
     return when (this) {
         BookingStatus.CONFIRMED -> Color(0xFF4CAF50) // Green
-        BookingStatus.COMPLETED -> Color(0xFF4CAF50) // Amber
+        BookingStatus.COMPLETED -> Color(0xFF4CAF50) // Green
         BookingStatus.REJECTED -> Color(0xFFD32F2F) // Red
-        BookingStatus.CANCELLED -> Color(0xFFF44336) // Deep Orange
+        BookingStatus.CANCELLED -> Color(0xFF9E9E9E) // Gray
+        BookingStatus.EXPIRED -> Color(0xFFD32F2F) // Red
         BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800) // Orange
         else -> Color(0xFFF44336) // Default for other statuses
     }

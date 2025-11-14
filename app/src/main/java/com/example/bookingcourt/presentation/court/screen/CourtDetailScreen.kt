@@ -145,6 +145,9 @@ fun CourtDetailScreen(
 
                 // Fetch pending bookings for owner
                 viewModel.getPendingBookings()
+
+                // Fetch confirmed bookings for check-in schedule
+                viewModel.getConfirmedBookings()
             } else {
                 Log.e("CourtDetailScreen", "❌ Failed to parse date: $currentDate")
             }
@@ -215,11 +218,15 @@ fun CourtDetailScreen(
     }
 
     // Filter confirmed bookings for check-in schedule (only show upcoming confirmed bookings)
-    val upcomingConfirmedBookings = remember(state.pendingBookings, venue?.id) {
-        state.pendingBookings.filter { booking ->
-            booking.venue.id == venue?.id?.toString() &&
-            booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED
-        }.sortedBy { it.startTime }
+    val upcomingConfirmedBookings = remember(state.confirmedBookings, venue?.id) {
+        state.confirmedBookings
+            .filter { booking ->
+                // Chỉ hiển thị bookings của venue hiện tại
+                // và có status COMPLETED (đã được owner chấp nhận)
+                booking.venue.id == venue?.id?.toString() &&
+                booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED
+            }
+            .sortedBy { it.startTime }
     }
 
     // DatePickerDialog

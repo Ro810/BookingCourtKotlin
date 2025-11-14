@@ -322,6 +322,21 @@ class BookingRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getVenueConfirmedBookings(venueId: Long): Flow<Resource<List<BookingDetail>>> = flow {
+        emit(Resource.Loading())
+        try {
+            Log.d("BookingRepo", "🔍 Getting confirmed bookings for venue: $venueId")
+            // Lấy bookings với status COMPLETED (sau khi owner chấp nhận)
+            val response = bookingApi.getBookingsByVenue(venueId, "COMPLETED")
+            val bookings = response.data.map { it.toBookingDetail(venueApi) }
+            Log.d("BookingRepo", "✅ Got ${bookings.size} completed bookings for venue $venueId")
+            emit(Resource.Success(bookings))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "❌ Error getting venue confirmed bookings", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách booking đã xác nhận"))
+        }
+    }
+
     override suspend fun getBookingsByVenue(venueId: Long, status: String?): Flow<Resource<List<BookingDetail>>> = flow {
         emit(Resource.Loading())
         try {
@@ -500,6 +515,7 @@ private fun CreateBookingResponseDto.toBookingWithBankInfo(
             this.status.equals("CANCELLED", ignoreCase = true) -> BookingStatus.CANCELLED
             this.status.equals("COMPLETED", ignoreCase = true) -> BookingStatus.COMPLETED
             this.status.equals("NO_SHOW", ignoreCase = true) -> BookingStatus.NO_SHOW
+            this.status.equals("EXPIRED", ignoreCase = true) -> BookingStatus.EXPIRED
             else -> BookingStatus.PENDING
         },
         expireTime = expire,
@@ -621,6 +637,7 @@ private suspend fun BookingDetailResponseDto.toBookingDetail(venueApi: VenueApi)
             "CANCELLED" -> BookingStatus.CANCELLED
             "COMPLETED" -> BookingStatus.COMPLETED
             "NO_SHOW" -> BookingStatus.NO_SHOW
+            "EXPIRED" -> BookingStatus.EXPIRED
             else -> BookingStatus.PENDING
         },
         paymentProofUploaded = this.paymentProofUploaded,

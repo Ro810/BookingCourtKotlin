@@ -31,6 +31,7 @@ enum class BookingStatus {
     CANCELLED,
     COMPLETED,
     NO_SHOW,
+    EXPIRED, // Booking quá hạn upload ảnh chuyển khoản
 }
 
 enum class PaymentStatus {

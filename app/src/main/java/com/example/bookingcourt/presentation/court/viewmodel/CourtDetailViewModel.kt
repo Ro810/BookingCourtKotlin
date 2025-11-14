@@ -29,6 +29,7 @@ data class CourtDetailState(
     val selectedDateRevenue: Long = 0, // Doanh thu của ngày được chọn
     val courtsAvailability: List<com.example.bookingcourt.domain.model.CourtAvailability> = emptyList(), // Tình trạng sân theo API mới
     val pendingBookings: List<com.example.bookingcourt.domain.model.BookingDetail> = emptyList(), // Danh sách booking chờ xác nhận
+    val confirmedBookings: List<com.example.bookingcourt.domain.model.BookingDetail> = emptyList(), // Danh sách booking đã xác nhận cho check-in schedule
 )
 
 sealed interface CourtDetailIntent {
@@ -338,6 +339,43 @@ class CourtDetailViewModel @Inject constructor(
                     }
                     is Resource.Loading -> {
                         android.util.Log.d("CourtDetailVM", "⏳ Loading pending bookings...")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Lấy danh sách booking đã xác nhận theo venue ID
+     * Chỉ lấy confirmed bookings của venue hiện tại
+     */
+    fun getConfirmedBookings() {
+        viewModelScope.launch {
+            // Lấy venueId từ state hiện tại
+            val currentVenueId = _state.value.venue?.id
+
+            if (currentVenueId == null) {
+                android.util.Log.w("CourtDetailVM", "⚠️ Cannot get confirmed bookings - venue not loaded yet")
+                return@launch
+            }
+
+            android.util.Log.d("CourtDetailVM", "📋 Getting confirmed bookings for venue: $currentVenueId")
+            bookingRepository.getVenueConfirmedBookings(currentVenueId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Confirmed bookings loaded: ${result.data?.size} bookings for venue $currentVenueId")
+                        _state.value = _state.value.copy(
+                            confirmedBookings = result.data ?: emptyList()
+                        )
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error loading confirmed bookings: ${result.message}")
+                        _state.value = _state.value.copy(
+                            confirmedBookings = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Loading confirmed bookings...")
                     }
                 }
             }

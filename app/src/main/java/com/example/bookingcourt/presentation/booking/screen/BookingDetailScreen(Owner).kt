@@ -508,6 +508,7 @@ fun getBookingStatusName(status: BookingStatus): String {
         BookingStatus.CONFIRMED -> "Đã xác nhận"
         BookingStatus.REJECTED -> "Bị từ chối"
         BookingStatus.CANCELLED -> "Đã hủy"
+        BookingStatus.EXPIRED -> "Hết hạn"
         BookingStatus.COMPLETED -> "Hoàn thành"
         BookingStatus.NO_SHOW -> "Không đến"
     }
@@ -520,7 +521,8 @@ fun getBookingStatusColor(status: BookingStatus): Color {
         BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800)
         BookingStatus.CONFIRMED -> Color(0xFF4CAF50)
         BookingStatus.REJECTED -> Color(0xFFFF5252)
-        BookingStatus.CANCELLED -> Color(0xFFFF5252)
+        BookingStatus.CANCELLED -> Color(0xFF9E9E9E)
+        BookingStatus.EXPIRED -> Color(0xFFFF5252)
         BookingStatus.COMPLETED -> Color(0xFF2196F3)
         BookingStatus.NO_SHOW -> Color(0xFF9E9E9E)
     }
@@ -534,6 +536,7 @@ fun getBookingStatusIcon(status: BookingStatus): ImageVector {
         BookingStatus.CONFIRMED -> Icons.Default.CheckCircle
         BookingStatus.REJECTED -> Icons.Default.Close
         BookingStatus.CANCELLED -> Icons.Default.Close
+        BookingStatus.EXPIRED -> Icons.Default.Clear
         BookingStatus.COMPLETED -> Icons.Default.Check
         BookingStatus.NO_SHOW -> Icons.Default.Clear
     }
