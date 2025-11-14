@@ -533,23 +533,18 @@ private suspend fun BookingDetailResponseDto.toBookingDetail(venueApi: VenueApi)
     }
 
     // ✅ Lấy thông tin venue address theo thứ tự ưu tiên:
-    // 1. Nếu backend trả về venueAddress -> dùng luôn
-    // 2. Nếu backend trả về venue object -> dùng venue.address.getFullAddress()
-    // 3. Gọi API venueApi.getVenueById() để lấy
-    // 4. Fallback: dùng venuesName
+    // 1. Backend trả về venueAddress hoặc venue.address object -> dùng getFullAddress()
+    // 2. Gọi API venueApi.getVenueById() để lấy
+    // 3. Fallback: dùng venuesName
     val venueAddress = when {
-        // Ưu tiên 1: Backend trả về sẵn venueAddress string
-        !this.venueAddress.isNullOrBlank() -> {
-            Log.d("BookingMapper", "✅ Using venueAddress from backend: ${this.venueAddress}")
-            this.venueAddress
-        }
-        // Ưu tiên 2: Backend trả về venue object với address
-        this.venue?.address != null -> {
-            val addr = this.venue.address.getFullAddress()
-            Log.d("BookingMapper", "✅ Using venue.address from backend: $addr")
+        // Ưu tiên 1: Backend trả về venueAddress hoặc venue.address object
+        this.venueAddress != null || this.venue?.address != null -> {
+            val addressDto = this.venueAddress ?: this.venue?.address
+            val addr = addressDto!!.getFullAddress()
+            Log.d("BookingMapper", "✅ Using address from backend: $addr")
             addr
         }
-        // Ưu tiên 3: Gọi API để lấy venue detail
+        // Ưu tiên 2: Gọi API để lấy venue detail
         this.venueId != null -> {
             try {
                 val venueResponse = venueApi.getVenueById(this.venueId)

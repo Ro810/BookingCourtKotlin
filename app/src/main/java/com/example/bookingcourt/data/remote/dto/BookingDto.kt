@@ -256,9 +256,9 @@ data class BookingDetailResponseDto(
     @SerializedName("venuesName")
     val venuesName: String?,
 
-    // ✨ Venue address - nếu backend trả về
+    // ✅ FIX: Venue address - đổi từ String sang AddressDto
     @SerializedName("venueAddress")
-    val venueAddress: String? = null,
+    val venueAddress: AddressDto? = null,
 
     // 🔄 HOẶC: Backend có thể trả về venue object đầy đủ
     @SerializedName("venue")
