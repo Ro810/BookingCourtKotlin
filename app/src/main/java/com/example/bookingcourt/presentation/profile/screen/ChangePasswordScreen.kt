@@ -268,7 +268,7 @@ fun ChangePasswordScreen(
 
                     if (!hasError) {
                         // Gọi API thông qua ViewModel
-                        viewModel.changePassword(currentPassword, newPassword)
+                        viewModel.changePassword(currentPassword, newPassword, confirmPassword)
                     }
                 },
                 modifier = Modifier
