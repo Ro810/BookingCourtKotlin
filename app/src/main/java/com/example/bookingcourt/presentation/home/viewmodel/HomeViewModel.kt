@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 /**
@@ -57,6 +59,8 @@ class HomeViewModel @Inject constructor(
 
     private val _uiEvent = MutableSharedFlow<UiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
+
+    private var searchJob: Job? = null
 
     init {
         handleIntent(HomeIntent.LoadHomeData)
@@ -160,75 +164,164 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Search venues by query (name or address)
+     * Tìm kiếm theo tên sân hoặc địa chỉ với debounce
      */
     private fun searchVenues(query: String) {
-        viewModelScope.launch {
+        // Cancel previous search job
+        searchJob?.cancel()
+
+        searchJob = viewModelScope.launch {
             _state.value = _state.value.copy(
                 searchQuery = query,
                 isSearching = true
             )
 
-            if (query.isEmpty()) {
+            // Nếu query rỗng, clear kết quả
+            if (query.trim().isEmpty()) {
                 _state.value = _state.value.copy(
                     isSearching = false,
-                    searchResults = emptyList()
+                    searchResults = emptyList(),
+                    searchQuery = ""
                 )
                 return@launch
             }
 
-            // Tìm kiếm local trước từ dữ liệu đã có
+            // Debounce: Đợi 300ms trước khi tìm kiếm
+            delay(300)
+
+            val searchTerm = query.trim().lowercase()
+
+            // Bước 1: Tìm kiếm local từ dữ liệu đã có (nhanh, hiển thị ngay)
             val allVenues = (state.value.featuredVenues +
                             state.value.recommendedVenues +
                             state.value.nearbyVenues).distinctBy { it.id }
 
-            val searchTerm = query.trim().lowercase()
-
             val localResults = allVenues.filter { venue ->
-                // Tìm kiếm không phân biệt hoa thường
-                venue.name.lowercase().contains(searchTerm) ||
-                venue.address.getFullAddress().lowercase().contains(searchTerm) ||
-                venue.address.provinceOrCity.lowercase().contains(searchTerm) ||
-                venue.address.district.lowercase().contains(searchTerm) ||
-                venue.address.detailAddress.lowercase().contains(searchTerm) ||
-                (venue.description?.lowercase()?.contains(searchTerm) ?: false)
+                matchesSearchQuery(venue, searchTerm)
             }
 
+            // Hiển thị kết quả local ngay lập tức
             _state.value = _state.value.copy(
-                isSearching = false,
-                searchResults = localResults
+                searchResults = localResults,
+                isSearching = true // Vẫn đang tìm từ API
             )
 
-            // Tìm kiếm từ API - gửi query vào tất cả các trường để tăng khả năng tìm thấy
-            venueRepository.searchVenues(
-                name = query,
-                province = query,
-                district = query,
-                detail = query
-            ).collect { result ->
-                when (result) {
-                    is Resource.Success -> {
-                        val venues = result.data ?: emptyList()
+            // Bước 2: Tìm kiếm từ API (đầy đủ hơn)
+            try {
+                venueRepository.searchVenues(
+                    name = query,
+                    province = query,
+                    district = query,
+                    detail = query
+                ).collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            val apiResults = result.data ?: emptyList()
 
-                        // Merge kết quả từ API với kết quả local, loại bỏ duplicate
-                        val mergedResults = (localResults + venues).distinctBy { it.id }
+                            // Filter API results với cùng logic
+                            val filteredApiResults = apiResults.filter { venue ->
+                                matchesSearchQuery(venue, searchTerm)
+                            }
 
-                        _state.value = _state.value.copy(
-                            searchResults = mergedResults,
-                            isSearching = false
-                        )
-                    }
-                    is Resource.Error -> {
-                        // Giữ kết quả local nếu API fail
-                        _state.value = _state.value.copy(
-                            isSearching = false
-                        )
-                    }
-                    is Resource.Loading -> {
-                        // Đang tìm kiếm từ API
+                            // Merge và loại bỏ duplicate, ưu tiên kết quả có độ tương đồng cao hơn
+                            val mergedResults = (localResults + filteredApiResults)
+                                .distinctBy { it.id }
+                                .sortedByDescending { venue ->
+                                    calculateRelevanceScore(venue, searchTerm)
+                                }
+
+                            _state.value = _state.value.copy(
+                                searchResults = mergedResults,
+                                isSearching = false
+                            )
+                        }
+                        is Resource.Error -> {
+                            // Giữ kết quả local nếu API fail
+                            _state.value = _state.value.copy(
+                                isSearching = false,
+                                error = null // Không hiển thị lỗi khi search fail
+                            )
+                        }
+                        is Resource.Loading -> {
+                            // Đang tìm kiếm từ API
+                        }
                     }
                 }
+            } catch (_: Exception) {
+                // Giữ kết quả local nếu có exception
+                _state.value = _state.value.copy(
+                    isSearching = false,
+                    error = null
+                )
             }
         }
+    }
+
+    /**
+     * Kiểm tra venue có khớp với query tìm kiếm không
+     */
+    private fun matchesSearchQuery(venue: Venue, searchTerm: String): Boolean {
+        return venue.name.lowercase().contains(searchTerm) ||
+               venue.address.getFullAddress().lowercase().contains(searchTerm) ||
+               venue.address.provinceOrCity.lowercase().contains(searchTerm) ||
+               venue.address.district.lowercase().contains(searchTerm) ||
+               venue.address.detailAddress.lowercase().contains(searchTerm) ||
+               (venue.description?.lowercase()?.contains(searchTerm) ?: false)
+    }
+
+    /**
+     * Tính điểm độ liên quan để sắp xếp kết quả tìm kiếm
+     * Điểm cao hơn = liên quan hơn
+     */
+    private fun calculateRelevanceScore(venue: Venue, searchTerm: String): Int {
+        var score = 0
+
+        // Tên sân khớp chính xác = điểm cao nhất
+        if (venue.name.lowercase() == searchTerm) {
+            score += 100
+        } else if (venue.name.lowercase().startsWith(searchTerm)) {
+            score += 50
+        } else if (venue.name.lowercase().contains(searchTerm)) {
+            score += 25
+        }
+
+        // Địa chỉ chi tiết khớp
+        if (venue.address.detailAddress.lowercase().contains(searchTerm)) {
+            score += 15
+        }
+
+        // Quận/huyện khớp
+        if (venue.address.district.lowercase().contains(searchTerm)) {
+            score += 10
+        }
+
+        // Tỉnh/thành phố khớp
+        if (venue.address.provinceOrCity.lowercase().contains(searchTerm)) {
+            score += 5
+        }
+
+        // Description khớp
+        if (venue.description?.lowercase()?.contains(searchTerm) == true) {
+            score += 3
+        }
+
+        // Bonus điểm cho rating cao
+        score += (venue.averageRating * 2).toInt()
+
+        return score
+    }
+
+    private fun clearSearch() {
+        searchJob?.cancel()
+        _state.value = _state.value.copy(
+            searchQuery = "",
+            isSearching = false,
+            searchResults = emptyList()
+        )
+    }
+
+    private fun refresh() {
+        loadHomeData()
     }
 
     private fun navigateToVenue(venueId: Long) {
@@ -264,57 +357,20 @@ class HomeViewModel @Inject constructor(
             venueRepository.getVenueById(venueId).collect { result ->
                 when (result) {
                     is Resource.Success -> {
-                        val venue = result.data
-                        if (venue != null) {
-                            // Update selectedVenue
-                            // Also update venue in existing lists để đảm bảo consistency
-                            val updatedFeatured = _state.value.featuredVenues.map {
-                                if (it.id == venue.id) venue else it
-                            }
-                            val updatedRecommended = _state.value.recommendedVenues.map {
-                                if (it.id == venue.id) venue else it
-                            }
-                            val updatedNearby = _state.value.nearbyVenues.map {
-                                if (it.id == venue.id) venue else it
-                            }
-
-                            _state.value = _state.value.copy(
-                                selectedVenue = venue,
-                                featuredVenues = updatedFeatured,
-                                recommendedVenues = updatedRecommended,
-                                nearbyVenues = updatedNearby
-                            )
-                        }
+                        _state.value = _state.value.copy(
+                            selectedVenue = result.data
+                        )
                     }
                     is Resource.Error -> {
-                        // Không làm gì, giữ nguyên selectedVenue cũ hoặc null
+                        _state.value = _state.value.copy(
+                            error = result.message
+                        )
                     }
                     is Resource.Loading -> {
-                        // Loading state
+                        // Loading
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Clear selected venue khi navigate away
-     */
-    fun clearSelectedVenue() {
-        _state.value = _state.value.copy(selectedVenue = null)
-    }
-
-    private fun refresh() {
-        handleIntent(HomeIntent.LoadHomeData)
-    }
-
-    private fun clearSearch() {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(
-                searchQuery = "",
-                isSearching = false,
-                searchResults = emptyList()
-            )
         }
     }
 }

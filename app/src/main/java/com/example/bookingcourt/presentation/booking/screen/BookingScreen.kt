@@ -53,7 +53,7 @@ fun BookingScreen(
     onNavigateToPayment: (String) -> Unit,
     bookingViewModel: BookingViewModel = hiltViewModel()
 ) {
-    // ✅ Venue object - reactive to court parameter changes
+    // Venue object - reactive to court parameter changes
     val venue = remember(court, courtId) {
         court ?: Venue(
             id = courtId.toLongOrNull() ?: 0L,
@@ -81,15 +81,17 @@ fun BookingScreen(
     val courtsState by bookingViewModel.courtsState.collectAsState()
     val realCourts = remember { mutableStateOf<List<CourtDetail>>(emptyList()) }
 
-    // ✅ State cho booked slots
+    // State cho booked slots
     val bookedSlotsState by bookingViewModel.bookedSlotsState.collectAsState()
     val bookedSlots = remember { mutableStateOf<List<com.example.bookingcourt.domain.model.BookedSlot>>(emptyList()) }
 
-    // ✅ Thêm coroutineScope để gọi suspend functions
+    // Thêm coroutineScope để gọi suspend functions
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ Khai báo selectedDate sớm hơn để dùng trong LaunchedEffect
-    var selectedDate by remember { mutableStateOf("") }
+    // Khai báo selectedDate với ngày hiện tại ngay từ đầu để tự động fetch booked slots
+    var selectedDate by remember {
+        mutableStateOf(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()))
+    }
     var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
     var playerName by remember(currentUser) { mutableStateOf(currentUser?.fullName ?: "") }
     var phoneNumber by remember(currentUser) { mutableStateOf(currentUser?.phoneNumber ?: "") }
@@ -99,23 +101,77 @@ fun BookingScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Lấy ngày hiện tại để so sánh
+    val today = remember {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        cal.timeInMillis
+    }
+
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
+        initialSelectedDateMillis = System.currentTimeMillis(),
+        // Chặn không cho chọn ngày trong quá khứ
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                // Chuyển UTC time thành local date để so sánh
+                val selectedCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                selectedCal.timeInMillis = utcTimeMillis
+
+                val todayCal = Calendar.getInstance()
+
+                // So sánh năm, tháng, ngày
+                return selectedCal.get(Calendar.YEAR) > todayCal.get(Calendar.YEAR) ||
+                       (selectedCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                        selectedCal.get(Calendar.DAY_OF_YEAR) >= todayCal.get(Calendar.DAY_OF_YEAR))
+            }
+
+            override fun isSelectableYear(year: Int): Boolean {
+                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+                return year >= currentYear
+            }
+        }
     )
+
+    // Reset DatePicker về ngày hiện tại mỗi khi mở dialog
+    LaunchedEffect(showDatePicker) {
+        if (showDatePicker) {
+            // Tính toán timestamp UTC chính xác cho ngày hiện tại
+            // DatePicker hoạt động với UTC timezone, nên phải convert đúng cách
+            val localCalendar = Calendar.getInstance()
+
+            // Tạo calendar với UTC timezone
+            val utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            utcCalendar.set(Calendar.YEAR, localCalendar.get(Calendar.YEAR))
+            utcCalendar.set(Calendar.MONTH, localCalendar.get(Calendar.MONTH))
+            utcCalendar.set(Calendar.DAY_OF_MONTH, localCalendar.get(Calendar.DAY_OF_MONTH))
+            utcCalendar.set(Calendar.HOUR_OF_DAY, 0)
+            utcCalendar.set(Calendar.MINUTE, 0)
+            utcCalendar.set(Calendar.SECOND, 0)
+            utcCalendar.set(Calendar.MILLISECOND, 0)
+
+            datePickerState.selectedDateMillis = utcCalendar.timeInMillis
+
+            Log.d("BookingScreen", "DatePicker reset to: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(localCalendar.time)}")
+            Log.d("BookingScreen", "UTC timestamp: ${utcCalendar.timeInMillis}")
+        }
+    }
 
     // Fetch courts when screen is first composed
     LaunchedEffect(venue.id) {
         bookingViewModel.getCourtsByVenueId(venue.id)
     }
 
-    // ✅ Fetch booked slots khi selectedDate thay đổi
+    // Fetch booked slots khi selectedDate thay đổi
     LaunchedEffect(selectedDate, venue.id) {
         if (selectedDate.isNotEmpty()) {
             // Convert date from dd/MM/yyyy to yyyy-MM-dd for API
             val parts = selectedDate.split("/")
             if (parts.size == 3) {
                 val apiDate = "${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}"
-                Log.d("BookingScreen", "🔍 Fetching booked slots for venue ${venue.id} on $apiDate")
+                Log.d("BookingScreen", "Fetching booked slots for venue ${venue.id} on $apiDate")
                 bookingViewModel.getBookedSlots(venue.id, apiDate)
             }
         }
@@ -126,9 +182,9 @@ fun BookingScreen(
         when (courtsState) {
             is Resource.Success -> {
                 realCourts.value = (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
-                Log.d("BookingScreen", "✅ Loaded ${realCourts.value.size} real courts for venue ${venue.id}")
+                Log.d("BookingScreen", "Loaded ${realCourts.value.size} real courts for venue ${venue.id}")
 
-                // ✅ DETAILED LOG: Show all courts with their IDs
+                // DETAILED LOG: Show all courts with their IDs
                 Log.d("BookingScreen", "========== AVAILABLE COURTS FOR VENUE ${venue.id} ==========")
                 realCourts.value.forEachIndexed { index, court ->
                     Log.d("BookingScreen", "  Court ${index + 1}: ID=${court.id}, Description='${court.description}'")
@@ -136,32 +192,32 @@ fun BookingScreen(
                 Log.d("BookingScreen", "=========================================================")
             }
             is Resource.Error -> {
-                Log.e("BookingScreen", "❌ Error loading courts: ${(courtsState as Resource.Error).message}")
-                Log.w("BookingScreen", "⚠️ Will use fallback: sequential court numbers")
+                Log.e("BookingScreen", "Error loading courts: ${(courtsState as Resource.Error).message}")
+                Log.w("BookingScreen", "Will use fallback: sequential court numbers")
                 // Fallback: Không có courts từ API, sẽ dùng số thứ tự
             }
             is Resource.Loading -> {
-                Log.d("BookingScreen", "⏳ Loading courts for venue ${venue.id}...")
+                Log.d("BookingScreen", "Loading courts for venue ${venue.id}...")
             }
             else -> {}
         }
     }
 
-    // ✅ Update booked slots khi bookedSlotsState thay đổi
+    // Update booked slots khi bookedSlotsState thay đổi
     LaunchedEffect(bookedSlotsState) {
         when (bookedSlotsState) {
             is Resource.Success -> {
                 bookedSlots.value = (bookedSlotsState as Resource.Success<List<com.example.bookingcourt.domain.model.BookedSlot>>).data ?: emptyList()
-                Log.d("BookingScreen", "✅ Loaded ${bookedSlots.value.size} booked slots")
+                Log.d("BookingScreen", "Loaded ${bookedSlots.value.size} booked slots")
                 bookedSlots.value.forEach { slot ->
-                    Log.d("BookingScreen", "  📅 Slot: Court ${slot.courtNumber}, ${slot.startTime} - ${slot.endTime}, Status: ${slot.status}")
+                    Log.d("BookingScreen", "  Slot: Court ${slot.courtNumber}, ${slot.startTime} - ${slot.endTime}, Status: ${slot.status}")
                 }
             }
             is Resource.Error -> {
-                Log.e("BookingScreen", "❌ Error loading booked slots: ${(bookedSlotsState as Resource.Error).message}")
+                Log.e("BookingScreen", "Error loading booked slots: ${(bookedSlotsState as Resource.Error).message}")
             }
             is Resource.Loading -> {
-                Log.d("BookingScreen", "⏳ Loading booked slots...")
+                Log.d("BookingScreen", "Loading booked slots...")
             }
             else -> {}
         }
@@ -182,7 +238,7 @@ fun BookingScreen(
             if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 6, parts[1].toIntOrNull() ?: 0)
             else Pair(6, 0)
         } ?: Pair(6, 0)
-        Log.d("BookingScreen", "📍 Opening time: ${venue.openingTime} → Parsed: ${result.first}:${result.second}")
+        Log.d("BookingScreen", "Opening time: ${venue.openingTime} -> Parsed: ${result.first}:${result.second}")
         result
     }
 
@@ -191,7 +247,7 @@ fun BookingScreen(
             if (parts.size >= 2) Pair(parts[0].toIntOrNull() ?: 22, parts[1].toIntOrNull() ?: 0)
             else Pair(22, 0)
         } ?: Pair(22, 0)
-        Log.d("BookingScreen", "📍 Closing time: ${venue.closingTime} → Parsed: ${result.first}:${result.second}")
+        Log.d("BookingScreen", "Closing time: ${venue.closingTime} -> Parsed: ${result.first}:${result.second}")
         result
     }
 
@@ -204,7 +260,7 @@ fun BookingScreen(
         var closeHour = closingTime.first
         var closeMinute = closingTime.second
 
-        // ✅ Special case: Nếu thời gian là 00:00 - 00:00 → Hiểu là mở cả ngày (00:00 - 23:59)
+        // Special case: Nếu thời gian là 00:00 - 00:00 → Hiểu là mở cả ngày (00:00 - 23:59)
         if (currentHour == 0 && currentMinute == 0 && closeHour == 0 && closeMinute == 0) {
             Log.d("BookingScreen", "📍 Detected 00:00 - 00:00 → Treating as FULL DAY (00:00 - 23:59)")
             closeHour = 23
@@ -230,13 +286,13 @@ fun BookingScreen(
     // Log venue and court info
     LaunchedEffect(venue, actualNumberOfCourts) {
         Log.d("BookingScreen", "========== BOOKING SCREEN DEBUG ==========")
-        Log.d("BookingScreen", "📍 Venue: ${venue.name} (ID: ${venue.id})")
-        Log.d("BookingScreen", "📍 Venue courtsCount: ${venue.courtsCount}")
-        Log.d("BookingScreen", "📍 Venue numberOfCourt: ${venue.numberOfCourt}")
-        Log.d("BookingScreen", "📍 Actual number of courts: $actualNumberOfCourts")
-        Log.d("BookingScreen", "📍 Opening time: ${venue.openingTime}")
-        Log.d("BookingScreen", "📍 Closing time: ${venue.closingTime}")
-        Log.d("BookingScreen", "📍 Time slots count: ${timeSlots.size}")
+        Log.d("BookingScreen", "Venue: ${venue.name} (ID: ${venue.id})")
+        Log.d("BookingScreen", "Venue courtsCount: ${venue.courtsCount}")
+        Log.d("BookingScreen", "Venue numberOfCourt: ${venue.numberOfCourt}")
+        Log.d("BookingScreen", "Actual number of courts: $actualNumberOfCourts")
+        Log.d("BookingScreen", "Opening time: ${venue.openingTime}")
+        Log.d("BookingScreen", "Closing time: ${venue.closingTime}")
+        Log.d("BookingScreen", "Time slots count: ${timeSlots.size}")
         Log.d("BookingScreen", "==========================================")
     }
 
@@ -446,14 +502,57 @@ fun BookingScreen(
                                     val slot = CourtTimeSlot(courtNum, time)
                                     val isSelected = selectedSlots.contains(slot)
 
-                                    // ✅ FIX: Map courtNum (UI index) sang courtId thực tế để so sánh với bookedSlots
+                                    // Kiểm tra xem slot này đã qua giờ chưa (chỉ áp dụng cho ngày hôm nay)
+                                    val isPastTime = remember(selectedDate, time) {
+                                        val selectedDateParsed = try {
+                                            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(selectedDate)
+                                        } catch (e: Exception) {
+                                            Date()
+                                        }
+
+                                        val todayDate = Calendar.getInstance()
+                                        todayDate.set(Calendar.HOUR_OF_DAY, 0)
+                                        todayDate.set(Calendar.MINUTE, 0)
+                                        todayDate.set(Calendar.SECOND, 0)
+                                        todayDate.set(Calendar.MILLISECOND, 0)
+
+                                        val selectedCal = Calendar.getInstance()
+                                        selectedCal.time = selectedDateParsed ?: Date()
+                                        selectedCal.set(Calendar.HOUR_OF_DAY, 0)
+                                        selectedCal.set(Calendar.MINUTE, 0)
+                                        selectedCal.set(Calendar.SECOND, 0)
+                                        selectedCal.set(Calendar.MILLISECOND, 0)
+
+                                        // Chỉ check past time nếu là ngày hôm nay
+                                        if (selectedCal.timeInMillis == todayDate.timeInMillis) {
+                                            val now = Calendar.getInstance()
+                                            val timeParts = time.split(":")
+                                            val slotHour = timeParts[0].toIntOrNull() ?: 0
+                                            val slotMinute = timeParts[1].toIntOrNull() ?: 0
+
+                                            val slotStartTime = Calendar.getInstance()
+                                            slotStartTime.set(Calendar.HOUR_OF_DAY, slotHour)
+                                            slotStartTime.set(Calendar.MINUTE, slotMinute)
+                                            slotStartTime.set(Calendar.SECOND, 0)
+                                            slotStartTime.set(Calendar.MILLISECOND, 0)
+
+                                            // Slot đã qua nếu thời gian BẮT ĐẦU của slot <= hiện tại
+                                            // Ví dụ: Nếu bây giờ là 12:35, thì slot 12:30 đã qua (vì 12:30 < 12:35)
+                                            // và slot 12:00 cũng đã qua
+                                            slotStartTime.before(now) || slotStartTime.equals(now)
+                                        } else {
+                                            false
+                                        }
+                                    }
+
+                                    // Map courtNum (UI index) sang courtId thực tế để so sánh với bookedSlots
                                     val courtIndex = courtNum - 1
                                     val realCourtId = if (courtIndex >= 0 && courtIndex < realCourts.value.size) {
                                         val sortedCourts = realCourts.value.sortedBy { it.id }
                                         sortedCourts.getOrNull(courtIndex)?.id?.toInt()
                                     } else null
 
-                                    // ✅ Kiểm tra slot đã đặt - so sánh với courtId thực tế
+                                    // Kiểm tra slot đã đặt - so sánh với courtId thực tế
                                     val isBooked = bookedSlots.value.any { bookedSlot ->
                                         // So sánh với courtId thực tế (bookedSlot.courtId) thay vì courtNumber
                                         if (bookedSlot.courtId.toInt() != realCourtId) {
@@ -476,13 +575,17 @@ fun BookingScreen(
                                                 bookedSlot.endTime
                                             }
 
-                                            val matches = (slotStartTime == bookedStart && slotEndTime == bookedEnd)
+                                            // FIX: Check for overlap instead of exact match
+                                            // Two time ranges overlap if:
+                                            // - Slot start < Booked end AND
+                                            // - Slot end > Booked start
+                                            val overlaps = slotStartTime < bookedEnd && slotEndTime > bookedStart
 
-                                            if (matches) {
-                                                Log.d("BookingScreen", "🔒 Slot blocked: Court $courtNum (ID=$realCourtId), Time $time ($slotStartTime-$slotEndTime) matches booked slot (ID=${bookedSlot.courtId}, $bookedStart-$bookedEnd)")
+                                            if (overlaps) {
+                                                Log.d("BookingScreen", "🔒 Slot blocked: Court $courtNum (ID=$realCourtId), Time $time ($slotStartTime-$slotEndTime) overlaps with booked slot (ID=${bookedSlot.courtId}, $bookedStart-$bookedEnd)")
                                             }
 
-                                            matches
+                                            overlaps
                                         }
                                     }
 
@@ -494,19 +597,28 @@ fun BookingScreen(
                                             .background(
                                                 when {
                                                     isSelected -> Primary
+                                                    isPastTime -> Color(0xFFBDBDBD) // Màu xám cho slot đã qua
                                                     isBooked -> Color(0xFFFFCDD2) // Màu đỏ nhạt cho slot đã đặt
                                                     else -> Color.White
                                                 }
                                             )
                                             .clickable {
-                                                if (!isBooked) {
+                                                if (!isBooked && !isPastTime) {
                                                     selectedSlots = if (isSelected) {
                                                         selectedSlots - slot
                                                     } else {
                                                         selectedSlots + slot
                                                     }
+                                                } else if (isPastTime) {
+                                                    // Thông báo khi click vào slot đã qua giờ
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar(
+                                                            message = "Không thể đặt khung giờ đã qua",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+                                                    }
                                                 } else {
-                                                    // ✅ Thông báo khi click vào slot đã đặt
+                                                    // Thông báo khi click vào slot đã đặt
                                                     coroutineScope.launch {
                                                         snackbarHostState.showSnackbar(
                                                             message = "Khung giờ này đã có người đặt",
@@ -517,15 +629,36 @@ fun BookingScreen(
                                             },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        if (isSelected) {
-                                            Text(
-                                                text = "✓",
-                                                color = Color.White,
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                        when {
+                                            isSelected -> {
+                                                Text(
+                                                    text = "✓",
+                                                    color = Color.White,
+                                                    fontSize = 18.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            isPastTime -> {
+                                                // Hiển thị text cho ô đã qua giờ
+                                                Text(
+                                                    text = "Đã qua",
+                                                    color = Color.Gray,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                            isBooked -> {
+                                                // FIX: Hiển thị text "Đã đặt" cho ô đã được đặt
+                                                Text(
+                                                    text = "Đã đặt",
+                                                    color = Color(0xFFD32F2F),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
                                         }
-                                        // Ô đã đặt - chỉ hiển thị màu, không có text
                                     }
                                 }
                             }
@@ -553,8 +686,9 @@ fun BookingScreen(
 
                         // Nhóm theo sân
                         selectedSlots.groupBy { it.courtNumber }.forEach { (courtNum, slots) ->
+                            val timeRanges = groupConsecutiveTimeSlots(slots.map { it.timeSlot })
                             Text(
-                                text = "• Sân $courtNum: ${slots.map { it.timeSlot }.sorted().joinToString(", ")}",
+                                text = "• Sân $courtNum: ${timeRanges.joinToString(", ")}",
                                 fontSize = 12.sp,
                                 color = Color.Black
                             )
@@ -655,14 +789,14 @@ fun BookingScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Confirm Button
-            // ✅ Disable button nếu courts chưa được load hoặc đang loading
+            // Disable button nếu courts chưa được load hoặc đang loading
             val courtsLoaded = courtsState is Resource.Success &&
                                (courtsState as? Resource.Success<List<CourtDetail>>)?.data?.isNotEmpty() == true
 
             Button(
                 onClick = {
                     if (selectedSlots.isNotEmpty()) {
-                        // ✅ NHÓM SLOTS THEO SÂN để xử lý đúng khi đặt nhiều sân
+                        // NHÓM SLOTS THEO SÂN để xử lý đúng khi đặt nhiều sân
                         val slotsByCourtNumber = selectedSlots.groupBy { it.courtNumber }
 
                         Log.d("BookingScreen", "=".repeat(60))
@@ -673,7 +807,7 @@ fun BookingScreen(
                             Log.d("BookingScreen", "  Court $courtNum: ${slots.size} slots")
                         }
 
-                        // ✅ Lấy courts từ state
+                        // Lấy courts từ state
                         val availableCourts = when (courtsState) {
                             is Resource.Success -> (courtsState as Resource.Success<List<CourtDetail>>).data ?: emptyList()
                             else -> emptyList()
@@ -692,9 +826,9 @@ fun BookingScreen(
 
                         val sortedCourts = availableCourts.sortedBy { it.id }
 
-                        // ✅ XỬ LÝ TỪNG SÂN - Tính thời gian cho từng sân
-                        // ✅ FIX: Lưu cả courtNumber (UI index) để map chính xác với slots
-                        val allCourtBookings = mutableListOf<Triple<String, Pair<String, String>, Int>>() // (courtId, startTime-endTime, courtNumber)
+                        // XỬ LÝ TỪNG SÂN - Nhóm slots liên tục và tạo booking items
+                        // Tạo nhiều bookingItems cho mỗi khoảng thời gian không liên tục
+                        val allCourtBookings = mutableListOf<Triple<String, Pair<String, String>, String>>() // (courtId, startTime-endTime, courtName)
 
                         slotsByCourtNumber.forEach { (courtNumber, courtSlots) ->
                             val courtIndex = courtNumber - 1
@@ -702,54 +836,57 @@ fun BookingScreen(
                             if (courtIndex >= 0 && courtIndex < sortedCourts.size) {
                                 val selectedCourt = sortedCourts[courtIndex]
                                 val formattedCourtId = "${venue.id}_${selectedCourt.id}"
+                                val courtName = "Sân số $courtNumber"
 
-                                // Tính thời gian cho sân này
-                                val sortedSlots = courtSlots.sortedBy { it.timeSlot }
-                                val firstTimeSlot = sortedSlots.first().timeSlot
-                                val lastTimeSlot = sortedSlots.last().timeSlot
+                                // Nhóm các slots liên tục thành các khoảng thời gian riêng biệt
+                                val timeSlots = courtSlots.map { it.timeSlot }.sorted()
+                                val consecutiveGroups = groupConsecutiveSlotsForBooking(timeSlots)
 
-                                val selectedDateFormatted = selectedDate.ifEmpty {
-                                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                                Log.d("BookingScreen", "✅ Court $courtNumber has ${consecutiveGroups.size} time ranges:")
+
+                                consecutiveGroups.forEach { group ->
+                                    val firstTimeSlot = group.first()
+                                    val lastTimeSlot = group.last()
+
+                                    val selectedDateFormatted = selectedDate.ifEmpty {
+                                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                                    }
+
+                                    val dateForApi = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                        .parse(selectedDateFormatted)
+                                    val calendar = Calendar.getInstance()
+                                    calendar.time = dateForApi ?: Date()
+
+                                    val firstTimeParts = firstTimeSlot.split(":")
+                                    val firstHour = firstTimeParts[0].toInt()
+                                    val firstMinute = firstTimeParts[1].toInt()
+
+                                    calendar.set(Calendar.HOUR_OF_DAY, firstHour)
+                                    calendar.set(Calendar.MINUTE, firstMinute)
+                                    calendar.set(Calendar.SECOND, 0)
+
+                                    val now = Calendar.getInstance()
+                                    if (calendar.before(now)) {
+                                        calendar.add(Calendar.DAY_OF_MONTH, 1)
+                                    }
+
+                                    val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                    val startTime = apiDateFormat.format(calendar.time)
+
+                                    val endTimeSlot = calculateEndTime(lastTimeSlot)
+                                    val endTimeParts = endTimeSlot.split(":")
+                                    val endHour = endTimeParts[0].toInt()
+                                    val endMinute = endTimeParts[1].toInt()
+
+                                    calendar.set(Calendar.HOUR_OF_DAY, endHour)
+                                    calendar.set(Calendar.MINUTE, endMinute)
+                                    val endTime = apiDateFormat.format(calendar.time)
+
+                                    // Thêm bookingItem cho khoảng thời gian này
+                                    allCourtBookings.add(Triple(formattedCourtId, Pair(startTime, endTime), courtName))
+
+                                    Log.d("BookingScreen", "  • ${group.first()}-${calculateEndTime(group.last())} → $startTime to $endTime (${group.size} slots)")
                                 }
-
-                                val dateForApi = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                                    .parse(selectedDateFormatted)
-                                val calendar = Calendar.getInstance()
-                                calendar.time = dateForApi ?: Date()
-
-                                val firstTimeParts = firstTimeSlot.split(":")
-                                val firstHour = firstTimeParts[0].toInt()
-                                val firstMinute = firstTimeParts[1].toInt()
-
-                                calendar.set(Calendar.HOUR_OF_DAY, firstHour)
-                                calendar.set(Calendar.MINUTE, firstMinute)
-                                calendar.set(Calendar.SECOND, 0)
-
-                                val now = Calendar.getInstance()
-                                if (calendar.before(now)) {
-                                    calendar.add(Calendar.DAY_OF_MONTH, 1)
-                                }
-
-                                val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                                val startTime = apiDateFormat.format(calendar.time)
-
-                                val endTimeSlot = calculateEndTime(lastTimeSlot)
-                                val endTimeParts = endTimeSlot.split(":")
-                                val endHour = endTimeParts[0].toInt()
-                                val endMinute = endTimeParts[1].toInt()
-
-                                calendar.set(Calendar.HOUR_OF_DAY, endHour)
-                                calendar.set(Calendar.MINUTE, endMinute)
-                                val endTime = apiDateFormat.format(calendar.time)
-
-                                // ✅ FIX: Lưu courtNumber (UI index) cùng với booking data
-                                allCourtBookings.add(Triple(formattedCourtId, Pair(startTime, endTime), courtNumber))
-
-                                Log.d("BookingScreen", "✅ Court $courtNumber processed:")
-                                Log.d("BookingScreen", "  Court ID: $formattedCourtId")
-                                Log.d("BookingScreen", "  Start: $startTime")
-                                Log.d("BookingScreen", "  End: $endTime")
-                                Log.d("BookingScreen", "  Slots: ${courtSlots.size}")
                             }
                         }
 
@@ -764,7 +901,7 @@ fun BookingScreen(
                             return@Button
                         }
 
-                        // ✅ Sử dụng booking đầu tiên để tạo BookingData
+                        // Sử dụng booking đầu tiên để tạo BookingData
                         // (Backend sẽ tính giá chính xác cho TẤT CẢ slots)
                         val firstBooking = allCourtBookings.first()
                         val firstCourtId = firstBooking.first
@@ -781,30 +918,30 @@ fun BookingScreen(
                         Log.d("BookingScreen", "  Total slots: ${selectedSlots.size}")
                         Log.d("BookingScreen", "  Total courts: ${slotsByCourtNumber.size}")
 
-                        // ✅ FIX: Tạo danh sách BookingItemData cho tất cả các sân
-                        // ✅ Sử dụng courtNumber từ Triple thay vì parse từ courtId
-                        val bookingItems = allCourtBookings.map { (courtId, times, courtNumber) ->
-                            // ✅ FIX: Dùng courtNumber từ UI (đã lưu trong Triple) để lấy đúng slots
-                            val courtSlots = slotsByCourtNumber[courtNumber] ?: emptyList()
+                        // Tạo danh sách BookingItemData cho tất cả các sân
+                        // Sử dụng courtNumber từ Triple thay vì parse từ courtId
+                        val bookingItems = allCourtBookings.map { (courtId, times, courtName) ->
+                            // Dùng courtNumber từ UI (đã lưu trong Triple) để lấy đúng slots
+                            val courtSlots = slotsByCourtNumber[courtName.split(" ")[2].toInt()] ?: emptyList()
                             val courtPrice = (venue.pricePerHour * courtSlots.size * 0.5).toLong()
 
                             BookingItemData(
                                 courtId = courtId,
-                                courtName = "Sân số $courtNumber",
-                                startTime = times.first,  // ✅ Thời gian bắt đầu của sân này
-                                endTime = times.second,   // ✅ Thời gian kết thúc của sân này
+                                courtName = courtName,
+                                startTime = times.first,  // Thời gian bắt đầu của sân này
+                                endTime = times.second,   // Thời gian kết thúc của sân này
                                 price = courtPrice
                             )
                         }
 
-                        Log.d("BookingScreen", "✅ Created ${bookingItems.size} booking items:")
+                        Log.d("BookingScreen", "Created ${bookingItems.size} booking items:")
                         bookingItems.forEachIndexed { index, item ->
                             Log.d("BookingScreen", "  [$index] ${item.courtName} (${item.courtId})")
                             Log.d("BookingScreen", "       Time: ${item.startTime} - ${item.endTime}")
                             Log.d("BookingScreen", "       Price: ${item.price} VNĐ")
                         }
 
-                        // ✅ Tạo BookingData với danh sách tất cả các sân
+                        // Tạo BookingData với danh sách tất cả các sân
                         val bookingData = BookingData(
                             courtId = firstCourtId,
                             courtName = if (slotsByCourtNumber.size == 1) {
@@ -818,13 +955,13 @@ fun BookingScreen(
                             playerName = playerName,
                             phoneNumber = phoneNumber,
                             pricePerHour = venue.pricePerHour,
-                            // ✅ TÍNH GIÁ DỰ KIẾN cho TẤT CẢ slots (backend sẽ tính chính xác)
+                            // TÍNH GIÁ DỰ KIẾN cho TẤT CẢ slots (backend sẽ tính chính xác)
                             totalPrice = (venue.pricePerHour * selectedSlots.size * 0.5).toLong(),
                             ownerBankInfo = null,
                             expireTime = null,
                             startTime = startTime,
                             endTime = endTime,
-                            bookingItems = bookingItems  // ✅ THÊM DANH SÁCH TẤT CẢ CÁC SÂN
+                            bookingItems = bookingItems  // THÊM DANH SÁCH TẤT CẢ CÁC SÂN
                         )
 
                         Log.d("BookingScreen", "✅ Booking data prepared:")
@@ -910,4 +1047,94 @@ private fun timeSlotToEndTime(timeSlot: String): String {
     val endMinute = totalMinutes % 60
 
     return String.format("%02d:%02d:00", endHour, endMinute)
+}
+
+/**
+ * Nhóm các time slots liên tục thành các khoảng thời gian
+ * Ví dụ: ["8:00", "8:30", "10:00", "10:30", "11:00"] -> ["8:00-9:00", "10:00-11:30"]
+ */
+private fun groupConsecutiveTimeSlots(timeSlots: List<String>): List<String> {
+    if (timeSlots.isEmpty()) return emptyList()
+
+    val sortedSlots = timeSlots.sorted()
+    val result = mutableListOf<String>()
+
+    var rangeStart = sortedSlots[0]
+    var previousSlot = sortedSlots[0]
+
+    for (i in 1 until sortedSlots.size) {
+        val currentSlot = sortedSlots[i]
+
+        // Kiểm tra xem currentSlot có liên tục với previousSlot không (cách nhau 30 phút)
+        if (!isConsecutive(previousSlot, currentSlot)) {
+            // Kết thúc range hiện tại
+            val rangeEnd = calculateEndTime(previousSlot)
+            result.add("$rangeStart-$rangeEnd")
+
+            // Bắt đầu range mới
+            rangeStart = currentSlot
+        }
+
+        previousSlot = currentSlot
+    }
+
+    // Thêm range cuối cùng
+    val rangeEnd = calculateEndTime(previousSlot)
+    result.add("$rangeStart-$rangeEnd")
+
+    return result
+}
+
+/**
+ * Nhóm các slots liên tục thành các khoảng thời gian cho việc đặt sân
+ * Ví dụ: ["8:00", "8:30", "9:00", "10:00", "10:30"] -> [["8:00", "9:00"], ["10:00", "10:30"]]
+ */
+private fun groupConsecutiveSlotsForBooking(timeSlots: List<String>): List<List<String>> {
+    if (timeSlots.isEmpty()) return emptyList()
+
+    val sortedSlots = timeSlots.sorted()
+    val result = mutableListOf<MutableList<String>>()
+
+    var currentGroup = mutableListOf<String>()
+    currentGroup.add(sortedSlots[0])
+
+    for (i in 1 until sortedSlots.size) {
+        val previousSlot = sortedSlots[i - 1]
+        val currentSlot = sortedSlots[i]
+
+        // Kiểm tra xem currentSlot có liên tục với previousSlot không (cách nhau 30 phút)
+        if (isConsecutive(previousSlot, currentSlot)) {
+            currentGroup.add(currentSlot)
+        } else {
+            // Kết thúc nhóm hiện tại và bắt đầu nhóm mới
+            result.add(currentGroup)
+            currentGroup = mutableListOf()
+            currentGroup.add(currentSlot)
+        }
+    }
+
+    // Thêm nhóm cuối cùng
+    result.add(currentGroup)
+
+    return result
+}
+
+/**
+ * Kiểm tra xem 2 time slots có liên tục không (cách nhau 30 phút)
+ */
+private fun isConsecutive(slot1: String, slot2: String): Boolean {
+    val parts1 = slot1.split(":")
+    val parts2 = slot2.split(":")
+
+    if (parts1.size != 2 || parts2.size != 2) return false
+
+    val hour1 = parts1[0].toIntOrNull() ?: return false
+    val minute1 = parts1[1].toIntOrNull() ?: return false
+    val hour2 = parts2[0].toIntOrNull() ?: return false
+    val minute2 = parts2[1].toIntOrNull() ?: return false
+
+    val totalMinutes1 = hour1 * 60 + minute1
+    val totalMinutes2 = hour2 * 60 + minute2
+
+    return (totalMinutes2 - totalMinutes1) == 30
 }

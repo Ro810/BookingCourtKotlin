@@ -35,7 +35,7 @@ interface BookingApi {
     suspend fun cancelBooking(
         @Path("id") bookingId: String,
         @Body reason: Map<String, String>,
-    ): BaseResponseDto
+    ): ApiResponse<BookingDto>
 
     @PUT("bookings/{id}/confirm")
     suspend fun confirmBooking(@Path("id") bookingId: String): BookingDto
@@ -68,8 +68,30 @@ interface BookingApi {
         @Body request: RejectBookingRequestDto
     ): ApiResponse<BookingDetailResponseDto>
 
+    /**
+     * Lấy danh sách booking chờ xác nhận theo venue ID (cho chủ sân)
+     * @param venueId ID của venue
+     * @return Danh sách bookings có status PAYMENT_UPLOADED của venue
+     */
+    @GET("bookings/venue/{venueId}/pending")
+    suspend fun getVenuePendingBookings(
+        @Path("venueId") venueId: Long
+    ): ApiResponse<List<BookingDetailResponseDto>>
+
     @GET("bookings/pending")
     suspend fun getPendingBookings(): ApiResponse<List<BookingDetailResponseDto>>
+
+    /**
+     * Lấy danh sách bookings theo venue ID (cho chủ sân)
+     * @param venueId ID của venue
+     * @param status Filter theo status (optional): PENDING_PAYMENT, PAYMENT_UPLOADED, CONFIRMED, etc.
+     * @return Danh sách bookings của venue
+     */
+    @GET("bookings/venue/{venueId}")
+    suspend fun getBookingsByVenue(
+        @Path("venueId") venueId: Long,
+        @Query("status") status: String? = null
+    ): ApiResponse<List<BookingDetailResponseDto>>
 
     // Get booking detail with full information (for payment flow)
     @GET("bookings/{id}")

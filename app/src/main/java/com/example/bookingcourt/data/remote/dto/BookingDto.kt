@@ -255,8 +255,15 @@ data class BookingDetailResponseDto(
     val venueId: Long?,
     @SerializedName("venuesName")
     val venuesName: String?,
+
+    // ✅ FIX: Venue address - đổi từ String sang AddressDto
     @SerializedName("venueAddress")
-    val venueAddress: String?,
+    val venueAddress: AddressDto? = null,
+
+    // 🔄 HOẶC: Backend có thể trả về venue object đầy đủ
+    @SerializedName("venue")
+    val venue: VenueDetailDto? = null,
+
     @SerializedName("startTime")
     @JsonAdapter(TimeStringDeserializer::class)
     val startTime: String?, // Nullable và có thể là string hoặc array

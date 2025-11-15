@@ -37,6 +37,7 @@ fun EditProfileScreen(
     // Local state for form fields
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
 
     // Initialize form fields from current user
@@ -44,6 +45,7 @@ fun EditProfileScreen(
         state.currentUser?.let { user ->
             fullName = user.fullName
             email = user.email
+            phoneNumber = user.phoneNumber
             avatarUrl = user.avatar
         }
     }
@@ -96,10 +98,11 @@ fun EditProfileScreen(
                         onClick = {
                             viewModel.updateProfile(
                                 fullName = fullName.trim(),
-                                email = email.trim()
+                                email = email.trim(),
+                                phoneNumber = phoneNumber.trim()
                             )
                         },
-                        enabled = !state.isSaving && fullName.isNotBlank()
+                        enabled = !state.isSaving && fullName.isNotBlank() && phoneNumber.isNotBlank()
                     ) {
                         if (state.isSaving) {
                             CircularProgressIndicator(
@@ -233,23 +236,17 @@ fun EditProfileScreen(
                             enabled = !state.isSaving,
                         )
 
-                        // Phone Number (read-only)
+                        // Phone Number
                         OutlinedTextField(
-                            value = state.currentUser?.phoneNumber ?: "",
-                            onValueChange = { },
+                            value = phoneNumber,
+                            onValueChange = { phoneNumber = it },
                             label = { Text("Số điện thoại") },
                             leadingIcon = {
                                 Icon(Icons.Default.Phone, contentDescription = null)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            enabled = false,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
+                            enabled = !state.isSaving,
                         )
 
                         // Email

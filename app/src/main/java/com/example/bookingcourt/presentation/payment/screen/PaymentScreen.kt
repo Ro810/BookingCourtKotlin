@@ -73,41 +73,41 @@ fun PaymentScreen(
             is Resource.Success -> {
                 val bookingWithBankInfo = state.data
                 if (bookingWithBankInfo != null) {
-                    // ✅ LOG CHI TIẾT để debug vấn đề thông tin sân bị nhầm
+                    // LOG: Detailed booking creation success information
                     Log.d("PaymentScreen", "========== BOOKING CREATED SUCCESSFULLY ==========")
-                    Log.d("PaymentScreen", "  📋 Booking ID: ${bookingWithBankInfo.id}")
-                    // ✅ Hỗ trợ cả bookingItems và court legacy
+                    Log.d("PaymentScreen", "  Booking ID: ${bookingWithBankInfo.id}")
+                    // Support both bookingItems and legacy court model
                     if (!bookingWithBankInfo.bookingItems.isNullOrEmpty()) {
-                        Log.d("PaymentScreen", "  🏟️ Booking Items (${bookingWithBankInfo.bookingItems.size} courts):")
+                        Log.d("PaymentScreen", "  Booking Items (${bookingWithBankInfo.bookingItems.size} courts):")
                         bookingWithBankInfo.bookingItems.forEach { item ->
                             Log.d("PaymentScreen", "     - Court ID: ${item.courtId}, Name: ${item.courtName}")
                         }
                     } else {
-                        Log.d("PaymentScreen", "  🏟️ Court ID: ${bookingWithBankInfo.court?.id}")
-                        Log.d("PaymentScreen", "  🏟️ Court Name: ${bookingWithBankInfo.court?.description}")
+                        Log.d("PaymentScreen", "  Court ID: ${bookingWithBankInfo.court?.id}")
+                        Log.d("PaymentScreen", "  Court Name: ${bookingWithBankInfo.court?.description}")
                     }
-                    Log.d("PaymentScreen", "  🏢 Venue ID: ${bookingWithBankInfo.venue.id}")
-                    Log.d("PaymentScreen", "  🏢 Venue Name: ${bookingWithBankInfo.venue.name}")
-                    Log.d("PaymentScreen", "  💰 Total Price (from API): ${bookingWithBankInfo.totalPrice}")
-                    Log.d("PaymentScreen", "  💰 Total Price (client calculated): ${bookingData.totalPrice}")
-                    Log.d("PaymentScreen", "  🏦 Bank Name: ${bookingWithBankInfo.ownerBankInfo.bankName}")
-                    Log.d("PaymentScreen", "  🏦 Account Number: ${bookingWithBankInfo.ownerBankInfo.bankAccountNumber}")
-                    Log.d("PaymentScreen", "  🏦 Account Name: ${bookingWithBankInfo.ownerBankInfo.bankAccountName}")
-                    Log.d("PaymentScreen", "  ⏰ Start Time: ${bookingWithBankInfo.startTime}")
-                    Log.d("PaymentScreen", "  ⏰ End Time: ${bookingWithBankInfo.endTime}")
+                    Log.d("PaymentScreen", "  Venue ID: ${bookingWithBankInfo.venue.id}")
+                    Log.d("PaymentScreen", "  Venue Name: ${bookingWithBankInfo.venue.name}")
+                    Log.d("PaymentScreen", "  Total Price (from API): ${bookingWithBankInfo.totalPrice}")
+                    Log.d("PaymentScreen", "  Total Price (client calculated): ${bookingData.totalPrice}")
+                    Log.d("PaymentScreen", "  Bank Name: ${bookingWithBankInfo.ownerBankInfo.bankName}")
+                    Log.d("PaymentScreen", "  Account Number: ${bookingWithBankInfo.ownerBankInfo.bankAccountNumber}")
+                    Log.d("PaymentScreen", "  Account Name: ${bookingWithBankInfo.ownerBankInfo.bankAccountName}")
+                    Log.d("PaymentScreen", "  Start Time: ${bookingWithBankInfo.startTime}")
+                    Log.d("PaymentScreen", "  End Time: ${bookingWithBankInfo.endTime}")
                     Log.d("PaymentScreen", "====================================================")
 
-                    // ✅ CẬP NHẬT bookingData với GIÁ CHÍNH XÁC từ API (không dùng giá tính ở client)
-                    // ✅ Sử dụng helper method để lấy tên sân (hỗ trợ cả bookingItems và court legacy)
+                    // UPDATE: Use exact price from API instead of client-calculated price
+                    // Get display name for courts (supports both bookingItems and legacy court model)
                     val courtsDisplayName = bookingWithBankInfo.getCourtsDisplayName()
                     bookingData = bookingData.copy(
                         courtName = "${bookingWithBankInfo.venue.name} - $courtsDisplayName",
-                        totalPrice = bookingWithBankInfo.totalPrice, // ✅ SỬ DỤNG GIÁ TỪ API
+                        totalPrice = bookingWithBankInfo.totalPrice, // Use price from API
                         ownerBankInfo = bookingWithBankInfo.ownerBankInfo,
                         expireTime = bookingWithBankInfo.expireTime.toString()
                     )
 
-                    Log.d("PaymentScreen", "✅ Updated totalPrice: ${bookingData.totalPrice} VNĐ")
+                    Log.d("PaymentScreen", "Updated totalPrice: ${bookingData.totalPrice} VND")
 
                     snackbarHostState.showSnackbar(
                         message = "Đặt sân thành công!",
@@ -119,7 +119,7 @@ fun PaymentScreen(
                 }
             }
             is Resource.Error -> {
-                Log.e("PaymentScreen", "❌ Error creating booking: ${state.message}")
+                Log.e("PaymentScreen", "Error creating booking: ${state.message}")
                 snackbarHostState.showSnackbar(
                     message = state.message ?: "Đã xảy ra lỗi khi đặt sân",
                     duration = SnackbarDuration.Long
@@ -134,8 +134,8 @@ fun PaymentScreen(
         bookingData = bookingData,
         onNavigateBack = onNavigateBack,
         onConfirmPayment = {
-            // ✅ Gọi API tạo booking với tất cả các sân đã chọn
-            Log.d("PaymentScreen", "📝 Calling API to create booking:")
+            // Call API to create booking with all selected courts
+            Log.d("PaymentScreen", "Calling API to create booking:")
 
             // Sử dụng bookingItems nếu có, nếu không fallback về legacy mode
             val items = bookingData.bookingItems ?: listOf(
@@ -152,9 +152,9 @@ fun PaymentScreen(
             items.forEachIndexed { index, item ->
                 Log.d("PaymentScreen", "  [$index] ${item.courtName} (${item.courtId})")
                 Log.d("PaymentScreen", "       Time: ${item.startTime} - ${item.endTime}")
-                Log.d("PaymentScreen", "       Price: ${item.price} VNĐ")
+                Log.d("PaymentScreen", "       Price: ${item.price} VND")
             }
-            Log.d("PaymentScreen", "  Total Price: ${bookingData.totalPrice} VNĐ")
+            Log.d("PaymentScreen", "  Total Price: ${bookingData.totalPrice} VND")
 
             paymentViewModel.createBookingWithItems(bookingItems = items)
         },
@@ -269,10 +269,12 @@ fun BookingConfirmationScreenContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ✅ FIX: Hiển thị thời gian từ bookingItems nếu có, nếu không fallback về selectedSlots
+                // Hiển thị thời gian từ bookingItems nếu có, nếu không fallback về selectedSlots
                 if (!bookingData.bookingItems.isNullOrEmpty()) {
-                    // ✅ Hiển thị từ bookingItems - có thời gian chính xác cho từng sân
-                    bookingData.bookingItems.forEach { item ->
+                    // Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
+                    val itemsByCourtName = bookingData.bookingItems.groupBy { it.courtName }
+
+                    itemsByCourtName.forEach { (courtName, items) ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -284,27 +286,29 @@ fun BookingConfirmationScreenContent(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = item.courtName,
+                                    text = courtName,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Primary
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Hiển thị thời gian từ startTime và endTime
-                                val startTime = formatDateTime(item.startTime, "HH:mm")
-                                val endTime = formatDateTime(item.endTime, "HH:mm")
-                                Text(
-                                    text = "• $startTime - $endTime",
-                                    fontSize = 13.sp,
-                                    color = Color.DarkGray,
-                                    modifier = Modifier.padding(vertical = 2.dp)
-                                )
+                                // Hiển thị từng khoảng thời gian
+                                items.forEach { item ->
+                                    val startTime = formatDateTime(item.startTime, "HH:mm")
+                                    val endTime = formatDateTime(item.endTime, "HH:mm")
+                                    Text(
+                                        text = "• $startTime - $endTime",
+                                        fontSize = 13.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
                     }
                 } else {
-                    // ✅ Fallback: Hiển thị từ selectedSlots (legacy mode)
+                    // Fallback: Hiển thị từ selectedSlots (legacy mode)
                     bookingData.selectedSlots.groupBy { it.courtNumber }.forEach { (courtNum, slots) ->
                         Card(
                             modifier = Modifier
@@ -324,13 +328,11 @@ fun BookingConfirmationScreenContent(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Gộp các slot liên tiếp thành khung giờ tổng hợp
-                                val sortedSlots = slots.map { it.timeSlot }.sorted()
-                                if (sortedSlots.isNotEmpty()) {
-                                    val startTime = sortedSlots.first()
-                                    val endTime = calculateEndTimeFromSlots(sortedSlots.last())
+                                // Nhóm các slot liên tục và hiển thị từng khoảng thời gian
+                                val timeRanges = groupConsecutiveTimeSlots(slots.map { it.timeSlot })
+                                timeRanges.forEach { range ->
                                     Text(
-                                        text = "• $startTime - $endTime",
+                                        text = "• $range",
                                         fontSize = 13.sp,
                                         color = Color.DarkGray,
                                         modifier = Modifier.padding(vertical = 2.dp)
@@ -401,96 +403,6 @@ fun BookingConfirmationScreenContent(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Thông tin ngân hàng của chủ sân (nếu có)
-            bookingData.ownerBankInfo?.let { bankInfo ->
-                InfoSection(
-                    title = "Thông tin chuyển khoản",
-                    icon = Icons.Default.AccountBalance
-                ) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF5F5F5)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            InfoRow(
-                                label = "Ngân hàng:",
-                                value = bankInfo.bankName
-                            )
-                            InfoRow(
-                                label = "Số tài khoản:",
-                                value = bankInfo.bankAccountNumber
-                            )
-                            InfoRow(
-                                label = "Chủ tài khoản:",
-                                value = bankInfo.bankAccountName
-                            )
-                            InfoRow(
-                                label = "Số tiền:",
-                                value = "${bookingData.totalPrice.formatPrice()} VNĐ",
-                                valueColor = Primary
-                            )
-                        }
-                    }
-
-                    bookingData.expireTime?.let { expireTime ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AccessTime,
-                                contentDescription = null,
-                                tint = Color(0xFFFF9800),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Vui lòng thanh toán trước: $expireTime",
-                                fontSize = 12.sp,
-                                color = Color(0xFFFF9800),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Ghi chú
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFF3E0)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Sau khi thanh toán, bạn sẽ nhận được mã đặt sân qua SMS. Vui lòng mang theo mã này khi đến sân.",
-                        fontSize = 13.sp,
-                        color = Color(0xFF6D4C41),
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // Buttons
             Row(
@@ -638,12 +550,12 @@ fun InfoRow(
     }
 }
 
-// ✅ Helper function để format giá tiền đúng
+// Helper function để format giá tiền đúng
 private fun Long.formatPrice(): String {
     return "%,d".format(this).replace(',', '.')
 }
 
-// ✅ Helper function để format datetime từ ISO format sang định dạng mong muốn
+// Helper function để format datetime từ ISO format sang định dạng mong muốn
 private fun formatDateTime(dateTimeString: String, pattern: String = "HH:mm"): String {
     return try {
         // Input format: "2025-11-11T04:00:00" hoặc "04:00:00"
@@ -661,7 +573,7 @@ private fun formatDateTime(dateTimeString: String, pattern: String = "HH:mm"): S
     }
 }
 
-// ✅ Helper function để tính thời gian kết thúc từ slot cuối cùng
+// Helper function để tính thời gian kết thúc từ slot cuối cùng
 private fun calculateEndTimeFromSlots(lastSlot: String): String {
     val parts = lastSlot.split(":")
     if (parts.size < 2) return lastSlot
@@ -689,6 +601,62 @@ private fun formatEndTime(timeSlot: String): String {
     val endMinute = totalMinutes % 60
 
     return String.format("%02d:%02d", endHour, endMinute)
+}
+
+/**
+ * Nhóm các time slots liên tục thành các khoảng thời gian
+ * Ví dụ: ["8:00", "8:30", "10:00", "10:30", "11:00"] -> ["8:00-9:00", "10:00-11:30"]
+ */
+private fun groupConsecutiveTimeSlots(timeSlots: List<String>): List<String> {
+    if (timeSlots.isEmpty()) return emptyList()
+
+    val sortedSlots = timeSlots.sorted()
+    val result = mutableListOf<String>()
+
+    var rangeStart = sortedSlots[0]
+    var previousSlot = sortedSlots[0]
+
+    for (i in 1 until sortedSlots.size) {
+        val currentSlot = sortedSlots[i]
+
+        // Kiểm tra xem currentSlot có liên tục với previousSlot không (cách nhau 30 phút)
+        if (!isConsecutiveSlot(previousSlot, currentSlot)) {
+            // Kết thúc range hiện tại
+            val rangeEnd = calculateEndTimeFromSlots(previousSlot)
+            result.add("$rangeStart-$rangeEnd")
+
+            // Bắt đầu range mới
+            rangeStart = currentSlot
+        }
+
+        previousSlot = currentSlot
+    }
+
+    // Thêm range cuối cùng
+    val rangeEnd = calculateEndTimeFromSlots(previousSlot)
+    result.add("$rangeStart-$rangeEnd")
+
+    return result
+}
+
+/**
+ * Kiểm tra xem 2 time slots có liên tục không (cách nhau 30 phút)
+ */
+private fun isConsecutiveSlot(slot1: String, slot2: String): Boolean {
+    val parts1 = slot1.split(":")
+    val parts2 = slot2.split(":")
+
+    if (parts1.size < 2 || parts2.size < 2) return false
+
+    val hour1 = parts1[0].toIntOrNull() ?: return false
+    val minute1 = parts1[1].toIntOrNull() ?: return false
+    val hour2 = parts2[0].toIntOrNull() ?: return false
+    val minute2 = parts2[1].toIntOrNull() ?: return false
+
+    val totalMinutes1 = hour1 * 60 + minute1
+    val totalMinutes2 = hour2 * 60 + minute2
+
+    return (totalMinutes2 - totalMinutes1) == 30
 }
 
 @Preview(showBackground = true)

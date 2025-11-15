@@ -23,6 +23,7 @@ sealed class Screen(val route: String) {
     data object ChangePassword : Screen("change_password")
     data object Settings : Screen("settings")
     data object BecomeOwner : Screen("become_owner")
+    data object MyReviews : Screen("my_reviews")
 
     // Court Screens
     data object CourtList : Screen("court_list?sportType={sportType}") {
@@ -81,6 +82,10 @@ sealed class Screen(val route: String) {
 
     data object BookingApproval : Screen("booking_approval/{bookingId}") {
         fun createRoute(bookingId: String) = "booking_approval/$bookingId"
+    }
+
+    data object OwnerBookingDetail : Screen("owner_booking_detail/{bookingId}") {
+        fun createRoute(bookingId: String) = "owner_booking_detail/$bookingId"
     }
 }
 

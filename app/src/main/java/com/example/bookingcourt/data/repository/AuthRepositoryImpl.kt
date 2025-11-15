@@ -494,10 +494,12 @@ class AuthRepositoryImpl @Inject constructor(
             Log.d(TAG, "========== UPDATE PROFILE ==========")
             Log.d(TAG, "Fullname: ${user.fullName}")
             Log.d(TAG, "Email: ${user.email}")
+            Log.d(TAG, "Phone: ${user.phoneNumber}")
 
             val updateRequest = com.example.bookingcourt.data.remote.dto.UpdateUserRequest(
                 fullname = user.fullName,
-                email = user.email.takeIf { it.isNotEmpty() }
+                email = user.email.takeIf { it.isNotEmpty() },
+                phone = user.phoneNumber.takeIf { it.isNotEmpty() }
             )
 
             val response = userApi.updateUser(updateRequest)

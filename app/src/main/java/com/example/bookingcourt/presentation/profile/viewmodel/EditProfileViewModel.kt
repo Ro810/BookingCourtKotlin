@@ -66,7 +66,7 @@ class EditProfileViewModel @Inject constructor(
         }
     }
 
-    fun updateProfile(fullName: String, email: String) {
+    fun updateProfile(fullName: String, email: String, phoneNumber: String) {
         viewModelScope.launch {
             try {
                 _state.value = _state.value.copy(isSaving = true, saveSuccess = false, error = null)
@@ -82,7 +82,8 @@ class EditProfileViewModel @Inject constructor(
 
                 val updatedUser = currentUser.copy(
                     fullName = fullName,
-                    email = email
+                    email = email,
+                    phoneNumber = phoneNumber
                 )
 
                 authRepository.updateProfile(updatedUser).collect { result ->

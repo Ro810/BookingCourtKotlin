@@ -1,6 +1,5 @@
 package com.example.bookingcourt.presentation.booking.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,10 +16,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.bookingcourt.domain.model.BookingDetail
+import com.example.bookingcourt.domain.model.Booking
 import com.example.bookingcourt.domain.model.BookingStatus
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingHistoryViewModel
 import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.Clock
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -113,7 +115,7 @@ fun BookingHistoryScreen(
 
 @Composable
 fun BookingHistoryItem(
-    booking: BookingDetail,
+    booking: Booking,
     onClick: () -> Unit
 ) {
     Card(
@@ -131,9 +133,9 @@ fun BookingHistoryItem(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Venue Name
+            // Court Name
             Text(
-                text = booking.venue.name,
+                text = booking.courtName,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -141,46 +143,12 @@ fun BookingHistoryItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Booking Items hoặc Court Info
-            if (booking.bookingItems != null && booking.bookingItems.isNotEmpty()) {
-                // Hiển thị danh sách sân
-                booking.bookingItems.forEach { item ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "🏟️ ${item.courtName}",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = formatPrice(item.price),
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    // ✅ FIX: item.startTime và item.endTime là LocalDateTime, không phải String
-                    Text(
-                        text = "   ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-            } else {
-                // Legacy: hiển thị thông tin sân đơn
-                Text(
-                    text = "🏟️ ${booking.court?.description ?: "Sân"}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "${formatDateTime(booking.startTime)} - ${formatTime(booking.endTime)}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            }
+            // Booking Time - Hiển thị thời gian tổng thể
+            Text(
+                text = "${formatDateTime(booking.startTime)} - ${formatTime(booking.endTime)}",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -197,7 +165,10 @@ fun BookingHistoryItem(
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                BookingStatusChip(status = booking.status, rejectionReason = booking.rejectionReason)
+                BookingStatusChip(
+                    status = booking.status,
+                    rejectionReason = booking.cancellationReason
+                )
             }
         }
     }
@@ -246,9 +217,9 @@ fun BookingStatusChip(
         )
         // Bỏ PENDING - không hiển thị nữa
         else -> Triple(
-            "Chờ thanh toán",
-            Color(0xFFFFF3E0),
-            Color(0xFFF57C00)
+            "Đã hủy",
+            Color(0xFFF5F5F5),
+            Color(0xFF757575)
         )
     }
 

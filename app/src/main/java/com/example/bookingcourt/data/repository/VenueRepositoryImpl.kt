@@ -13,6 +13,10 @@ import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.domain.repository.VenueRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -404,6 +408,7 @@ class VenueRepositoryImpl @Inject constructor(
         Log.d(TAG, "  - email: $email")
         Log.d(TAG, "  - owner: $owner")
         Log.d(TAG, "  - owner?.phone: ${owner?.phone}")
+        Log.d(TAG, "  - ownerPhoneNumber: $ownerPhoneNumber")
 
         return Venue(
             id = id,
@@ -419,8 +424,8 @@ class VenueRepositoryImpl @Inject constructor(
             closingTime = closingTime,
             phoneNumber = phoneNumber,
             email = email,
-            ownerPhone = owner?.phone, // Lấy số điện thoại từ owner
-            images = null // Backend chưa trả về images trong list, sẽ cập nhật sau
+            ownerPhone = ownerPhoneNumber ?: owner?.phone, // Ưu tiên ownerPhoneNumber từ API response
+            images = images // Sử dụng images từ API response
         )
     }
 
@@ -498,6 +503,75 @@ class VenueRepositoryImpl @Inject constructor(
 
         } catch (e: Exception) {
             Log.e(TAG, "⚠ Exception fetching courts availability: ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
+    override suspend fun uploadVenueImage(venueId: Long, imageFile: File): Flow<Resource<Venue>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "========== UPLOADING VENUE IMAGE ==========")
+            Log.d(TAG, "Venue ID: $venueId")
+            Log.d(TAG, "Image file: ${imageFile.absolutePath}")
+            Log.d(TAG, "File size: ${imageFile.length()} bytes")
+
+            if (!imageFile.exists() || imageFile.length() == 0L) {
+                Log.e(TAG, "⚠ File không tồn tại hoặc rỗng")
+                emit(Resource.Error("File không tồn tại hoặc rỗng"))
+                return@flow
+            }
+
+            val requestFile = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
+            val body = MultipartBody.Part.createFormData("file", imageFile.name, requestFile)
+
+            val response = venueApi.uploadVenueImage(venueId, body)
+
+            Log.d(TAG, "Response Code: ${response.code()}")
+            Log.d(TAG, "Response isSuccessful: ${response.isSuccessful}")
+
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+
+                Log.d(TAG, "Response body is null: ${apiResponse == null}")
+                Log.d(TAG, "Response success: ${apiResponse?.success}")
+                Log.d(TAG, "Response message: ${apiResponse?.message}")
+
+                if (apiResponse != null && apiResponse.success && apiResponse.data != null) {
+                    val venue = apiResponse.data.toDomain()
+
+                    Log.d(TAG, "✓ Successfully uploaded image for venue: ${venue.name}")
+                    Log.d(TAG, "Images: ${venue.images}")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Success(venue))
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể upload ảnh"
+                    Log.e(TAG, "⚠ API returned success=false: $errorMsg")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "⚠ API error: ${response.code()}")
+                Log.e(TAG, "Error body: $errorBody")
+                Log.d(TAG, "======================================")
+
+                val message = when (response.code()) {
+                    400 -> "File không hợp lệ. Vui lòng chọn ảnh khác."
+                    401 -> "Vui lòng đăng nhập lại"
+                    413 -> "File quá lớn. Vui lòng chọn ảnh nhỏ hơn."
+                    500 -> "Lỗi server. Vui lòng thử lại sau."
+                    else -> "Lỗi upload ảnh: ${response.code()}"
+                }
+                emit(Resource.Error(message))
+            }
+        } catch (e: retrofit2.HttpException) {
+            Log.e(TAG, "⚠ HTTP Exception uploading image: ${e.code()}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error("Lỗi kết nối: ${e.code()}"))
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠ Exception uploading image: ${e.message}", e)
             Log.d(TAG, "======================================")
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
         }

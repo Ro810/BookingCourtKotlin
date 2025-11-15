@@ -33,12 +33,12 @@ object NetworkModule {
         val gsonBuilder = GsonBuilder()
             .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
             .setLenient() // Cho phép parse linh hoạt hơn
-        
+
         // ✅ Đăng ký TypeAdapterFactory để xử lý time fields
         gsonBuilder.registerTypeAdapterFactory(
             com.example.bookingcourt.data.remote.dto.TimeFieldTypeAdapterFactory()
         )
-        
+
         return gsonBuilder.create()
     }
 
@@ -117,4 +117,9 @@ object NetworkModule {
     @Singleton
     fun provideUserApi(retrofit: Retrofit): com.example.bookingcourt.data.remote.api.UserApi =
         retrofit.create(com.example.bookingcourt.data.remote.api.UserApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideReviewApi(retrofit: Retrofit): com.example.bookingcourt.data.remote.api.ReviewApi =
+        retrofit.create(com.example.bookingcourt.data.remote.api.ReviewApi::class.java)
 }

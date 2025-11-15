@@ -1,5 +1,7 @@
 package com.example.bookingcourt.presentation.home.screen
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -163,16 +166,33 @@ fun HomeScreen(
                     // Hiển thị kết quả tìm kiếm nếu đang search
                     if (state.searchQuery.isNotEmpty()) {
                         item {
-                            Text(
-                                text = if (state.searchResults.isNotEmpty())
-                                    "Kết quả tìm kiếm (${state.searchResults.size})"
-                                else
-                                    "Đang tìm kiếm...",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (state.searchResults.isNotEmpty())
+                                        "Kết quả tìm kiếm (${state.searchResults.size})"
+                                    else if (state.isSearching)
+                                        "Đang tìm kiếm..."
+                                    else
+                                        "Không tìm thấy kết quả",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+
+                                if (state.isSearching) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = Primary,
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
                         }
 
                         if (state.searchResults.isNotEmpty()) {
@@ -184,16 +204,40 @@ fun HomeScreen(
                             }
                         } else if (!state.isSearching) {
                             item {
-                                Box(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Không tìm thấy kết quả",
-                                        color = Color.Gray
+                                        .padding(16.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFF5F5F5)
                                     )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(48.dp),
+                                            tint = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Không tìm thấy sân",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Thử tìm kiếm với từ khóa khác",
+                                            fontSize = 14.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -245,12 +289,21 @@ fun HeaderSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Avatar với chữ cái đầu
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.3f))
-                )
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = userName.firstOrNull()?.uppercase() ?: "U",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -262,19 +315,6 @@ fun HeaderSection(
                         fontWeight = FontWeight.Bold
                     )
                 }
-            }
-
-            IconButton(
-                onClick = { },
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(Color.White, CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Thông báo",
-                    tint = Primary
-                )
             }
         }
 
@@ -409,7 +449,19 @@ fun VenueCard(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    IconButton(onClick = { }) {
+                    val context = LocalContext.current
+                    IconButton(
+                        onClick = {
+                            // Gọi điện thoại đến số điện thoại chủ sân
+                            val phoneNumber = venue.ownerPhone
+                            if (!phoneNumber.isNullOrBlank()) {
+                                val intent = Intent(Intent.ACTION_DIAL).apply {
+                                    data = Uri.parse("tel:$phoneNumber")
+                                }
+                                context.startActivity(intent)
+                            }
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Phone,
                             contentDescription = "Call",

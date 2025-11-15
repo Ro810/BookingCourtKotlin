@@ -9,10 +9,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.*
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.example.bookingcourt.core.util.FileUtils
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,19 +58,61 @@ fun CourtDetailScreen(
     onNavigateToBooking: () -> Unit = {},
     onNavigateToBookingDetail: (String) -> Unit = {},
     viewModel: com.example.bookingcourt.presentation.court.viewmodel.CourtDetailViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    reviewViewModel: com.example.bookingcourt.presentation.review.viewmodel.ReviewViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val reviewsState by reviewViewModel.venueReviewsState.collectAsState()
 
     val todayRevenue = state.todayRevenue
     val venue = state.venue
     val actualVenueName = venue?.name ?: venueName
     val actualCourtCount = venue?.courtsCount ?: courtCount
+    val context = LocalContext.current
 
     // State cho booking grid
     var selectedDate by remember { mutableStateOf("") }
     var selectedSlots by remember { mutableStateOf(setOf<CourtTimeSlot>()) }
     var showDatePicker by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    // State cho image picker
+    val snackbarHostState = remember { SnackbarHostState() }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            Log.d("CourtDetailScreen", "Selected image URI: $uri")
+
+            // Convert URI to File
+            val imageFile = FileUtils.uriToFile(context, uri)
+
+            if (imageFile != null && venue?.id != null) {
+                Log.d("CourtDetailScreen", "Uploading image file: ${imageFile.absolutePath}")
+                viewModel.handleIntent(
+                    com.example.bookingcourt.presentation.court.viewmodel.CourtDetailIntent.UploadImage(
+                        venueId = venue.id,
+                        imageFile = imageFile
+                    )
+                )
+            } else {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Không thể chọn ảnh. Vui lòng thử lại.")
+                }
+            }
+        }
+    }
+
+    // Listen to UI events
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is com.example.bookingcourt.core.common.UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                else -> {}
+            }
+        }
+    }
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis()
@@ -94,6 +142,12 @@ fun CourtDetailScreen(
 
                 // Cập nhật doanh thu theo ngày được chọn
                 viewModel.updateSelectedDateRevenue(currentDate)
+
+                // Fetch pending bookings for owner
+                viewModel.getPendingBookings()
+
+                // Fetch confirmed bookings for check-in schedule
+                viewModel.getConfirmedBookings()
             } else {
                 Log.e("CourtDetailScreen", "❌ Failed to parse date: $currentDate")
             }
@@ -156,6 +210,25 @@ fun CourtDetailScreen(
 
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("vi", "VN")) }
 
+    // Filter pending bookings to show only bookings for current venue
+    val filteredPendingBookings = remember(state.pendingBookings, venue?.id) {
+        state.pendingBookings.filter { booking ->
+            booking.venue.id == venue?.id?.toString()
+        }
+    }
+
+    // Filter confirmed bookings for check-in schedule (only show upcoming confirmed bookings)
+    val upcomingConfirmedBookings = remember(state.confirmedBookings, venue?.id) {
+        state.confirmedBookings
+            .filter { booking ->
+                // Chỉ hiển thị bookings của venue hiện tại
+                // và có status COMPLETED (đã được owner chấp nhận)
+                booking.venue.id == venue?.id?.toString() &&
+                booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED
+            }
+            .sortedBy { it.startTime }
+    }
+
     // DatePickerDialog
     if (showDatePicker) {
         DatePickerDialog(
@@ -197,6 +270,7 @@ fun CourtDetailScreen(
                 ),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -279,45 +353,244 @@ fun CourtDetailScreen(
                 }
             }
 
-            // Revenue Card
+            // Venue Images Card
             item {
-                val displayDate = selectedDate.ifEmpty { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
-                val revenueAmount = state.selectedDateRevenue
-
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                            .padding(16.dp)
                     ) {
-                        Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                "Doanh thu ngày $displayDate",
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 14.sp,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                currencyFormat.format(revenueAmount),
-                                color = Color.White,
-                                fontSize = 24.sp,
+                                "Ảnh cơ sở",
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                             )
+                            IconButton(onClick = {
+                                imagePickerLauncher.launch("image/*")
+                            }) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Chỉnh sửa ảnh",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
-                        Icon(
-                            Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp),
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Image display
+                        if (venue?.images != null && venue.images.isNotEmpty()) {
+                            // Display first image
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFE0E0E0))
+                            ) {
+                                AsyncImage(
+                                    model = venue.images[0],
+                                    contentDescription = "Ảnh cơ sở",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                // Show image count badge if there are multiple images
+                                if (venue.images.size > 1) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(8.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.6f),
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "+${venue.images.size - 1} ảnh",
+                                            color = Color.White,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Placeholder when no image
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFE0E0E0)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.AddPhotoAlternate,
+                                        contentDescription = "Add photo",
+                                        modifier = Modifier.size(48.dp),
+                                        tint = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Chưa có ảnh",
+                                        color = Color.Gray,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Pending Bookings Section - Danh sách booking chờ xác nhận
+            if (state.pendingBookings.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF3E0)
                         )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF9800),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Đặt sân chờ xác nhận",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFE65100)
+                                    )
+                                }
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFFF9800)
+                                ) {
+                                    Text(
+                                        text = state.pendingBookings.size.toString(),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            state.pendingBookings.take(5).forEach { booking ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onNavigateToBookingDetail(booking.id)
+                                        },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.White
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = booking.user.fullname,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = booking.getCourtsDisplayName(),
+                                                fontSize = 14.sp,
+                                                color = Color.Gray
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.DateRange,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp),
+                                                    tint = Color.Gray
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "${booking.startTime.dayOfMonth}/${booking.startTime.monthNumber} • ${String.format("%02d:%02d", booking.startTime.hour, booking.startTime.minute)}-${String.format("%02d:%02d", booking.endTime.hour, booking.endTime.minute)}",
+                                                    fontSize = 13.sp,
+                                                    color = Color.Gray
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = currencyFormat.format(booking.totalPrice),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
+                                        Icon(
+                                            Icons.Default.KeyboardArrowRight,
+                                            contentDescription = "Xem chi tiết",
+                                            tint = Color.Gray
+                                        )
+                                    }
+                                }
+
+                                if (booking != state.pendingBookings.take(5).last()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+
+                            if (state.pendingBookings.size > 5) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                TextButton(
+                                    onClick = { /* TODO: Navigate to full list */ },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Xem tất cả ${state.pendingBookings.size} booking")
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -506,18 +779,51 @@ fun CourtDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        checkInSchedules.forEach { schedule ->
-                            CheckInItem(
-                                schedule = schedule,
-                                onCustomerClick = {
-                                    onNavigateToBookingDetail(schedule.bookingId)
-                                },
-                            )
-                            if (schedule != checkInSchedules.last()) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        if (upcomingConfirmedBookings.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Chưa có lịch check-in",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        } else {
+                            upcomingConfirmedBookings.take(5).forEach { booking ->
+                                CheckInItem(
+                                    booking = booking,
+                                    onCustomerClick = {
+                                        onNavigateToBookingDetail(booking.id)
+                                    },
+                                )
+                                if (booking != upcomingConfirmedBookings.take(5).last()) {
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                }
                             }
                         }
                     }
+                }
+            }
+
+            // Reviews Section - Hiển thị đánh giá của venue
+            item {
+                venue?.id?.let { venueId ->
+                    LaunchedEffect(venueId) {
+                        reviewViewModel.loadVenueReviews(venueId)
+                    }
+
+                    com.example.bookingcourt.presentation.review.components.VenueReviewsSection(
+                        reviews = reviewsState.reviews,
+                        averageRating = reviewsState.averageRating,
+                        totalReviews = reviewsState.totalReviews,
+                        isLoading = reviewsState.isLoading,
+                        error = reviewsState.error,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
                 }
@@ -621,6 +927,71 @@ fun CheckInItem(
                 Text(
                     text = "${schedule.time} - ${schedule.duration}",
                     fontSize = 14.sp,
+                    color = Color.Gray,
+                )
+            }
+        }
+
+        IconButton(onClick = { /* TODO */ }) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = "Check-in",
+                tint = Color(0xFF4CAF50),
+            )
+        }
+    }
+}
+
+// Overload for BookingDetail
+@Composable
+fun CheckInItem(
+    booking: com.example.bookingcourt.domain.model.BookingDetail,
+    onCustomerClick: () -> Unit = {},
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onCustomerClick() },
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        shape = CircleShape,
+                    ),
+            ) {
+                Icon(
+                    Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = booking.user.fullname,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp,
+                )
+                Text(
+                    text = booking.getCourtsDisplayName(),
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                )
+                Text(
+                    text = "${booking.startTime.dayOfMonth}/${booking.startTime.monthNumber} • ${String.format("%02d:%02d", booking.startTime.hour, booking.startTime.minute)}-${String.format("%02d:%02d", booking.endTime.hour, booking.endTime.minute)}",
+                    fontSize = 13.sp,
                     color = Color.Gray,
                 )
             }

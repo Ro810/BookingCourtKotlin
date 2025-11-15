@@ -3,7 +3,7 @@ package com.example.bookingcourt.presentation.booking.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
-import com.example.bookingcourt.domain.model.BookingDetail
+import com.example.bookingcourt.domain.model.Booking
 import com.example.bookingcourt.domain.usecase.booking.GetMyBookingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,7 +56,6 @@ class BookingHistoryViewModel @Inject constructor(
 
 data class BookingHistoryState(
     val isLoading: Boolean = false,
-    val bookings: List<BookingDetail> = emptyList(),
+    val bookings: List<Booking> = emptyList(),
     val error: String? = null
 )
-

@@ -31,6 +31,7 @@ enum class BookingStatus {
     CANCELLED,
     COMPLETED,
     NO_SHOW,
+    EXPIRED, // Booking quá hạn upload ảnh chuyển khoản
 }
 
 enum class PaymentStatus {
@@ -149,7 +150,6 @@ data class BookingDetail(
     val court: BookingCourtInfo? = null,
 
     val venue: BookingVenueInfo,
-    val venueAddress: String?,
     val startTime: LocalDateTime,
     val endTime: LocalDateTime,
     val totalPrice: Long,
@@ -159,7 +159,8 @@ data class BookingDetail(
     val paymentProofUploadedAt: String?,
     val rejectionReason: String?,
     val expireTime: LocalDateTime?,
-    val ownerBankInfo: BankInfo?
+    val ownerBankInfo: BankInfo?,
+    val venueAddress: String
 ) {
     /**
      * Helper: Lấy tên courts để hiển thị

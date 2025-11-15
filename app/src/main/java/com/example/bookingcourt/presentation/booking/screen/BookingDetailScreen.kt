@@ -5,10 +5,8 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,6 +28,8 @@ import com.example.bookingcourt.domain.model.BookingDetail
 import com.example.bookingcourt.domain.model.BookingStatus
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingDetailViewModel
 import com.example.bookingcourt.presentation.theme.Primary
+import com.example.bookingcourt.presentation.review.viewmodel.ReviewViewModel
+import com.example.bookingcourt.presentation.review.components.CreateReviewDialog
 import kotlinx.datetime.LocalDateTime
 import java.io.File
 import java.io.FileOutputStream
@@ -39,20 +39,54 @@ import java.io.FileOutputStream
 fun BookingDetailScreen(
     bookingId: String,
     onNavigateBack: () -> Unit,
-    onNavigateToWaiting: ((String) -> Unit)? = null, // ✅ Làm optional
-    viewModel: BookingDetailViewModel = hiltViewModel()
+    onNavigateToWaiting: ((String) -> Unit)? = null,
+    onNavigateToReview: ((String, String) -> Unit)? = null,
+    viewModel: BookingDetailViewModel = hiltViewModel(),
+    reviewViewModel: ReviewViewModel = hiltViewModel() // Thêm ReviewViewModel
 ) {
     val bookingDetail by viewModel.bookingDetail.collectAsState()
     val uploadState by viewModel.uploadState.collectAsState()
     val confirmState by viewModel.confirmState.collectAsState()
+    val cancelState by viewModel.cancelState.collectAsState()
     val timeRemaining by viewModel.timeRemaining.collectAsState()
+
+    // Review states
+    val bookingReviewState by reviewViewModel.bookingReviewState.collectAsState()
+    val createReviewState by reviewViewModel.createReviewState.collectAsState()
+    var showReviewDialog by remember { mutableStateOf(false) }
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var uploadedPaymentProofUrl by remember { mutableStateOf<String?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelReason by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Kiểm tra xem booking đã có review chưa
+    LaunchedEffect(bookingId) {
+        reviewViewModel.loadBookingReview(bookingId.toLong())
+    }
+
+    // Xử lý khi tạo review thành công
+    LaunchedEffect(createReviewState.success) {
+        if (createReviewState.success) {
+            showReviewDialog = false
+            snackbarHostState.showSnackbar("Đánh giá thành công!")
+            reviewViewModel.resetCreateReviewState()
+            // Reload booking review state
+            reviewViewModel.loadBookingReview(bookingId.toLong())
+        }
+    }
+
+    // Hiển thị lỗi nếu có
+    LaunchedEffect(createReviewState.error) {
+        createReviewState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            reviewViewModel.resetCreateReviewState()
+        }
+    }
 
     // Image picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -105,6 +139,25 @@ fun BookingDetailScreen(
         }
     }
 
+    // Handle cancel booking state
+    LaunchedEffect(cancelState) {
+        when (cancelState) {
+            is Resource.Success -> {
+                snackbarHostState.showSnackbar("Đã hủy đặt sân!")
+                viewModel.resetCancelState()
+                // Navigate back or to another screen
+                onNavigateBack()
+            }
+            is Resource.Error -> {
+                snackbarHostState.showSnackbar(
+                    (cancelState as Resource.Error).message ?: "Lỗi hủy đặt sân"
+                )
+                viewModel.resetCancelState()
+            }
+            else -> {}
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -152,6 +205,7 @@ fun BookingDetailScreen(
                         uploadedPaymentProofUrl = uploadedPaymentProofUrl ?: booking.paymentProofUrl,
                         isUploading = uploadState is Resource.Loading,
                         isConfirming = confirmState is Resource.Loading,
+                        hasReview = bookingReviewState.hasReview, // Thêm check đã review
                         onSelectImage = { imagePickerLauncher.launch("image/*") },
                         onConfirmPayment = {
                             val proofUrl = uploadedPaymentProofUrl ?: booking.paymentProofUrl
@@ -159,9 +213,14 @@ fun BookingDetailScreen(
                                 showConfirmDialog = true
                             }
                         },
+                        onCancelBooking = {
+                            showCancelDialog = true
+                        },
+                        onOpenReviewDialog = { showReviewDialog = true }, // Hiển thị dialog review
                         modifier = Modifier.padding(padding)
                     )
 
+                    // Confirm payment dialog
                     if (showConfirmDialog) {
                         AlertDialog(
                             onDismissRequest = { showConfirmDialog = false },
@@ -185,6 +244,61 @@ fun BookingDetailScreen(
                             }
                         )
                     }
+
+                    // Cancel booking dialog
+                    if (showCancelDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showCancelDialog = false },
+                            title = { Text("Hủy đặt sân") },
+                            text = {
+                                Column {
+                                    Text("Bạn có chắc chắn muốn hủy đặt sân này?")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    OutlinedTextField(
+                                        value = cancelReason,
+                                        onValueChange = { cancelReason = it },
+                                        label = { Text("Lý do hủy (tùy chọn)") },
+                                        placeholder = { Text("Nhập lý do hủy đặt sân") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showCancelDialog = false
+                                        viewModel.cancelBooking(cancelReason.ifBlank { "Người dùng hủy đặt sân" })
+                                    }
+                                ) {
+                                    Text("Xác nhận hủy", color = Color.Red)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showCancelDialog = false }) {
+                                    Text("Quay lại")
+                                }
+                            }
+                        )
+                    }
+
+                    // Review dialog - Hiển thị khi nhấn nút đánh giá
+                    if (showReviewDialog) {
+                        CreateReviewDialog(
+                            venueName = booking.venue.name,
+                            onDismiss = {
+                                showReviewDialog = false
+                                reviewViewModel.resetCreateReviewState()
+                            },
+                            onSubmit = { rating, comment ->
+                                reviewViewModel.createReview(
+                                    bookingId = bookingId.toLong(),
+                                    rating = rating,
+                                    comment = comment.ifBlank { null }
+                                )
+                            },
+                            isLoading = createReviewState.isLoading
+                        )
+                    }
                 }
             }
         }
@@ -199,8 +313,11 @@ private fun BookingDetailContent(
     uploadedPaymentProofUrl: String?,
     isUploading: Boolean,
     isConfirming: Boolean,
+    hasReview: Boolean = false, // Thêm parameter kiểm tra đã review
     onSelectImage: () -> Unit,
     onConfirmPayment: () -> Unit,
+    onCancelBooking: () -> Unit,
+    onOpenReviewDialog: () -> Unit, // Đổi tên callback
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -237,6 +354,67 @@ private fun BookingDetailContent(
                 onConfirmPayment = onConfirmPayment
             )
         }
+
+        // Cancel booking button
+        if (booking.status == BookingStatus.PENDING_PAYMENT) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onCancelBooking,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red
+                )
+            ) {
+                Text("Hủy đặt sân")
+            }
+        }
+
+        // Leave review button - Hiển thị khi booking đã hoàn thành và chưa đánh giá
+        if ((booking.status == BookingStatus.COMPLETED || booking.status == BookingStatus.CONFIRMED) && !hasReview) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onOpenReviewDialog,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Đánh giá")
+            }
+        }
+
+        // Hiển thị thông báo nếu đã đánh giá
+        if (hasReview && (booking.status == BookingStatus.COMPLETED || booking.status == BookingStatus.CONFIRMED)) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Bạn đã đánh giá sân này",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -272,74 +450,106 @@ private fun CountdownTimer(timeRemaining: Long) {
 private fun BookingInfoCard(booking: BookingDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // ✅ Hiển thị tiêu đề với số lượng sân
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Hiển thị tiêu đề với số lượng sân
             val courtsCount = booking.getCourtsCount()
             Text(
                 text = if (courtsCount > 1) "Thông tin đặt sân ($courtsCount sân)" else "Thông tin đặt sân",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Venue info
-            InfoRow(label = "Địa điểm", value = booking.venue.name)
-            booking.venueAddress?.let { InfoRow(label = "Địa chỉ", value = it) }
+            InfoRow(label = "Tên sân", value = booking.venue.name)
 
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // ✅ Court info - Hiển thị tất cả các sân đã đặt
-            if (!booking.bookingItems.isNullOrEmpty()) {
+            // Thêm địa chỉ sân
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = if (booking.bookingItems.size > 1)
-                        "Các sân đã đặt (${booking.bookingItems.size}):"
+                    text = "Địa chỉ:",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = booking.venueAddress,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF212121),
+                    fontSize = 14.sp,
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFE0E0E0))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Court info - Hiển thị tất cả các sân đã đặt
+            if (!booking.bookingItems.isNullOrEmpty()) {
+                // Nhóm bookingItems theo tên sân để xử lý trường hợp nhiều khoảng thời gian cho cùng một sân
+                val itemsByCourtName = booking.bookingItems.groupBy { it.courtName }
+
+                Text(
+                    text = if (itemsByCourtName.size > 1)
+                        "Các sân đã đặt (${itemsByCourtName.size}):"
                     else
                         "Sân đã đặt:",
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.DarkGray
+                    color = Color(0xFF424242)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                booking.bookingItems.forEachIndexed { index, item ->
-                    Card(
+                itemsByCourtName.entries.forEachIndexed { index, (courtName, items) ->
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF5F5F5)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            .padding(vertical = 6.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${index + 1}. ${item.courtName}",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Primary
-                                )
-                                Text(
-                                    text = "${item.price.formatPrice()} đ",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${index + 1}. $courtName",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
+                            )
+                            Text(
+                                text = "${items.sumOf { it.price }.formatPrice()} đ",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF212121)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Hiển thị tất cả các khoảng thời gian cho sân này
+                        items.forEach { item ->
                             Text(
                                 text = "⏰ ${formatDateTime(item.startTime)} - ${formatTime(item.endTime)}",
                                 fontSize = 13.sp,
-                                color = Color.DarkGray
+                                color = Color(0xFF757575),
+                                modifier = Modifier.padding(start = 16.dp, top = 2.dp)
                             )
+                        }
+
+                        if (index < itemsByCourtName.size - 1) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            HorizontalDivider(color = Color(0xFFF0F0F0))
                         }
                     }
                 }
@@ -354,11 +564,11 @@ private fun BookingInfoCard(booking: BookingDetail) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFE0E0E0))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
+            // Total price - Hiển thị tổng tiền từ API (đã bao gồm tất cả sân)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -366,23 +576,47 @@ private fun BookingInfoCard(booking: BookingDetail) {
             ) {
                 Text(
                     text = "Tổng tiền:",
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = Color(0xFF212121)
                 )
                 Text(
                     text = "${booking.totalPrice.formatPrice()} đ",
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Primary
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            InfoRow(
-                label = "Trạng thái",
-                value = booking.status.toVietnamese(),
-                valueColor = booking.status.toColor()
-            )
+            // Status display
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Trạng thái:",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = booking.status.toVietnamese(),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = booking.status.getStatusColor()
+                    )
+                    if (booking.status == BookingStatus.REJECTED && !booking.rejectionReason.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Lý do: ${booking.rejectionReason}",
+                            fontSize = 12.sp,
+                            color = Color(0xFFD32F2F),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -391,23 +625,28 @@ private fun BookingInfoCard(booking: BookingDetail) {
 private fun BankInfoCard(bankInfo: com.example.bookingcourt.domain.model.BankInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.AccountBalance,
                     contentDescription = null,
-                    tint = Primary
+                    tint = Primary,
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Thông tin chuyển khoản",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121)
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             InfoRow(label = "Ngân hàng", value = bankInfo.bankName)
             InfoRow(label = "Số tài khoản", value = bankInfo.bankAccountNumber)
@@ -427,27 +666,35 @@ private fun PaymentProofSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = "Chứng minh chuyển khoản",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             // Image preview
             if (selectedImageUri != null || uploadedPaymentProofUrl != null) {
-                Image(
-                    painter = rememberAsyncImagePainter(selectedImageUri ?: uploadedPaymentProofUrl),
-                    contentDescription = "Payment proof",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(Color.LightGray, RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Image(
+                        painter = rememberAsyncImagePainter(selectedImageUri ?: uploadedPaymentProofUrl),
+                        contentDescription = "Payment proof",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
@@ -455,7 +702,10 @@ private fun PaymentProofSection(
             Button(
                 onClick = onSelectImage,
                 enabled = !isUploading,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Primary
+                )
             ) {
                 if (isUploading) {
                     CircularProgressIndicator(
@@ -498,7 +748,7 @@ private fun PaymentProofSection(
 private fun InfoRow(
     label: String,
     value: String,
-    valueColor: Color = Color.Black
+    valueColor: Color = Color(0xFF212121)
 ) {
     Row(
         modifier = Modifier
@@ -535,22 +785,27 @@ private fun Long.formatPrice(): String {
 
 private fun BookingStatus.toVietnamese(): String {
     return when (this) {
+        BookingStatus.PENDING -> "Chờ xác nhận"
         BookingStatus.PENDING_PAYMENT -> "Chờ thanh toán"
         BookingStatus.PAYMENT_UPLOADED -> "Đã gửi xác nhận"
         BookingStatus.CONFIRMED -> "Đã xác nhận"
         BookingStatus.REJECTED -> "Bị từ chối"
         BookingStatus.CANCELLED -> "Đã hủy"
+        BookingStatus.EXPIRED -> "Hết hạn"
         BookingStatus.COMPLETED -> "Hoàn thành"
-        else -> "Đang xử lý"
+        BookingStatus.NO_SHOW -> "Không đến"
     }
 }
 
-private fun BookingStatus.toColor(): Color {
+private fun BookingStatus.getStatusColor(): Color {
     return when (this) {
-        BookingStatus.CONFIRMED -> Color(0xFF4CAF50)
-        BookingStatus.REJECTED, BookingStatus.CANCELLED -> Color(0xFFF44336)
-        BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800)
-        else -> Color.Gray
+        BookingStatus.CONFIRMED -> Color(0xFF4CAF50) // Green
+        BookingStatus.COMPLETED -> Color(0xFF4CAF50) // Green
+        BookingStatus.REJECTED -> Color(0xFFD32F2F) // Red
+        BookingStatus.CANCELLED -> Color(0xFF9E9E9E) // Gray
+        BookingStatus.EXPIRED -> Color(0xFFD32F2F) // Red
+        BookingStatus.PAYMENT_UPLOADED -> Color(0xFFFF9800) // Orange
+        else -> Color(0xFFF44336) // Default for other statuses
     }
 }
 
@@ -561,7 +816,7 @@ private fun uriToFile(context: android.content.Context, uri: Uri): File? {
 
         val contentResolver = context.contentResolver
 
-        // ✅ Get file extension from MIME type
+        // Get file extension from MIME type
         val mimeType = contentResolver.getType(uri)
         Log.d("BookingDetailScreen", "  MIME Type: $mimeType")
 
@@ -591,7 +846,7 @@ private fun uriToFile(context: android.content.Context, uri: Uri): File? {
         inputStream.close()
         outputStream.close()
 
-        // ✅ Verify file was created successfully
+        // Verify file was created successfully
         if (file.exists() && file.length() > 0) {
             Log.d("BookingDetailScreen", "  ✅ File created successfully:")
             Log.d("BookingDetailScreen", "    Name: ${file.name}")

@@ -14,4 +14,5 @@ data class Review(
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
     val isVerifiedBooking: Boolean,
+    val bookingId: String, // Cần để có thể update review (delete + create)
 )

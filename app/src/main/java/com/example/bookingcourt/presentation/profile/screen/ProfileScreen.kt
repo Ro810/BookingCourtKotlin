@@ -44,6 +44,7 @@ fun ProfileScreen(
     onNavigateToBecomeOwner: () -> Unit = {},
     onNavigateToBecomeCustomer: () -> Unit = {},
     onNavigateToBookingHistory: () -> Unit = {},
+    onNavigateToMyReviews: () -> Unit = {},
     onLogout: () -> Unit = {},
     showBackButton: Boolean = true,
     showTopBar: Boolean = true,
@@ -103,11 +104,14 @@ fun ProfileScreen(
                         ProfileContent(
                             user = user,
                             currentUserRole = currentUserRole, // Dùng effectiveRole từ state
+                            bookingsCount = state.bookingsCount, // ✅ Dùng dữ liệu thực
+                            reviewsCount = state.reviewsCount,   // ✅ Dùng dữ liệu thực
                             onNavigateToEditProfile = onNavigateToEditProfile,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
                             onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
                             onNavigateToBookingHistory = onNavigateToBookingHistory,
+                            onNavigateToMyReviews = onNavigateToMyReviews,
                             onShowLogoutDialog = { showLogoutDialog = true },
                         )
                     }
@@ -165,11 +169,14 @@ fun ProfileScreen(
                         ProfileContent(
                             user = user,
                             currentUserRole = currentUserRole, // Dùng effectiveRole từ state
+                            bookingsCount = state.bookingsCount, // ✅ Dùng dữ liệu thực
+                            reviewsCount = state.reviewsCount,   // ✅ Dùng dữ liệu thực
                             onNavigateToEditProfile = onNavigateToEditProfile,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
                             onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
                             onNavigateToBookingHistory = onNavigateToBookingHistory,
+                            onNavigateToMyReviews = onNavigateToMyReviews,
                             onShowLogoutDialog = { showLogoutDialog = true },
                         )
                     }
@@ -231,11 +238,14 @@ fun ProfileScreen(
 private fun LazyListScope.ProfileContent(
     user: User,
     currentUserRole: UserRole = UserRole.USER, // Thêm parameter currentUserRole
+    bookingsCount: Int,
+    reviewsCount: Int,
     onNavigateToEditProfile: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToBecomeOwner: () -> Unit,
     onNavigateToBecomeCustomer: () -> Unit,
     onNavigateToBookingHistory: () -> Unit,
+    onNavigateToMyReviews: () -> Unit,
     onShowLogoutDialog: () -> Unit,
 ) {
     // User Profile Header
@@ -249,9 +259,8 @@ private fun LazyListScope.ProfileContent(
     // Account Stats
     item {
         AccountStatsCard(
-            bookingsCount = 12,
-            favoritesCount = user.favoriteCourtIds.size,
-            reviewsCount = 5,
+            bookingsCount = bookingsCount,
+            reviewsCount = reviewsCount,
         )
     }
 
@@ -352,13 +361,6 @@ private fun LazyListScope.ProfileContent(
                     title = "Đổi mật khẩu",
                     onClick = onNavigateToChangePassword,
                 )
-                HorizontalDivider()
-                MenuItemRow(
-                    icon = Icons.Default.Favorite,
-                    title = "Sân yêu thích",
-                    subtitle = "${user.favoriteCourtIds.size} sân",
-                    onClick = { /* TODO */ },
-                )
             }
         }
     }
@@ -389,7 +391,7 @@ private fun LazyListScope.ProfileContent(
                 MenuItemRow(
                     icon = Icons.Default.Star,
                     title = "Đánh giá của tôi",
-                    onClick = { /* TODO */ },
+                    onClick = onNavigateToMyReviews,
                 )
             }
         }
@@ -590,7 +592,6 @@ fun UserProfileHeader(
 @Composable
 fun AccountStatsCard(
     bookingsCount: Int,
-    favoritesCount: Int,
     reviewsCount: Int,
 ) {
     Card(
@@ -607,12 +608,6 @@ fun AccountStatsCard(
                 icon = Icons.Default.DateRange,
                 value = bookingsCount.toString(),
                 label = "Đặt sân",
-            )
-            VerticalDivider(modifier = Modifier.height(50.dp))
-            StatItem(
-                icon = Icons.Default.Favorite,
-                value = favoritesCount.toString(),
-                label = "Yêu thích",
             )
             VerticalDivider(modifier = Modifier.height(50.dp))
             StatItem(

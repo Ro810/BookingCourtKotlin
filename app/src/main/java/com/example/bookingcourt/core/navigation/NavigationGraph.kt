@@ -30,6 +30,7 @@ import com.example.bookingcourt.presentation.payment.screen.PaymentScreen
 import com.example.bookingcourt.presentation.profile.screen.EditProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ProfileScreen
 import com.example.bookingcourt.presentation.profile.screen.ChangePasswordScreen
+import com.example.bookingcourt.presentation.review.screen.MyReviewsScreen
 import com.example.bookingcourt.presentation.owner.screen.BecomeOwnerScreen
 import com.example.bookingcourt.presentation.owner.screen.CreateVenueScreen
 import com.example.bookingcourt.presentation.settings.screen.SettingsScreen
@@ -167,6 +168,9 @@ fun NavigationGraph(
                     onNavigateToEditProfile = {
                         navController.navigate(Screen.EditProfile.route)
                     },
+                    onNavigateToChangePassword = {
+                        navController.navigate(Screen.ChangePassword.route)
+                    },
                     onNavigateToCreateVenue = {
                         navController.navigate(Screen.CreateVenue.route)
                     },
@@ -207,7 +211,7 @@ fun NavigationGraph(
                     },
                     onNavigateToBookingDetail = { bookingId ->
                         navController.navigate(
-                            Screen.BookingDetail.createRoute(bookingId),
+                            Screen.OwnerBookingDetail.createRoute(bookingId),
                         )
                     },
                 )
@@ -446,6 +450,9 @@ fun NavigationGraph(
                     onNavigateToBookingHistory = {
                         navController.navigate(Screen.BookingHistory.route)
                     },
+                    onNavigateToMyReviews = {
+                        navController.navigate(Screen.MyReviews.route)
+                    },
                     onNavigateToBecomeOwner = {
                         // Kiểm tra xem user đã có bank info chưa
                         val user = profileState.currentUser
@@ -557,6 +564,13 @@ fun NavigationGraph(
                 )
             }
 
+            // My Reviews Screen
+            composable(route = Screen.MyReviews.route) {
+                MyReviewsScreen(
+                    onNavigateBack = { navController.navigateUp() },
+                )
+            }
+
             // ========== PAYMENT CONFIRMATION FLOW ==========
 
             // User: Màn hình chi tiết booking với upload payment proof
@@ -626,6 +640,22 @@ fun NavigationGraph(
             ) { backStackEntry ->
                 val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
                 com.example.bookingcourt.presentation.owner.screen.BookingApprovalScreen(
+                    bookingId = bookingId,
+                    onNavigateBack = { navController.navigateUp() }
+                )
+            }
+
+            // Owner: Màn hình chi tiết booking cho owner (xem và approve/reject)
+            composable(
+                route = Screen.OwnerBookingDetail.route,
+                arguments = listOf(
+                    navArgument("bookingId") {
+                        type = NavType.StringType
+                    },
+                ),
+            ) { backStackEntry ->
+                val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+                com.example.bookingcourt.presentation.booking.screen.OwnerBookingDetailScreen(
                     bookingId = bookingId,
                     onNavigateBack = { navController.navigateUp() }
                 )

@@ -4,6 +4,7 @@ import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.CourtAvailability
 import com.example.bookingcourt.domain.model.Venue
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 
 interface VenueRepository {
     suspend fun getVenues(): Flow<Resource<List<Venue>>>
@@ -63,4 +64,15 @@ interface VenueRepository {
         startTime: String,
         endTime: String
     ): Flow<Resource<List<CourtAvailability>>>
+
+    /**
+     * Upload venue image
+     * @param venueId ID của venue
+     * @param imageFile File ảnh để upload
+     * @return Venue sau khi upload ảnh
+     */
+    suspend fun uploadVenueImage(
+        venueId: Long,
+        imageFile: File
+    ): Flow<Resource<Venue>>
 }

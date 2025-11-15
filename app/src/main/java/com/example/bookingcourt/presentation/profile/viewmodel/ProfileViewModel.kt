@@ -1,5 +1,6 @@
 package com.example.bookingcourt.presentation.profile.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookingcourt.core.common.Resource
@@ -23,6 +24,9 @@ data class ProfileState(
     val isSwitchingRole: Boolean = false,
     // Thêm field để track viewing mode (chế độ xem hiện tại)
     val viewingMode: UserRole = UserRole.USER, // Chế độ đang xem (USER hoặc OWNER)
+    // Thêm số liệu thống kê
+    val bookingsCount: Int = 0,
+    val reviewsCount: Int = 0,
 )
 
 sealed class ProfileEvent {
@@ -35,6 +39,8 @@ sealed class ProfileEvent {
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val bookingRepository: com.example.bookingcourt.domain.repository.BookingRepository,
+    private val reviewRepository: com.example.bookingcourt.domain.repository.ReviewRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileState())
@@ -45,6 +51,7 @@ class ProfileViewModel @Inject constructor(
 
     init {
         loadUserInfo()
+        loadStats() // Thêm load stats
     }
 
     private fun loadUserInfo() {
@@ -100,6 +107,59 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    private fun loadStats() {
+        Log.d("ProfileViewModel", "========== LOAD STATS ==========")
+
+        viewModelScope.launch {
+            try {
+                Log.d("ProfileViewModel", "Loading bookings count...")
+                // ✅ SỬA: Dùng getMyBookings() thay vì getUserBookings()
+                bookingRepository.getMyBookings().collect { bookingResult ->
+                    when (bookingResult) {
+                        is Resource.Success -> {
+                            val bookingsCount = bookingResult.data?.size ?: 0
+                            Log.d("ProfileViewModel", "✅ Bookings count: $bookingsCount")
+                            _state.value = _state.value.copy(bookingsCount = bookingsCount)
+                        }
+                        is Resource.Error -> {
+                            Log.e("ProfileViewModel", "❌ Error loading bookings: ${bookingResult.message}")
+                        }
+                        is Resource.Loading -> {
+                            Log.d("ProfileViewModel", "⏳ Loading bookings...")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ProfileViewModel", "❌ Exception loading bookings: ${e.message}", e)
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                Log.d("ProfileViewModel", "Loading reviews count...")
+                reviewRepository.getMyReviews().collect { reviewResult ->
+                    when (reviewResult) {
+                        is Resource.Success -> {
+                            val reviewsCount = reviewResult.data?.size ?: 0
+                            Log.d("ProfileViewModel", "✅ Reviews count: $reviewsCount")
+                            _state.value = _state.value.copy(reviewsCount = reviewsCount)
+                        }
+                        is Resource.Error -> {
+                            Log.e("ProfileViewModel", "❌ Error loading reviews: ${reviewResult.message}")
+                        }
+                        is Resource.Loading -> {
+                            Log.d("ProfileViewModel", "⏳ Loading reviews...")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ProfileViewModel", "❌ Exception loading reviews: ${e.message}", e)
+            }
+        }
+
+        Log.d("ProfileViewModel", "======================================")
+    }
+
     fun switchToUserMode() {
         viewModelScope.launch {
             // Chỉ cần đổi viewingMode thành USER
@@ -120,5 +180,6 @@ class ProfileViewModel @Inject constructor(
 
     fun refresh() {
         loadUserInfo()
+        loadStats() // Thêm reload stats
     }
 }

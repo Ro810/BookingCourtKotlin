@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +46,7 @@ enum class HomeTab {
 fun OwnerHomeScreen(
     onNavigateToCourtDetail: (String) -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
     onNavigateToBecomeCustomer: () -> Unit = {},
     onNavigateToCreateVenue: () -> Unit = {},
     onNavigateToPendingBookings: () -> Unit = {}, // New navigation callback
@@ -138,6 +141,7 @@ fun OwnerHomeScreen(
                 ProfileScreen(
                     onNavigateBack = { selectedTab = HomeTab.HOME },
                     onNavigateToEditProfile = onNavigateToEditProfile,
+                    onNavigateToChangePassword = onNavigateToChangePassword,
                     onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
                     onLogout = onLogout,
                     showBackButton = false,
@@ -170,6 +174,9 @@ private fun OwnerHomeContent(
     // Lấy venues từ ViewModel thay vì hardcode
     val venues = state.venues
 
+    // Pull-to-refresh state
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isRefreshing)
+
     // Show success message when update succeeds and venues reloaded
     LaunchedEffect(state.updateSuccess, state.isLoadingVenues) {
         if (state.updateSuccess && !state.isLoadingVenues) {
@@ -191,22 +198,26 @@ private fun OwnerHomeContent(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF8BB1F6), // Mid Blue
-                        Color.White,
+    SwipeRefresh(
+        state = swipeRefreshState,
+        onRefresh = { viewModel.refresh() },
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF8BB1F6), // Mid Blue
+                            Color.White,
+                        ),
                     ),
                 ),
-            ),
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = bottomPadding),
         ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = bottomPadding),
+            ) {
             item {
                 // Header content
                 Column(
@@ -441,6 +452,7 @@ private fun OwnerHomeContent(
             item {
                 Spacer(modifier = Modifier.height(80.dp))
             }
+        }
         }
     }
 

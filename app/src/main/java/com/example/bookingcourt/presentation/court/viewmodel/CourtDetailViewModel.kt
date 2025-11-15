@@ -28,6 +28,8 @@ data class CourtDetailState(
     val bookedSlots: List<com.example.bookingcourt.domain.model.BookedSlot> = emptyList(),
     val selectedDateRevenue: Long = 0, // Doanh thu của ngày được chọn
     val courtsAvailability: List<com.example.bookingcourt.domain.model.CourtAvailability> = emptyList(), // Tình trạng sân theo API mới
+    val pendingBookings: List<com.example.bookingcourt.domain.model.BookingDetail> = emptyList(), // Danh sách booking chờ xác nhận
+    val confirmedBookings: List<com.example.bookingcourt.domain.model.BookingDetail> = emptyList(), // Danh sách booking đã xác nhận cho check-in schedule
 )
 
 sealed interface CourtDetailIntent {
@@ -36,6 +38,7 @@ sealed interface CourtDetailIntent {
     object NavigateBack : CourtDetailIntent
     object Refresh : CourtDetailIntent
     data class CheckIn(val bookingId: String) : CourtDetailIntent // Thêm từ bên phải
+    data class UploadImage(val venueId: Long, val imageFile: java.io.File) : CourtDetailIntent
 }
 
 @HiltViewModel
@@ -71,6 +74,7 @@ class CourtDetailViewModel @Inject constructor(
             CourtDetailIntent.NavigateBack -> navigateBack()
             CourtDetailIntent.Refresh -> refresh()
             is CourtDetailIntent.CheckIn -> checkIn(intent.bookingId) // Thêm từ P2
+            is CourtDetailIntent.UploadImage -> uploadVenueImage(intent.venueId, intent.imageFile)
         }
     }
     private fun loadVenueDetail(venueId: Long) {
@@ -122,7 +126,7 @@ class CourtDetailViewModel @Inject constructor(
             }
         }
     }
-    
+
 
 
     private fun navigateToBooking(courtId: Long) {
@@ -269,6 +273,109 @@ class CourtDetailViewModel @Inject constructor(
                     }
                     is Resource.Loading -> {
                         android.util.Log.d("CourtDetailVM", "⏳ Loading courts availability...")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Upload venue image
+     * @param venueId ID của venue
+     * @param imageFile File ảnh để upload
+     */
+    private fun uploadVenueImage(venueId: Long, imageFile: java.io.File) {
+        viewModelScope.launch {
+            android.util.Log.d("CourtDetailVM", "📤 Uploading image for venue $venueId")
+
+            venueRepository.uploadVenueImage(venueId, imageFile).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Image uploaded successfully")
+                        // Cập nhật state với venue mới (có ảnh)
+                        _state.value = _state.value.copy(venue = result.data)
+                        _uiEvent.emit(UiEvent.ShowSnackbar("Upload ảnh thành công"))
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error uploading image: ${result.message}")
+                        _uiEvent.emit(UiEvent.ShowSnackbar(result.message ?: "Lỗi upload ảnh"))
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Uploading image...")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Lấy danh sách booking chờ xác nhận (PAYMENT_UPLOADED) theo venue ID
+     * Chỉ lấy pending bookings của venue hiện tại
+     */
+    fun getPendingBookings() {
+        viewModelScope.launch {
+            // Lấy venueId từ state hiện tại
+            val currentVenueId = _state.value.venue?.id
+
+            if (currentVenueId == null) {
+                android.util.Log.w("CourtDetailVM", "⚠️ Cannot get pending bookings - venue not loaded yet")
+                return@launch
+            }
+
+            android.util.Log.d("CourtDetailVM", "📋 Getting pending bookings for venue: $currentVenueId")
+            bookingRepository.getVenuePendingBookings(currentVenueId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Pending bookings loaded: ${result.data?.size} bookings for venue $currentVenueId")
+                        _state.value = _state.value.copy(
+                            pendingBookings = result.data ?: emptyList()
+                        )
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error loading pending bookings: ${result.message}")
+                        _state.value = _state.value.copy(
+                            pendingBookings = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Loading pending bookings...")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Lấy danh sách booking đã xác nhận theo venue ID
+     * Chỉ lấy confirmed bookings của venue hiện tại
+     */
+    fun getConfirmedBookings() {
+        viewModelScope.launch {
+            // Lấy venueId từ state hiện tại
+            val currentVenueId = _state.value.venue?.id
+
+            if (currentVenueId == null) {
+                android.util.Log.w("CourtDetailVM", "⚠️ Cannot get confirmed bookings - venue not loaded yet")
+                return@launch
+            }
+
+            android.util.Log.d("CourtDetailVM", "📋 Getting confirmed bookings for venue: $currentVenueId")
+            bookingRepository.getVenueConfirmedBookings(currentVenueId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Confirmed bookings loaded: ${result.data?.size} bookings for venue $currentVenueId")
+                        _state.value = _state.value.copy(
+                            confirmedBookings = result.data ?: emptyList()
+                        )
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error loading confirmed bookings: ${result.message}")
+                        _state.value = _state.value.copy(
+                            confirmedBookings = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Loading confirmed bookings...")
                     }
                 }
             }

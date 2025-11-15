@@ -22,6 +22,7 @@ data class OwnerHomeState(
     val currentUser: User? = null,
     val venues: List<Venue> = emptyList(),
     val isLoadingVenues: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isUpdatingVenue: Boolean = false,
     val updateSuccess: Boolean = false,
     val isDeletingVenue: Boolean = false,
@@ -145,9 +146,13 @@ class OwnerHomeViewModel @Inject constructor(
     }
 
     fun refresh() {
-        loadUserInfo()
-        loadVenues()
-        loadPendingBookingsCount() // ✅ Refresh count khi refresh
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isRefreshing = true)
+            loadUserInfo()
+            loadVenues()
+            loadPendingBookingsCount() // ✅ Refresh count khi refresh
+            _state.value = _state.value.copy(isRefreshing = false)
+        }
     }
 
     fun resetUpdateSuccess() {
