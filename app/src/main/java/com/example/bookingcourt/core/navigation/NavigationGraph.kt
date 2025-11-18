@@ -174,6 +174,9 @@ fun NavigationGraph(
                     onNavigateToCreateVenue = {
                         navController.navigate(Screen.CreateVenue.route)
                     },
+                    onNavigateToPendingBookings = {
+                        navController.navigate(Screen.PendingBookings.route)
+                    },
                     onNavigateToBecomeCustomer = {
                         // Chuyển về HomeScreen (chế độ khách đặt sân)
                         navController.navigate(Screen.Home.route) {
