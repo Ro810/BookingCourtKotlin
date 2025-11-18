@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -24,6 +26,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.Primary
 import com.example.bookingcourt.presentation.review.viewmodel.ReviewViewModel
@@ -505,19 +508,48 @@ fun ImagesTabContent(venue: Venue) {
                 }
             }
         } else {
-            // TODO: Implement image gallery with Coil
-            venue.images.forEach { imageUrl ->
-                Box(
+            // Display venue images with Coil
+            venue.images.forEachIndexed { index, imageUrl ->
+                // Build full image URL if needed
+                val fullImageUrl = if (imageUrl.startsWith("http")) {
+                    imageUrl
+                } else if (imageUrl.startsWith("/api/")) {
+                    // API trả về path đầy đủ như /api/files/venue-images/...
+                    val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                        .removeSuffix("/api/")
+                        .removeSuffix("/")
+                    "$baseUrl$imageUrl"
+                } else {
+                    // Chỉ có filename, build full URL
+                    val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                        .removeSuffix("/api/")
+                        .removeSuffix("/")
+                    "$baseUrl/files/venue-images/$imageUrl"
+                }
+
+                android.util.Log.d("DetailScreen", "Image $index: $imageUrl -> $fullImageUrl")
+
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
-                        .padding(vertical = 8.dp)
-                        .background(
-                            Primary.copy(alpha = 0.2f),
-                            androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                        )
+                        .padding(vertical = 8.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    // AsyncImage(model = imageUrl, ...)
+                    AsyncImage(
+                        model = fullImageUrl,
+                        contentDescription = "Ảnh sân ${index + 1}",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(
+                            android.R.drawable.ic_menu_gallery
+                        ),
+                        error = painterResource(
+                            android.R.drawable.ic_menu_report_image
+                        )
+                    )
                 }
             }
         }

@@ -1,10 +1,15 @@
 package com.example.bookingcourt.presentation.home.screen
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import com.example.bookingcourt.core.util.FileUtils
 import com.example.bookingcourt.domain.model.Address
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.domain.model.User
@@ -466,7 +476,7 @@ private fun OwnerHomeContent(
                 showEditDialog = false
                 venueToEdit = null
             },
-            onSave = { updatedVenue ->
+            onSave = { updatedVenue, selectedNewImages ->
                 viewModel.updateVenue(
                     venueId = updatedVenue.id,
                     name = updatedVenue.name,
@@ -482,6 +492,11 @@ private fun OwnerHomeContent(
                     closingTime = updatedVenue.closingTime,
                     images = updatedVenue.images
                 )
+
+                // Upload new images if any
+                if (selectedNewImages.isNotEmpty()) {
+                    viewModel.uploadVenueImages(updatedVenue.id, selectedNewImages)
+                }
             }
         )
     }
@@ -1349,8 +1364,10 @@ private fun EditVenueDialog(
     currentUser: User?,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onSave: (Venue) -> Unit,
+    onSave: (Venue, List<java.io.File>) -> Unit,
 ) {
+    val context = LocalContext.current
+
     var venueName by remember(venue) { mutableStateOf(venue.name) }
     var description by remember(venue) { mutableStateOf(venue.description ?: "") }
     var phoneNumber by remember(venue) { mutableStateOf(venue.phoneNumber ?: venue.ownerPhone ?: currentUser?.phoneNumber ?: "") }
@@ -1358,6 +1375,9 @@ private fun EditVenueDialog(
     var district by remember(venue) { mutableStateOf(venue.address.district) }
     var detailAddress by remember(venue) { mutableStateOf(venue.address.detailAddress) }
     var pricePerHour by remember(venue) { mutableStateOf(venue.pricePerHour.toString()) }
+
+    // State for new images to upload
+    var selectedNewImages by remember { mutableStateOf<List<java.io.File>>(emptyList()) }
 
     // Parse opening/closing time để lấy giờ và phút
     val (openHour, openMinute) = remember(venue.openingTime) {
@@ -1373,6 +1393,18 @@ private fun EditVenueDialog(
     var closingMinute by remember(venue.closingTime) { mutableStateOf(closeMinute) }
     var showOpeningTimePicker by remember { mutableStateOf(false) }
     var showClosingTimePicker by remember { mutableStateOf(false) }
+
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            val imageFile = FileUtils.uriToFile(context, uri)
+            if (imageFile != null) {
+                selectedNewImages = selectedNewImages + imageFile
+            }
+        }
+    }
 
     val primaryColor = Color(0xFF123E62)
 
@@ -1575,6 +1607,134 @@ private fun EditVenueDialog(
                         },
                     )
 
+                    // Hình ảnh sân section
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "Hình ảnh sân",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = primaryColor
+                            )
+                            OutlinedButton(
+                                onClick = { if (!isLoading) imagePickerLauncher.launch("image/*") },
+                                modifier = Modifier.height(36.dp),
+                                enabled = !isLoading,
+                                border = BorderStroke(1.dp, primaryColor.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.AddPhotoAlternate,
+                                    contentDescription = "Thêm ảnh",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = primaryColor
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Thêm ảnh", fontSize = 12.sp, color = primaryColor)
+                            }
+                        }
+
+                        // Display existing images
+                        if (!venue.images.isNullOrEmpty()) {
+                            Text(
+                                "Ảnh hiện tại (${venue.images.size})",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                itemsIndexed(venue.images) { index, imageUrl ->
+                                    val fullImageUrl = if (imageUrl.startsWith("http")) {
+                                        imageUrl
+                                    } else if (imageUrl.startsWith("/api/")) {
+                                        // API trả về path đầy đủ như /api/files/venue-images/...
+                                        val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                                            .removeSuffix("/api/")
+                                            .removeSuffix("/")
+                                        "$baseUrl$imageUrl"
+                                    } else {
+                                        // Chỉ có filename, build full URL
+                                        val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                                            .removeSuffix("/api/")
+                                            .removeSuffix("/")
+                                        "$baseUrl/files/venue-images/$imageUrl"
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                                    ) {
+                                        AsyncImage(
+                                            model = fullImageUrl,
+                                            contentDescription = "Ảnh ${index + 1}",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Display newly selected images
+                        if (selectedNewImages.isNotEmpty()) {
+                            Text(
+                                "Ảnh mới sẽ thêm (${selectedNewImages.size})",
+                                fontSize = 12.sp,
+                                color = primaryColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                itemsIndexed(selectedNewImages) { index, imageFile ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                    ) {
+                                        Image(
+                                            painter = rememberAsyncImagePainter(model = imageFile),
+                                            contentDescription = "Ảnh mới ${index + 1}",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+
+                                        // Remove button
+                                        IconButton(
+                                            onClick = {
+                                                selectedNewImages = selectedNewImages.filterIndexed { i, _ -> i != index }
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .size(20.dp)
+                                                .background(
+                                                    Color.Black.copy(alpha = 0.6f),
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Xóa",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Giờ hoạt động
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1701,7 +1861,7 @@ private fun EditVenueDialog(
                                 openingTime = String.format("%02d:%02d:00", openingHour, openingMinute),
                                 closingTime = String.format("%02d:%02d:00", closingHour, closingMinute)
                             )
-                            onSave(updatedVenue)
+                            onSave(updatedVenue, selectedNewImages)
                         },
                         modifier = Modifier.weight(1f).height(50.dp),
                         colors = ButtonDefaults.buttonColors(

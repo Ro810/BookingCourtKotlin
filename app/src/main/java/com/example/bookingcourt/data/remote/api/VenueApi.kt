@@ -111,17 +111,17 @@ interface VenueApi {
     ): Response<ApiResponse<CourtAvailabilityResponseDto>>
 
     /**
-     * Upload venue image (Owner only)
-     * POST /api/venues/{id}/upload-image
+     * Upload venue images (Owner only)
+     * POST /api/venues/{id}/upload-images
      *
      * @param venueId ID của venue
-     * @param image File ảnh để upload
-     * @return Venue detail sau khi upload
+     * @param images Danh sách file ảnh để upload
+     * @return List of uploaded image URLs
      */
     @Multipart
-    @POST("venues/{id}/upload-image")
-    suspend fun uploadVenueImage(
+    @POST("venues/{id}/upload-images")
+    suspend fun uploadVenueImages(
         @Path("id") venueId: Long,
-        @Part image: MultipartBody.Part
-    ): Response<ApiResponse<VenueDetailDto>>
+        @Part images: List<MultipartBody.Part>
+    ): Response<ApiResponse<List<String>>>
 }

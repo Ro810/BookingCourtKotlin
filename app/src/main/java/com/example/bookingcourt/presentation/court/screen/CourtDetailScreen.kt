@@ -390,39 +390,72 @@ fun CourtDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Image display
+                        // Image display with HorizontalPager
                         if (venue?.images != null && venue.images.isNotEmpty()) {
-                            // Display first image
+                            val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+                                pageCount = { venue.images.size }
+                            )
+
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFE0E0E0))
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                AsyncImage(
-                                    model = venue.images[0],
-                                    contentDescription = "Ảnh cơ sở",
+                                // HorizontalPager for swiping through images
+                                androidx.compose.foundation.pager.HorizontalPager(
+                                    state = pagerState,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(200.dp),
-                                    contentScale = ContentScale.Crop
-                                )
+                                        .height(200.dp)
+                                ) { page ->
+                                    // Build full image URL
+                                    val imageUrl = venue.images[page]
+                                    val fullImageUrl = if (imageUrl.startsWith("http")) {
+                                        imageUrl
+                                    } else if (imageUrl.startsWith("/api/")) {
+                                        val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                                            .removeSuffix("/api/")
+                                            .removeSuffix("/")
+                                        "$baseUrl$imageUrl"
+                                    } else {
+                                        val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                                            .removeSuffix("/api/")
+                                            .removeSuffix("/")
+                                        "$baseUrl/files/venue-images/$imageUrl"
+                                    }
 
-                                // Show image count badge if there are multiple images
+                                    android.util.Log.d("CourtDetailScreen", "Image $page: $imageUrl -> $fullImageUrl")
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0xFFE0E0E0))
+                                    ) {
+                                        AsyncImage(
+                                            model = fullImageUrl,
+                                            contentDescription = "Ảnh cơ sở ${page + 1}",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(200.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+
+                                // Page indicator
                                 if (venue.images.size > 1) {
                                     Box(
                                         modifier = Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .padding(8.dp)
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = 8.dp)
                                             .background(
                                                 Color.Black.copy(alpha = 0.6f),
-                                                RoundedCornerShape(4.dp)
+                                                RoundedCornerShape(12.dp)
                                             )
                                             .padding(horizontal = 8.dp, vertical = 4.dp)
                                     ) {
                                         Text(
-                                            text = "+${venue.images.size - 1} ảnh",
+                                            text = "${pagerState.currentPage + 1}/${venue.images.size}",
                                             color = Color.White,
                                             fontSize = 12.sp
                                         )

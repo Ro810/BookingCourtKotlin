@@ -1,18 +1,35 @@
 package com.example.bookingcourt.presentation.owner.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
+import com.example.bookingcourt.core.util.FileUtils
 import com.example.bookingcourt.presentation.owner.viewmodel.CreateVenueViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,6 +40,7 @@ fun CreateVenueScreen(
     viewModel: CreateVenueViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
 
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -36,11 +54,27 @@ fun CreateVenueScreen(
     var openingTime by remember { mutableStateOf("") }
     var closingTime by remember { mutableStateOf("") }
 
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            // Convert URI to File
+            val imageFile = FileUtils.uriToFile(context, uri)
+            if (imageFile != null) {
+                viewModel.addImage(imageFile)
+            }
+        }
+    }
+
     // Show success dialog when venue is created
     LaunchedEffect(state.createdVenue) {
         state.createdVenue?.let { venue ->
-            onVenueCreated(venue.id)
-            viewModel.reset()
+            // Chỉ navigate khi không còn đang upload ảnh
+            if (!state.isUploadingImages) {
+                onVenueCreated(venue.id)
+                viewModel.reset()
+            }
         }
     }
 
@@ -307,6 +341,89 @@ fun CreateVenueScreen(
                 singleLine = true,
             )
 
+            Text(
+                "Hình ảnh sân",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // Image selection section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    // Add image button
+                    OutlinedButton(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.AddPhotoAlternate,
+                            contentDescription = "Thêm ảnh",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Thêm ảnh sân")
+                    }
+
+                    // Display selected images
+                    if (state.selectedImages.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Đã chọn ${state.selectedImages.size} ảnh",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            itemsIndexed(state.selectedImages) { index, imageFile ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                ) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(model = imageFile),
+                                        contentDescription = "Ảnh ${index + 1}",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+
+                                    // Remove button
+                                    IconButton(
+                                        onClick = { viewModel.removeImage(index) },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(24.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.6f),
+                                                RoundedCornerShape(12.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Xóa",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Create/Complete button
@@ -329,13 +446,13 @@ fun CreateVenueScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = !state.isLoading,
+                enabled = !state.isLoading && !state.isUploadingImages,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                if (state.isLoading) {
+                if (state.isLoading || state.isUploadingImages) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
@@ -343,7 +460,10 @@ fun CreateVenueScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "Đang tạo sân...",
+                        when {
+                            state.isUploadingImages -> "Đang upload ảnh..."
+                            else -> "Đang tạo sân..."
+                        },
                         style = MaterialTheme.typography.titleMedium
                     )
                 } else {

@@ -288,7 +288,8 @@ class CourtDetailViewModel @Inject constructor(
         viewModelScope.launch {
             android.util.Log.d("CourtDetailVM", "📤 Uploading image for venue $venueId")
 
-            venueRepository.uploadVenueImage(venueId, imageFile).collect { result ->
+            // Convert single file to list for new API
+            venueRepository.uploadVenueImages(venueId, listOf(imageFile)).collect { result ->
                 when (result) {
                     is Resource.Success -> {
                         android.util.Log.d("CourtDetailVM", "✅ Image uploaded successfully")

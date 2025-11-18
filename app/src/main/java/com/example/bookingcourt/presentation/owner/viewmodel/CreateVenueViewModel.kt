@@ -17,6 +17,8 @@ data class CreateVenueState(
     val createdVenue: Venue? = null,
     val error: String? = null,
     val validationErrors: ValidationErrors = ValidationErrors(),
+    val selectedImages: List<java.io.File> = emptyList(), // Danh sách ảnh được chọn
+    val isUploadingImages: Boolean = false, // Trạng thái upload ảnh
 )
 
 data class ValidationErrors(
@@ -96,17 +98,83 @@ class CreateVenueViewModel @Inject constructor(
                         )
                     }
                     is Resource.Success -> {
+                        val createdVenue = result.data
+
+                        // Kiểm tra nếu có ảnh cần upload
+                        val hasImagesToUpload = createdVenue != null && _state.value.selectedImages.isNotEmpty()
+
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            createdVenue = result.data,
-                            error = null
+                            createdVenue = createdVenue,
+                            error = null,
+                            isUploadingImages = hasImagesToUpload // Set true nếu có ảnh cần upload
                         )
+
+                        // Upload ảnh sau khi tạo venue thành công
+                        if (hasImagesToUpload) {
+                            uploadImages(createdVenue!!.id)
+                        }
                     }
                     is Resource.Error -> {
                         _state.value = _state.value.copy(
                             isLoading = false,
                             error = result.message ?: "Đã xảy ra lỗi khi tạo sân"
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Thêm ảnh vào danh sách ảnh được chọn
+     */
+    fun addImage(imageFile: java.io.File) {
+        val currentImages = _state.value.selectedImages.toMutableList()
+        currentImages.add(imageFile)
+        _state.value = _state.value.copy(selectedImages = currentImages)
+    }
+
+    /**
+     * Xóa ảnh khỏi danh sách
+     */
+    fun removeImage(index: Int) {
+        val currentImages = _state.value.selectedImages.toMutableList()
+        if (index in currentImages.indices) {
+            currentImages.removeAt(index)
+            _state.value = _state.value.copy(selectedImages = currentImages)
+        }
+    }
+
+    /**
+     * Upload ảnh cho venue đã tạo
+     */
+    private fun uploadImages(venueId: Long) {
+        val images = _state.value.selectedImages
+        if (images.isEmpty()) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isUploadingImages = true)
+
+            venueRepository.uploadVenueImages(venueId, images).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        // Cập nhật venue với ảnh đã upload
+                        _state.value = _state.value.copy(
+                            isUploadingImages = false,
+                            createdVenue = result.data
+                        )
+                    }
+                    is Resource.Error -> {
+                        // Upload ảnh thất bại nhưng venue đã được tạo
+                        // Chỉ hiển thị warning, không block user
+                        _state.value = _state.value.copy(
+                            isUploadingImages = false,
+                            error = "Tạo sân thành công nhưng upload ảnh thất bại: ${result.message}"
+                        )
+                    }
+                    is Resource.Loading -> {
+                        _state.value = _state.value.copy(isUploadingImages = true)
                     }
                 }
             }

@@ -284,4 +284,49 @@ class OwnerHomeViewModel @Inject constructor(
     fun clearDeleteSuccess() {
         _state.value = _state.value.copy(deleteSuccess = false)
     }
+
+    /**
+     * Upload images for a venue
+     */
+    fun uploadVenueImages(venueId: Long, imageFiles: List<java.io.File>) {
+        if (imageFiles.isEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                Log.d("OwnerHomeVM", "Uploading ${imageFiles.size} images for venue $venueId")
+
+                venueRepository.uploadVenueImages(venueId, imageFiles).collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            Log.d("OwnerHomeVM", "✓ Images uploaded successfully")
+                            // Update the venue in the list with new images
+                            val updatedVenue = result.data
+                            if (updatedVenue != null) {
+                                val updatedVenues = _state.value.venues.map { venue ->
+                                    if (venue.id == updatedVenue.id) updatedVenue else venue
+                                }
+                                _state.value = _state.value.copy(venues = updatedVenues)
+                            }
+                            // Refresh to ensure consistency
+                            loadVenues()
+                        }
+                        is Resource.Error -> {
+                            Log.e("OwnerHomeVM", "✗ Error uploading images: ${result.message}")
+                            _state.value = _state.value.copy(
+                                error = "Lỗi upload ảnh: ${result.message}"
+                            )
+                        }
+                        is Resource.Loading -> {
+                            Log.d("OwnerHomeVM", "⏳ Uploading images...")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("OwnerHomeVM", "Exception uploading images", e)
+                _state.value = _state.value.copy(
+                    error = e.message ?: "Đã xảy ra lỗi khi upload ảnh"
+                )
+            }
+        }
+    }
 }

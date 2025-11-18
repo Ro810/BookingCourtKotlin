@@ -176,9 +176,14 @@ class VenueRepositoryImpl @Inject constructor(
                 val apiResponse = response.body()
 
                 if (apiResponse != null && apiResponse.success && apiResponse.data != null) {
+                    Log.d(TAG, "API Response data images: ${apiResponse.data.images}")
+                    Log.d(TAG, "API Response data images count: ${apiResponse.data.images?.size ?: 0}")
+
                     val venue = apiResponse.data.toDomain()
 
                     Log.d(TAG, "Successfully fetched venue: ${venue.name}")
+                    Log.d(TAG, "Domain Venue images: ${venue.images}")
+                    Log.d(TAG, "Domain Venue images count: ${venue.images?.size ?: 0}")
                     emit(Resource.Success(venue))
                 } else {
                     val errorMsg = apiResponse?.message ?: "Không tìm thấy sân"
@@ -508,25 +513,37 @@ class VenueRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun uploadVenueImage(venueId: Long, imageFile: File): Flow<Resource<Venue>> = flow {
+    override suspend fun uploadVenueImages(venueId: Long, imageFiles: List<File>): Flow<Resource<Venue>> = flow {
         try {
             emit(Resource.Loading())
 
-            Log.d(TAG, "========== UPLOADING VENUE IMAGE ==========")
+            Log.d(TAG, "========== UPLOADING VENUE IMAGES ==========")
             Log.d(TAG, "Venue ID: $venueId")
-            Log.d(TAG, "Image file: ${imageFile.absolutePath}")
-            Log.d(TAG, "File size: ${imageFile.length()} bytes")
+            Log.d(TAG, "Number of images: ${imageFiles.size}")
 
-            if (!imageFile.exists() || imageFile.length() == 0L) {
-                Log.e(TAG, "⚠ File không tồn tại hoặc rỗng")
-                emit(Resource.Error("File không tồn tại hoặc rỗng"))
+            if (imageFiles.isEmpty()) {
+                Log.e(TAG, "⚠ Không có file nào để upload")
+                emit(Resource.Error("Vui lòng chọn ít nhất một ảnh"))
                 return@flow
             }
 
-            val requestFile = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
-            val body = MultipartBody.Part.createFormData("file", imageFile.name, requestFile)
+            // Validate all files
+            imageFiles.forEachIndexed { index, file ->
+                Log.d(TAG, "Image $index: ${file.absolutePath} (${file.length()} bytes)")
+                if (!file.exists() || file.length() == 0L) {
+                    Log.e(TAG, "⚠ File $index không tồn tại hoặc rỗng")
+                    emit(Resource.Error("File ${file.name} không hợp lệ"))
+                    return@flow
+                }
+            }
 
-            val response = venueApi.uploadVenueImage(venueId, body)
+            // Create multipart body parts for all images
+            val imageParts = imageFiles.map { file ->
+                val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("images", file.name, requestFile)
+            }
+
+            val response = venueApi.uploadVenueImages(venueId, imageParts)
 
             Log.d(TAG, "Response Code: ${response.code()}")
             Log.d(TAG, "Response isSuccessful: ${response.isSuccessful}")
@@ -539,12 +556,34 @@ class VenueRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Response message: ${apiResponse?.message}")
 
                 if (apiResponse != null && apiResponse.success && apiResponse.data != null) {
-                    val venue = apiResponse.data.toDomain()
+                    val uploadedImages = apiResponse.data
+                    Log.d(TAG, "API Response uploaded images: $uploadedImages")
+                    Log.d(TAG, "API Response uploaded images count: ${uploadedImages.size}")
 
-                    Log.d(TAG, "✓ Successfully uploaded image for venue: ${venue.name}")
-                    Log.d(TAG, "Images: ${venue.images}")
-                    Log.d(TAG, "======================================")
-                    emit(Resource.Success(venue))
+                    // Fetch venue detail để lấy thông tin đầy đủ sau khi upload
+                    Log.d(TAG, "Fetching venue detail after upload...")
+                    val venueDetailResponse = venueApi.getVenueById(venueId)
+
+                    if (venueDetailResponse.isSuccessful) {
+                        val venueApiResponse = venueDetailResponse.body()
+                        if (venueApiResponse != null && venueApiResponse.success && venueApiResponse.data != null) {
+                            val venue = venueApiResponse.data.toDomain()
+
+                            Log.d(TAG, "✓ Successfully uploaded ${imageFiles.size} images for venue: ${venue.name}")
+                            Log.d(TAG, "Domain Venue images: ${venue.images}")
+                            Log.d(TAG, "Domain Venue images count: ${venue.images?.size ?: 0}")
+                            Log.d(TAG, "======================================")
+                            emit(Resource.Success(venue))
+                        } else {
+                            Log.e(TAG, "⚠ Failed to fetch venue detail after upload")
+                            Log.d(TAG, "======================================")
+                            emit(Resource.Error("Upload thành công nhưng không thể tải thông tin sân"))
+                        }
+                    } else {
+                        Log.e(TAG, "⚠ Failed to fetch venue detail: ${venueDetailResponse.code()}")
+                        Log.d(TAG, "======================================")
+                        emit(Resource.Error("Upload thành công nhưng không thể tải thông tin sân"))
+                    }
                 } else {
                     val errorMsg = apiResponse?.message ?: "Không thể upload ảnh"
                     Log.e(TAG, "⚠ API returned success=false: $errorMsg")
@@ -567,11 +606,11 @@ class VenueRepositoryImpl @Inject constructor(
                 emit(Resource.Error(message))
             }
         } catch (e: retrofit2.HttpException) {
-            Log.e(TAG, "⚠ HTTP Exception uploading image: ${e.code()}", e)
+            Log.e(TAG, "⚠ HTTP Exception uploading images: ${e.code()}", e)
             Log.d(TAG, "======================================")
             emit(Resource.Error("Lỗi kết nối: ${e.code()}"))
         } catch (e: Exception) {
-            Log.e(TAG, "⚠ Exception uploading image: ${e.message}", e)
+            Log.e(TAG, "⚠ Exception uploading images: ${e.message}", e)
             Log.d(TAG, "======================================")
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
         }

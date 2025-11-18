@@ -66,13 +66,13 @@ interface VenueRepository {
     ): Flow<Resource<List<CourtAvailability>>>
 
     /**
-     * Upload venue image
+     * Upload venue images
      * @param venueId ID của venue
-     * @param imageFile File ảnh để upload
+     * @param imageFiles Danh sách file ảnh để upload
      * @return Venue sau khi upload ảnh
      */
-    suspend fun uploadVenueImage(
+    suspend fun uploadVenueImages(
         venueId: Long,
-        imageFile: File
+        imageFiles: List<File>
     ): Flow<Resource<Venue>>
 }
