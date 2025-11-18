@@ -401,6 +401,38 @@ private fun LazyListScope.ProfileContent(
         }
     }
 
+    // Booking History Section - Hiển thị cho cả USER và OWNER
+    item {
+        Text(
+            "Quản lý",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Gray,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+    }
+
+    item {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Column {
+                MenuItemRow(
+                    icon = Icons.Default.DateRange,
+                    title = "Lịch sử đặt sân",
+                    onClick = onNavigateToBookingHistory,
+                )
+                HorizontalDivider()
+                MenuItemRow(
+                    icon = Icons.Default.Star,
+                    title = "Đánh giá của tôi",
+                    onClick = onNavigateToMyReviews,
+                )
+            }
+        }
+    }
+
     // Support Section
     item {
         Text(

@@ -136,7 +136,7 @@ fun CreateVenueScreen(
             Text(
                 "Thông tin sân",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = Color(0xFF1565C0)
             )
 
             // Name field
@@ -170,7 +170,7 @@ fun CreateVenueScreen(
             Text(
                 "Thông tin liên hệ",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = Color(0xFF1565C0)
             )
 
             // Phone Number field
@@ -214,7 +214,7 @@ fun CreateVenueScreen(
             Text(
                 "Địa chỉ",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = Color(0xFF1565C0)
             )
 
             // Province/City field
@@ -274,7 +274,7 @@ fun CreateVenueScreen(
             Text(
                 "Thông tin hoạt động",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = Color(0xFF1565C0)
             )
 
             // Price per hour field
@@ -358,7 +358,7 @@ fun CreateVenueScreen(
             Text(
                 "Hình ảnh sân",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = Color(0xFF1565C0)
             )
 
             // Image selection section
