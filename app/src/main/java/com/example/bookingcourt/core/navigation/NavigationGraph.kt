@@ -177,6 +177,9 @@ fun NavigationGraph(
                     onNavigateToPendingBookings = {
                         navController.navigate(Screen.PendingBookings.route)
                     },
+                    onNavigateToOwnerBookingHistory = {
+                        navController.navigate(Screen.OwnerBookingHistory.route)
+                    },
                     onNavigateToBecomeCustomer = {
                         // Chuyển về HomeScreen (chế độ khách đặt sân)
                         navController.navigate(Screen.Home.route) {
@@ -628,6 +631,16 @@ fun NavigationGraph(
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToApproval = { bookingId ->
                         navController.navigate(Screen.BookingApproval.createRoute(bookingId))
+                    }
+                )
+            }
+
+            // Owner: Lịch sử đặt sân (đã xác nhận, chờ xác nhận, đã từ chối)
+            composable(route = Screen.OwnerBookingHistory.route) {
+                com.example.bookingcourt.presentation.owner.screen.OwnerBookingHistoryScreen(
+                    onNavigateBack = { navController.navigateUp() },
+                    onNavigateToBookingDetail = { bookingId ->
+                        navController.navigate(Screen.OwnerBookingDetail.createRoute(bookingId))
                     }
                 )
             }

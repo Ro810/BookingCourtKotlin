@@ -59,7 +59,8 @@ fun OwnerHomeScreen(
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToBecomeCustomer: () -> Unit = {},
     onNavigateToCreateVenue: () -> Unit = {},
-    onNavigateToPendingBookings: () -> Unit = {}, // New navigation callback
+    onNavigateToPendingBookings: () -> Unit = {},
+    onNavigateToOwnerBookingHistory: () -> Unit = {}, // Navigation cho lịch sử booking chủ sân
     onLogout: () -> Unit = {},
     viewModel: OwnerHomeViewModel = hiltViewModel(),
 ) {
@@ -153,6 +154,7 @@ fun OwnerHomeScreen(
                     onNavigateToEditProfile = onNavigateToEditProfile,
                     onNavigateToChangePassword = onNavigateToChangePassword,
                     onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
+                    onNavigateToBookingHistory = onNavigateToOwnerBookingHistory, // Navigate đến lịch sử booking cho owner
                     onLogout = onLogout,
                     showBackButton = false,
                     showTopBar = false,

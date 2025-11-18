@@ -453,6 +453,85 @@ class BookingRepositoryImpl @Inject constructor(
             emit(Resource.Error(e.message ?: "Lỗi khi lấy thông tin slots đã đặt"))
         }
     }
+
+    /**
+     * Lấy TẤT CẢ booking của owner từ tất cả venue
+     * Phương pháp: Lấy danh sách venue của owner, sau đó lấy tất cả booking từ mỗi venue
+     */
+    override suspend fun getAllOwnerBookings(): Flow<Resource<List<BookingDetail>>> = flow {
+        emit(Resource.Loading())
+        try {
+            Log.d("BookingRepo", "🔍 Getting all bookings for owner from all venues")
+
+            // 1. Lấy danh sách venue của owner
+            val venuesResponse = venueApi.getMyVenues()
+            if (!venuesResponse.isSuccessful || venuesResponse.body() == null) {
+                Log.e("BookingRepo", "❌ Failed to get owner venues: ${venuesResponse.code()}")
+                emit(Resource.Error("Không thể lấy danh sách sân của bạn"))
+                return@flow
+            }
+
+            val apiResponse = venuesResponse.body()!!
+            if (!apiResponse.success || apiResponse.data == null) {
+                Log.e("BookingRepo", "❌ API returned error: ${apiResponse.message}")
+                emit(Resource.Error(apiResponse.message ?: "Không thể lấy danh sách sân"))
+                return@flow
+            }
+
+            val venues = apiResponse.data
+            Log.d("BookingRepo", "✅ Found ${venues.size} venues for owner")
+
+            if (venues.isEmpty()) {
+                Log.d("BookingRepo", "⚠️ Owner has no venues, returning empty list")
+                emit(Resource.Success(emptyList()))
+                return@flow
+            }
+
+            // 2. Lấy tất cả booking từ mỗi venue
+            val allBookings = mutableListOf<BookingDetail>()
+
+            for (venue in venues) {
+                try {
+                    Log.d("BookingRepo", "  📍 Fetching bookings for venue ${venue.id}: ${venue.name}")
+
+                    // Gọi API để lấy TẤT CẢ booking của venue (không filter status)
+                    val bookingsResponse = bookingApi.getBookingsByVenue(venue.id, status = null)
+
+                    if (bookingsResponse.success && bookingsResponse.data != null) {
+                        val venueBookings = bookingsResponse.data.map { it.toBookingDetail(venueApi) }
+                        Log.d("BookingRepo", "    ✅ Got ${venueBookings.size} bookings from venue ${venue.name}")
+                        allBookings.addAll(venueBookings)
+                    } else {
+                        Log.w("BookingRepo", "    ⚠️ No bookings or error for venue ${venue.name}")
+                    }
+                } catch (e: Exception) {
+                    // Log lỗi nhưng tiếp tục với venue khác
+                    Log.e("BookingRepo", "    ❌ Error getting bookings for venue ${venue.id}", e)
+                }
+            }
+
+            // 3. Sắp xếp theo thời gian mới nhất trước
+            val sortedBookings = allBookings.sortedByDescending { it.startTime }
+
+            Log.d("BookingRepo", "✅ Total bookings from all venues: ${sortedBookings.size}")
+            Log.d("BookingRepo", "   - CONFIRMED: ${sortedBookings.count { it.status == BookingStatus.CONFIRMED }}")
+            Log.d("BookingRepo", "   - COMPLETED: ${sortedBookings.count { it.status == BookingStatus.COMPLETED }}")
+            Log.d("BookingRepo", "   - PAYMENT_UPLOADED: ${sortedBookings.count { it.status == BookingStatus.PAYMENT_UPLOADED }}")
+            Log.d("BookingRepo", "   - REJECTED: ${sortedBookings.count { it.status == BookingStatus.REJECTED }}")
+
+            // Debug: In ra các booking REJECTED để kiểm tra
+            val rejectedBookings = sortedBookings.filter { it.status == BookingStatus.REJECTED }
+            Log.d("BookingRepo", "📋 REJECTED Bookings Detail:")
+            rejectedBookings.forEach { booking ->
+                Log.d("BookingRepo", "   • ID: ${booking.id}, Time: ${booking.startTime}, Reason: ${booking.rejectionReason ?: "N/A"}")
+            }
+
+            emit(Resource.Success(sortedBookings))
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "❌ Error getting all owner bookings", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách booking"))
+        }
+    }
 }
 
 // ---------------- Mapper helpers ----------------

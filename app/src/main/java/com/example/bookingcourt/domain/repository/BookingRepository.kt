@@ -145,4 +145,11 @@ interface BookingRepository {
         venueId: Long,
         date: String
     ): Flow<Resource<List<com.example.bookingcourt.domain.model.BookedSlot>>>
+
+    /**
+     * Lấy TẤT CẢ booking của owner từ tất cả venue
+     * Bao gồm: CONFIRMED, PAYMENT_UPLOADED, REJECTED
+     * @return Flow với danh sách tất cả bookings của owner
+     */
+    suspend fun getAllOwnerBookings(): Flow<Resource<List<BookingDetail>>>
 }
