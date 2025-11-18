@@ -124,4 +124,18 @@ interface VenueApi {
         @Path("id") venueId: Long,
         @Part images: List<MultipartBody.Part>
     ): Response<ApiResponse<List<String>>>
+
+    /**
+     * Delete a venue image (Owner only)
+     * DELETE /api/venues/{id}/delete-image
+     *
+     * @param venueId ID của venue
+     * @param imageUrl URL hoặc path của ảnh cần xóa
+     * @return Updated venue detail
+     */
+    @DELETE("venues/{id}/delete-image")
+    suspend fun deleteVenueImage(
+        @Path("id") venueId: Long,
+        @Query("imageUrl") imageUrl: String
+    ): Response<ApiResponse<VenueDetailDto>>
 }

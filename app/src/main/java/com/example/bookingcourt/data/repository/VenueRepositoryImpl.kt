@@ -615,4 +615,86 @@ class VenueRepositoryImpl @Inject constructor(
             emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
         }
     }
+
+    override suspend fun deleteVenueImage(
+        venueId: Long,
+        imageUrl: String
+    ): Flow<Resource<Venue>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "======================================")
+            Log.d(TAG, "Deleting venue image...")
+            Log.d(TAG, "Venue ID: $venueId")
+            Log.d(TAG, "Image URL: $imageUrl")
+
+            val response = venueApi.deleteVenueImage(venueId, imageUrl)
+
+            Log.d(TAG, "Response Code: ${response.code()}")
+            Log.d(TAG, "Response isSuccessful: ${response.isSuccessful}")
+
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+
+                Log.d(TAG, "Response body is null: ${apiResponse == null}")
+                Log.d(TAG, "Response success: ${apiResponse?.success}")
+                Log.d(TAG, "Response message: ${apiResponse?.message}")
+                Log.d(TAG, "Response data is null: ${apiResponse?.data == null}")
+
+                if (apiResponse != null && apiResponse.success) {
+                    // API trả về success, fetch venue detail để lấy thông tin cập nhật
+                    Log.d(TAG, "Fetching venue detail after delete...")
+                    val venueDetailResponse = venueApi.getVenueById(venueId)
+
+                    if (venueDetailResponse.isSuccessful) {
+                        val venueApiResponse = venueDetailResponse.body()
+                        if (venueApiResponse != null && venueApiResponse.success && venueApiResponse.data != null) {
+                            val venue = venueApiResponse.data.toDomain()
+
+                            Log.d(TAG, "✓ Successfully deleted image for venue: ${venue.name}")
+                            Log.d(TAG, "Domain Venue images: ${venue.images}")
+                            Log.d(TAG, "Domain Venue images count: ${venue.images?.size ?: 0}")
+                            Log.d(TAG, "======================================")
+                            emit(Resource.Success(venue))
+                        } else {
+                            Log.e(TAG, "⚠ Failed to fetch venue detail after delete")
+                            Log.d(TAG, "======================================")
+                            emit(Resource.Error("Xóa ảnh thành công nhưng không thể tải thông tin sân"))
+                        }
+                    } else {
+                        Log.e(TAG, "⚠ Failed to fetch venue detail: ${venueDetailResponse.code()}")
+                        Log.d(TAG, "======================================")
+                        emit(Resource.Error("Xóa ảnh thành công nhưng không thể tải thông tin sân"))
+                    }
+                } else {
+                    val errorMsg = apiResponse?.message ?: "Không thể xóa ảnh"
+                    Log.e(TAG, "⚠ API returned success=false: $errorMsg")
+                    Log.d(TAG, "======================================")
+                    emit(Resource.Error(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "⚠ API error: ${response.code()}")
+                Log.e(TAG, "Error body: $errorBody")
+                Log.d(TAG, "======================================")
+
+                val message = when (response.code()) {
+                    400 -> "Không thể xóa ảnh. Vui lòng thử lại."
+                    401 -> "Vui lòng đăng nhập lại"
+                    404 -> "Không tìm thấy ảnh"
+                    500 -> "Lỗi server. Vui lòng thử lại sau."
+                    else -> "Lỗi xóa ảnh: ${response.code()}"
+                }
+                emit(Resource.Error(message))
+            }
+        } catch (e: retrofit2.HttpException) {
+            Log.e(TAG, "⚠ HTTP Exception deleting image: ${e.code()}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error("Lỗi kết nối: ${e.code()}"))
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠ Exception deleting image: ${e.message}", e)
+            Log.d(TAG, "======================================")
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
 }

@@ -75,4 +75,15 @@ interface VenueRepository {
         venueId: Long,
         imageFiles: List<File>
     ): Flow<Resource<Venue>>
+
+    /**
+     * Delete a venue image
+     * @param venueId ID của venue
+     * @param imageUrl URL hoặc path của ảnh cần xóa
+     * @return Venue sau khi xóa ảnh
+     */
+    suspend fun deleteVenueImage(
+        venueId: Long,
+        imageUrl: String
+    ): Flow<Resource<Venue>>
 }

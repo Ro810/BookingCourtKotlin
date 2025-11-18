@@ -329,4 +329,47 @@ class OwnerHomeViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Delete a venue image
+     */
+    fun deleteVenueImage(venueId: Long, imageUrl: String) {
+        viewModelScope.launch {
+            try {
+                Log.d("OwnerHomeVM", "Deleting image for venue $venueId: $imageUrl")
+
+                venueRepository.deleteVenueImage(venueId, imageUrl).collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            Log.d("OwnerHomeVM", "✓ Image deleted successfully")
+                            // Update the venue in the list with updated images
+                            val updatedVenue = result.data
+                            if (updatedVenue != null) {
+                                val updatedVenues = _state.value.venues.map { venue ->
+                                    if (venue.id == updatedVenue.id) updatedVenue else venue
+                                }
+                                _state.value = _state.value.copy(venues = updatedVenues)
+                            }
+                            // Refresh to ensure consistency
+                            loadVenues()
+                        }
+                        is Resource.Error -> {
+                            Log.e("OwnerHomeVM", "✗ Error deleting image: ${result.message}")
+                            _state.value = _state.value.copy(
+                                error = "Lỗi xóa ảnh: ${result.message}"
+                            )
+                        }
+                        is Resource.Loading -> {
+                            Log.d("OwnerHomeVM", "⏳ Deleting image...")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("OwnerHomeVM", "Exception deleting image", e)
+                _state.value = _state.value.copy(
+                    error = e.message ?: "Đã xảy ra lỗi khi xóa ảnh"
+                )
+            }
+        }
+    }
 }

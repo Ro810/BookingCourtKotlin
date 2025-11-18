@@ -468,8 +468,11 @@ private fun OwnerHomeContent(
 
     // Edit venue dialog
     if (showEditDialog && venueToEdit != null) {
+        // Lấy venue mới nhất từ state.venues để đảm bảo UI được update sau khi delete ảnh
+        val currentVenue = state.venues.find { it.id == venueToEdit!!.id } ?: venueToEdit!!
+
         EditVenueDialog(
-            venue = venueToEdit!!,
+            venue = currentVenue,
             currentUser = state.currentUser,
             isLoading = state.isUpdatingVenue,
             onDismiss = {
@@ -497,6 +500,9 @@ private fun OwnerHomeContent(
                 if (selectedNewImages.isNotEmpty()) {
                     viewModel.uploadVenueImages(updatedVenue.id, selectedNewImages)
                 }
+            },
+            onDeleteImage = { venueId, imageUrl ->
+                viewModel.deleteVenueImage(venueId, imageUrl)
             }
         )
     }
@@ -1365,6 +1371,7 @@ private fun EditVenueDialog(
     isLoading: Boolean,
     onDismiss: () -> Unit,
     onSave: (Venue, List<java.io.File>) -> Unit,
+    onDeleteImage: (Long, String) -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -1378,6 +1385,10 @@ private fun EditVenueDialog(
 
     // State for new images to upload
     var selectedNewImages by remember { mutableStateOf<List<java.io.File>>(emptyList()) }
+
+    // State for deleting images
+    var imageToDelete by remember { mutableStateOf<String?>(null) }
+    var showDeleteImageDialog by remember { mutableStateOf(false) }
 
     // Parse opening/closing time để lấy giờ và phút
     val (openHour, openMinute) = remember(venue.openingTime) {
@@ -1680,6 +1691,28 @@ private fun EditVenueDialog(
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
                                         )
+
+                                        // Delete button
+                                        IconButton(
+                                            onClick = {
+                                                imageToDelete = imageUrl
+                                                showDeleteImageDialog = true
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .size(20.dp)
+                                                .background(
+                                                    Color.Red.copy(alpha = 0.7f),
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "Xóa ảnh",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1924,6 +1957,49 @@ private fun EditVenueDialog(
                 showClosingTimePicker = false
             },
             onDismiss = { showClosingTimePicker = false }
+        )
+    }
+
+    // Delete Image Confirmation Dialog
+    if (showDeleteImageDialog && imageToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteImageDialog = false },
+            title = {
+                Text(
+                    text = "Xóa ảnh",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF123E62)
+                )
+            },
+            text = {
+                Text("Bạn có chắc chắn muốn xóa ảnh này không?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        imageToDelete?.let { imageUrl ->
+                            onDeleteImage(venue.id, imageUrl)
+                        }
+                        showDeleteImageDialog = false
+                        imageToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    )
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showDeleteImageDialog = false
+                        imageToDelete = null
+                    }
+                ) {
+                    Text("Hủy", color = Color.Gray)
+                }
+            }
         )
     }
 }
