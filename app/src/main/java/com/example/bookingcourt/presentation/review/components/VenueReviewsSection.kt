@@ -41,7 +41,8 @@ fun VenueReviewsSection(
             Text(
                 text = "Đánh giá",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF4CAF50)
             )
 
             if (totalReviews > 0) {

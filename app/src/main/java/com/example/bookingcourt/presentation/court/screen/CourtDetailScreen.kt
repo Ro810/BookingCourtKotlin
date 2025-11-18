@@ -382,26 +382,11 @@ fun CourtDetailScreen(
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Ảnh cơ sở",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            IconButton(onClick = {
-                                imagePickerLauncher.launch("image/*")
-                            }) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Chỉnh sửa ảnh",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                        Text(
+                            "Ảnh cơ sở",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
