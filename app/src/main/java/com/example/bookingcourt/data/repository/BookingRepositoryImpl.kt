@@ -169,8 +169,10 @@ class BookingRepositoryImpl @Inject constructor(
             val response = bookingApi.getMyBookings()
 
             if (response.success && response.data != null) {
-                val bookings = response.data.map { it.toBookingDetail(venueApi).toBooking() }
-                Log.d("BookingRepo", "✅ Got ${bookings.size} bookings from getMyBookings")
+                val bookings = response.data
+                    .map { it.toBookingDetail(venueApi).toBooking() }
+                    .sortedByDescending { it.createdAt } // ✅ Sắp xếp mới nhất lên trên
+                Log.d("BookingRepo", "✅ Got ${bookings.size} bookings from getMyBookings (sorted by newest)")
                 emit(Resource.Success(bookings))
             } else {
                 Log.e("BookingRepo", "❌ API returned success=false: ${response.message}")
@@ -616,6 +618,29 @@ private suspend fun BookingDetailResponseDto.toBookingDetail(venueApi: VenueApi)
         }
     }
 
+    // 🕐 Logic tự động chuyển status từ CONFIRMED -> COMPLETED sau khi qua thời gian đặt sân
+    val currentTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val rawStatus = this.status.uppercase()
+    val finalStatus = when (rawStatus) {
+        "CONFIRMED" -> {
+            // Nếu đã qua endTime, tự động chuyển sang COMPLETED
+            if (currentTime > end) {
+                Log.d("BookingMapper", "🔄 Auto-converting CONFIRMED -> COMPLETED (endTime: $end, now: $currentTime)")
+                BookingStatus.COMPLETED
+            } else {
+                BookingStatus.CONFIRMED
+            }
+        }
+        "PENDING_PAYMENT" -> BookingStatus.PENDING_PAYMENT
+        "PAYMENT_UPLOADED" -> BookingStatus.PAYMENT_UPLOADED
+        "REJECTED" -> BookingStatus.REJECTED
+        "CANCELLED" -> BookingStatus.CANCELLED
+        "COMPLETED" -> BookingStatus.COMPLETED
+        "NO_SHOW" -> BookingStatus.NO_SHOW
+        "EXPIRED" -> BookingStatus.EXPIRED
+        else -> BookingStatus.PENDING
+    }
+
     return BookingDetail(
         id = this.id.toString(),
         user = BookingUserInfo(id = this.userId.toString(), fullname = this.userName ?: "Người dùng", phone = this.userPhone),
@@ -629,17 +654,7 @@ private suspend fun BookingDetailResponseDto.toBookingDetail(venueApi: VenueApi)
         startTime = start,
         endTime = end,
         totalPrice = this.totalPrice.toLong(),
-        status = when (this.status.uppercase()) {
-            "PENDING_PAYMENT" -> BookingStatus.PENDING_PAYMENT
-            "PAYMENT_UPLOADED" -> BookingStatus.PAYMENT_UPLOADED
-            "CONFIRMED" -> BookingStatus.CONFIRMED
-            "REJECTED" -> BookingStatus.REJECTED
-            "CANCELLED" -> BookingStatus.CANCELLED
-            "COMPLETED" -> BookingStatus.COMPLETED
-            "NO_SHOW" -> BookingStatus.NO_SHOW
-            "EXPIRED" -> BookingStatus.EXPIRED
-            else -> BookingStatus.PENDING
-        },
+        status = finalStatus,
         paymentProofUploaded = this.paymentProofUploaded,
         paymentProofUrl = this.paymentProofUrl,
         paymentProofUploadedAt = this.paymentProofUploadedAt,

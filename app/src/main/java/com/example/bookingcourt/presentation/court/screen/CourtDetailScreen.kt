@@ -219,14 +219,32 @@ fun CourtDetailScreen(
 
     // Filter confirmed bookings for check-in schedule (only show upcoming confirmed bookings)
     val upcomingConfirmedBookings = remember(state.confirmedBookings, venue?.id) {
-        state.confirmedBookings
+        Log.d("CourtDetailScreen", "🔍 Filtering confirmed bookings:")
+        Log.d("CourtDetailScreen", "  Total confirmed bookings: ${state.confirmedBookings.size}")
+        Log.d("CourtDetailScreen", "  Current venue ID: ${venue?.id}")
+
+        state.confirmedBookings.forEach { booking ->
+            Log.d("CourtDetailScreen", "  Booking ${booking.id}:")
+            Log.d("CourtDetailScreen", "    Venue ID: ${booking.venue.id} (current: ${venue?.id})")
+            Log.d("CourtDetailScreen", "    Status: ${booking.status}")
+            Log.d("CourtDetailScreen", "    Start time: ${booking.startTime}")
+        }
+
+        val filtered = state.confirmedBookings
             .filter { booking ->
                 // Chỉ hiển thị bookings của venue hiện tại
                 // và có status COMPLETED (đã được owner chấp nhận)
-                booking.venue.id == venue?.id?.toString() &&
-                booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED
+                val matchVenue = booking.venue.id == venue?.id?.toString()
+                val matchStatus = booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED
+
+                Log.d("CourtDetailScreen", "  Booking ${booking.id}: venue=$matchVenue, status=$matchStatus")
+
+                matchVenue && matchStatus
             }
             .sortedBy { it.startTime }
+
+        Log.d("CourtDetailScreen", "  ✅ Filtered result: ${filtered.size} bookings")
+        filtered
     }
 
     // DatePickerDialog
