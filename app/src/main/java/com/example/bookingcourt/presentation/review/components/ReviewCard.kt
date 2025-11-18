@@ -114,7 +114,7 @@ fun ReviewCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatReviewDate(review.updatedAt),
+                    text = formatReviewDate(review.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

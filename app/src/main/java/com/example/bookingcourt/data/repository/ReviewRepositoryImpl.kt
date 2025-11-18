@@ -329,32 +329,51 @@ class ReviewRepositoryImpl @Inject constructor(
         return try {
             Log.d(TAG, "📅 Parsing datetime: '$dateTimeString'")
 
+            val trimmedString = dateTimeString.trim()
+
+            // Kiểm tra xem có phải Unix timestamp không (chỉ toàn số)
+            val isUnixTimestamp = trimmedString.matches(Regex("^\\d+(\\.\\d+)?$"))
+
+            if (isUnixTimestamp) {
+                // Parse Unix timestamp (seconds since epoch)
+                val epochSeconds = trimmedString.substringBefore(".").toLong()
+                Log.d(TAG, "   Detected Unix timestamp: $epochSeconds seconds")
+
+                // Manual conversion to Vietnam time (UTC+7)
+                // Add 7 hours (7 * 3600 seconds = 25200 seconds)
+                val vietnamInstant = kotlinx.datetime.Instant.fromEpochSeconds(epochSeconds + 25200)
+
+                // Convert to LocalDateTime (this will be Vietnam time since we added offset)
+                val utcDateTime = vietnamInstant.toString() // Format: 2025-11-18T16:30:20Z
+                val cleanedDateTime = utcDateTime.replace("Z", "").substringBefore(".")
+                val vietnamDateTime = LocalDateTime.parse(cleanedDateTime)
+
+                Log.d(TAG, "   ✅ Converted Unix timestamp to Vietnam time: $vietnamDateTime")
+                return vietnamDateTime
+            }
+
+            // Kiểm tra xem có phải UTC time (có Z) không
+            val isUtcTime = trimmedString.endsWith("Z")
+
             // Xử lý các format phổ biến từ backend
-            val cleanedString = dateTimeString.trim()
+            val cleanedString = trimmedString
+                .replace("Z", "") // Loại bỏ Z (UTC indicator)
+                .substringBefore(".") // Loại bỏ milliseconds (.789)
 
-            // ⚠️ QUAN TRỌNG: Backend trả về GIỜ VIỆT NAM (UTC+7) theo format:
-            // yyyy-MM-dd'T'HH:mm:ss (VD: 2025-11-07T14:00:00)
-            // KHÔNG CÓ Z hoặc +07:00 ở cuối
-            // KHÔNG CẦN convert timezone
+            Log.d(TAG, "   Cleaned string: '$cleanedString'")
+            Log.d(TAG, "   Is UTC time: $isUtcTime")
 
-            // Thử parse với nhiều format khác nhau
-            val result = when {
+            // Parse datetime
+            val parsed = when {
                 // Format: "2025-11-13 14:30:00" (space separator, no T)
-                cleanedString.matches(Regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}.*")) -> {
+                cleanedString.matches(Regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}")) -> {
                     val withT = cleanedString.replace(" ", "T")
-                    val withoutMillis = withT.substringBefore(".")
-                    // Parse trực tiếp - đã là giờ Việt Nam
-                    LocalDateTime.parse(withoutMillis)
+                    LocalDateTime.parse(withT)
                 }
 
-                // Format chuẩn từ backend: "2025-11-07T14:00:00" (ISO 8601 without timezone)
-                // ĐÂY LÀ FORMAT CHÍNH từ backend - ĐÃ LÀ GIỜ VIỆT NAM
-                cleanedString.matches(Regex("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?")) -> {
-                    val withoutMillis = cleanedString.substringBefore(".")
-                    // Parse trực tiếp - backend đã trả về giờ Việt Nam
-                    val parsed = LocalDateTime.parse(withoutMillis)
-                    Log.d(TAG, "   ✅ Parsed Vietnam time: $parsed")
-                    parsed
+                // Format chuẩn từ backend: "2025-11-07T14:00:00" (ISO 8601)
+                cleanedString.matches(Regex("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) -> {
+                    LocalDateTime.parse(cleanedString)
                 }
 
                 // Format ngày giờ Việt Nam: "13/11/2025 14:30:00"
@@ -367,12 +386,48 @@ class ReviewRepositoryImpl @Inject constructor(
 
                 // Thử parse trực tiếp
                 else -> {
-                    val withoutMillis = cleanedString.substringBefore(".")
-                    LocalDateTime.parse(withoutMillis)
+                    LocalDateTime.parse(cleanedString)
                 }
             }
 
-            Log.d(TAG, "✅ Parsed successfully: $result")
+            // Nếu là UTC time, cần cộng thêm 7 giờ để convert sang giờ Việt Nam
+            val result = if (isUtcTime) {
+                // Convert UTC to Vietnam time (UTC+7)
+                val year = parsed.year
+                val month = parsed.monthNumber
+                val day = parsed.dayOfMonth
+                val hour = parsed.hour + 7 // Cộng 7 giờ
+                val minute = parsed.minute
+                val second = parsed.second
+
+                // Xử lý trường hợp giờ >= 24 (sang ngày hôm sau)
+                if (hour >= 24) {
+                    // Tạo datetime mới với giờ đã điều chỉnh
+                    val adjustedHour = hour - 24
+                    val baseDate = LocalDateTime(year, month, day, 0, 0, 0)
+                    // Cộng 1 ngày
+                    val nextDay = LocalDateTime(
+                        year = baseDate.year,
+                        monthNumber = baseDate.monthNumber,
+                        dayOfMonth = baseDate.dayOfMonth + 1,
+                        hour = adjustedHour,
+                        minute = minute,
+                        second = second
+                    )
+                    Log.d(TAG, "   ✅ Converted UTC to Vietnam time (next day): $nextDay")
+                    nextDay
+                } else {
+                    val vietnamTime = LocalDateTime(year, month, day, hour, minute, second)
+                    Log.d(TAG, "   ✅ Converted UTC to Vietnam time: $vietnamTime")
+                    vietnamTime
+                }
+            } else {
+                // Đã là giờ Việt Nam, không cần convert
+                Log.d(TAG, "   ✅ Parsed Vietnam time: $parsed")
+                parsed
+            }
+
+            Log.d(TAG, "✅ Final result: $result")
             result
 
         } catch (e: Exception) {
