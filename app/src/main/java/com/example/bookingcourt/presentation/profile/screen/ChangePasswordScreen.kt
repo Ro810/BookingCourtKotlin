@@ -1,5 +1,6 @@
 package com.example.bookingcourt.presentation.profile.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -63,6 +65,7 @@ fun ChangePasswordScreen(
     val isLoading = changePasswordState is ChangePasswordState.Loading
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Đổi mật khẩu") },
@@ -82,14 +85,26 @@ fun ChangePasswordScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF8BB1F6), // Mid Blue - đồng bộ với OwnerHomeScreen
+                            Color.White,
+                        ),
+                    ),
+                ),
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Hướng dẫn
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -295,6 +310,7 @@ fun ChangePasswordScreen(
                 enabled = !isLoading
             ) {
                 Text("Hủy", fontSize = 16.sp)
+            }
             }
         }
     }

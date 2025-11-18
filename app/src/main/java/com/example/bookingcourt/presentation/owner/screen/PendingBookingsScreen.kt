@@ -1,5 +1,6 @@
 package com.example.bookingcourt.presentation.owner.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +34,7 @@ fun PendingBookingsScreen(
     val pendingBookings by viewModel.pendingBookings.collectAsState()
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Booking chờ xác nhận") },
@@ -54,7 +57,19 @@ fun PendingBookingsScreen(
             )
         }
     ) { padding ->
-        when (val state = pendingBookings) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF8BB1F6), // Mid Blue - đồng bộ với OwnerHomeScreen
+                            Color.White,
+                        ),
+                    ),
+                ),
+        ) {
+            when (val state = pendingBookings) {
             is Resource.Loading -> {
                 Box(
                     modifier = Modifier
@@ -130,6 +145,7 @@ fun PendingBookingsScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

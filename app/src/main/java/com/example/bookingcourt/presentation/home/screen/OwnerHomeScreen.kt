@@ -30,6 +30,7 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -220,7 +221,7 @@ private fun OwnerHomeContent(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF8BB1F6), // Mid Blue
+                            Color(0xFF8BB1F6), // Mid Blue - đồng bộ với CustomerHomeScreen
                             Color.White,
                         ),
                     ),
@@ -236,134 +237,167 @@ private fun OwnerHomeContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(start = 16.dp, end = 18.dp, top = 8.dp, bottom = 16.dp),
+                        .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 20.dp),
                 ) {
+                    // Avatar và thông tin người dùng
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 8.dp)
                     ) {
-                        // Avatar và thông tin người dùng
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        // Avatar với gradient đẹp
+                        Box(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFF123E62),
+                                            Color(0xFF1E5A8E),
+                                            Color(0xFF2A7BC0)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            // Avatar
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = getInitials(state.currentUser?.fullName),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF123E62)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Column {
-                                Text(
-                                    text = "Xin chào, ${state.currentUser?.fullName ?: "Người dùng"}",
-                                    color = Color.Black,
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            Text(
+                                text = getInitials(state.currentUser?.fullName),
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
                         }
 
-                        // Icon thông báo
-                        IconButton(
-                            onClick = { },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(Color.White, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Thông báo",
-                                tint = Primary
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column {
+                            Text(
+                                text = getGreetingMessage(),
+                                color = Color(0xFF123E62).copy(alpha = 0.7f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = state.currentUser?.fullName ?: "Người dùng",
+                                color = Color(0xFF123E62),
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Button "Booking chờ xác nhận" - NEW with count badge
+                    // Card "Booking chờ xác nhận" với gradient đẹp hơn
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onNavigateToPendingBookings() },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFFF9800) // Orange color for attention
+                            containerColor = Color.Transparent
                         ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
-                        Row(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFFFF6F00),
+                                            Color(0xFFFF9800),
+                                            Color(0xFFFFA726)
+                                        )
+                                    )
+                                )
+                                .padding(20.dp)
                         ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // ✅ Icon with badge
-                                Box {
-                                    Icon(
-                                        imageVector = Icons.Default.Notifications,
-                                        contentDescription = "Booking chờ xác nhận",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                    // ✅ Badge hiển thị số lượng
-                                    if (pendingBookingsCount > 0) {
-                                        Box(
-                                            modifier = Modifier
-                                                .offset(x = 20.dp, y = (-4).dp)
-                                                .size(20.dp)
-                                                .background(Color.Red, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = if (pendingBookingsCount > 9) "9+" else "$pendingBookingsCount",
-                                                color = Color.White,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    // Icon với badge
+                                    Box(
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .background(
+                                                Color.White.copy(alpha = 0.2f),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = "Booking chờ xác nhận",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        // Badge
+                                        if (pendingBookingsCount > 0) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .offset(x = 18.dp, y = (-18).dp)
+                                                    .size(22.dp)
+                                                    .background(Color(0xFFD32F2F), CircleShape)
+                                                    .border(2.dp, Color.White, CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = if (pendingBookingsCount > 9) "9+" else "$pendingBookingsCount",
+                                                    color = Color.White,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                         }
                                     }
+
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Booking chờ xác nhận",
+                                            color = Color.White,
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = if (pendingBookingsCount > 0) {
+                                                "$pendingBookingsCount booking cần xử lý"
+                                            } else {
+                                                "Xem và duyệt đặt sân"
+                                            },
+                                            color = Color.White.copy(alpha = 0.95f),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
                                 }
-                                Column {
-                                    Text(
-                                        text = "Booking chờ xác nhận",
-                                        color = Color.White,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = if (pendingBookingsCount > 0) {
-                                            "$pendingBookingsCount booking cần xử lý"
-                                        } else {
-                                            "Xem và duyệt đặt sân"
-                                        },
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        fontSize = 13.sp
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(
+                                            Color.White.copy(alpha = 0.2f),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = "Xem chi tiết",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowRight,
-                                contentDescription = "Xem chi tiết",
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
-                            )
                         }
                     }
                 }
@@ -374,16 +408,26 @@ private fun OwnerHomeContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "Sân của bạn",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
-                    )
+                    Column {
+                        Text(
+                            text = "Sân của bạn",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF123E62),
+                        )
+                        if (venues.isNotEmpty()) {
+                            Text(
+                                text = "${venues.size} sân",
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
 
                     CreateCourtButton(
                         onClick = {
@@ -399,45 +443,118 @@ private fun OwnerHomeContent(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(40.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            color = Color(0xFF123E62)
-                        )
-                    }
-                }
-            } else if (venues.isEmpty()) {
-                // Danh sách sân trống
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(40.dp),
+                            .padding(60.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                modifier = Modifier.size(80.dp),
-                                tint = Color.Gray,
+                            CircularProgressIndicator(
+                                color = Color(0xFF123E62),
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(48.dp)
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Đang tải dữ liệu...",
+                                fontSize = 14.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            } else if (venues.isEmpty()) {
+                // Danh sách sân trống - Empty state đẹp hơn
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFF5F9FF)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                Color(0xFF123E62).copy(alpha = 0.1f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(60.dp),
+                                    tint = Color(0xFF123E62).copy(alpha = 0.5f),
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
                             Text(
                                 text = "Chưa có sân nào",
-                                fontSize = 18.sp,
-                                color = Color.Gray,
-                                fontWeight = FontWeight.Medium,
+                                fontSize = 20.sp,
+                                color = Color(0xFF123E62),
+                                fontWeight = FontWeight.Bold,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Hãy tạo sân đầu tiên của bạn!",
+                                text = "Hãy tạo sân đầu tiên để bắt đầu\nquản lý và nhận đặt chỗ",
                                 fontSize = 14.sp,
                                 color = Color.Gray,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 20.sp
                             )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = { onNavigateToCreateVenue() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
+                                modifier = Modifier
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFF123E62),
+                                                Color(0xFF1E5A8E),
+                                                Color(0xFF2A7BC0)
+                                            )
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                                border = null
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Tạo sân ngay",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }
@@ -1143,22 +1260,39 @@ private fun CreateCourtButton(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF123E62),
+            containerColor = Color.Transparent,
         ),
-        shape = RoundedCornerShape(24.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
-        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+        modifier = modifier
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF123E62),
+                        Color(0xFF1E5A8E),
+                        Color(0xFF2A7BC0)
+                    )
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 6.dp,
+            pressedElevation = 8.dp
+        ),
+        border = null
     ) {
         Icon(
             imageVector = Icons.Default.Add,
             contentDescription = null,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(20.dp),
+            tint = Color.White
         )
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = "Tạo sân",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
+            color = Color.White
         )
     }
 }

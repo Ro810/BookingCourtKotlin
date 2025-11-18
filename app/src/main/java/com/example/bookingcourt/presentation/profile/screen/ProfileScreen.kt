@@ -256,12 +256,14 @@ private fun LazyListScope.ProfileContent(
         )
     }
 
-    // Account Stats
-    item {
-        AccountStatsCard(
-            bookingsCount = bookingsCount,
-            reviewsCount = reviewsCount,
-        )
+    // Account Stats - Chỉ hiển thị cho khách hàng
+    if (currentUserRole == UserRole.USER) {
+        item {
+            AccountStatsCard(
+                bookingsCount = bookingsCount,
+                reviewsCount = reviewsCount,
+            )
+        }
     }
 
     // Logic hiển thị nút dựa trên currentUserRole và bank info
@@ -365,34 +367,36 @@ private fun LazyListScope.ProfileContent(
         }
     }
 
-    // Booking Section
-    item {
-        Text(
-            "Đặt sân",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Gray,
-            modifier = Modifier.padding(horizontal = 4.dp),
-        )
-    }
+    // Booking Section - Chỉ hiển thị cho khách hàng
+    if (currentUserRole == UserRole.USER) {
+        item {
+            Text(
+                "Đặt sân",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
 
-    item {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Column {
-                MenuItemRow(
-                    icon = Icons.Default.DateRange,
-                    title = "Lịch sử đặt sân",
-                    onClick = onNavigateToBookingHistory,
-                )
-                HorizontalDivider()
-                MenuItemRow(
-                    icon = Icons.Default.Star,
-                    title = "Đánh giá của tôi",
-                    onClick = onNavigateToMyReviews,
-                )
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Column {
+                    MenuItemRow(
+                        icon = Icons.Default.DateRange,
+                        title = "Lịch sử đặt sân",
+                        onClick = onNavigateToBookingHistory,
+                    )
+                    HorizontalDivider()
+                    MenuItemRow(
+                        icon = Icons.Default.Star,
+                        title = "Đánh giá của tôi",
+                        onClick = onNavigateToMyReviews,
+                    )
+                }
             }
         }
     }
