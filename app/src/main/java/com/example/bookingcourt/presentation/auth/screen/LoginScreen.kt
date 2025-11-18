@@ -4,6 +4,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
@@ -17,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +42,7 @@ fun LoginScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(false) }
 
     val loginState by viewModel.loginState.collectAsState()
@@ -123,7 +128,7 @@ fun LoginScreen(
                 },
                 placeholder = {
                     Text(
-                        text = "Email hoặc username",
+                        text = "Số điện thoại",
                         color = DarkBlue.copy(alpha = 0.6f),
                     )
                 },
@@ -172,7 +177,19 @@ fun LoginScreen(
                     )
                 },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(
+                        onClick = { passwordVisible = !passwordVisible },
+                        enabled = loginState !is LoginViewModel.LoginState.Loading
+                    ) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu",
+                            tint = DarkBlue
+                        )
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
                     focusedIndicatorColor = MidBlue,
@@ -334,6 +351,7 @@ fun LoginScreenPreview() {
 private fun LoginScreenContent() {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(false) }
 
     val blueGradient = Brush.verticalGradient(
@@ -382,7 +400,7 @@ private fun LoginScreenContent() {
                 },
                 placeholder = {
                     Text(
-                        text = "Email hoặc username",
+                        text = "Số điện thoại",
                         color = DarkBlue.copy(alpha = 0.6f),
                     )
                 },
@@ -415,7 +433,16 @@ private fun LoginScreenContent() {
                     )
                 },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu",
+                            tint = DarkBlue
+                        )
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
                     focusedIndicatorColor = MidBlue,
