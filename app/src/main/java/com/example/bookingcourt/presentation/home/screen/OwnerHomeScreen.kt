@@ -1374,8 +1374,6 @@ private fun EditVenueDialog(
     var showOpeningTimePicker by remember { mutableStateOf(false) }
     var showClosingTimePicker by remember { mutableStateOf(false) }
 
-    var numberOfCourts by remember(venue) { mutableStateOf(venue.courtsCount) }
-
     val primaryColor = Color(0xFF123E62)
 
     Dialog(onDismissRequest = { if (!isLoading) onDismiss() }) {
@@ -1662,99 +1660,6 @@ private fun EditVenueDialog(
                             }
                         }
                     }
-
-                    // Số lượng sân con
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            "Số lượng sân",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = primaryColor
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(
-                                    width = 1.dp,
-                                    color = primaryColor.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .padding(8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Button giảm (-)
-                            IconButton(
-                                onClick = {
-                                    if (numberOfCourts > 1) {
-                                        numberOfCourts--
-                                    }
-                                },
-                                enabled = !isLoading && numberOfCourts > 1,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = if (!isLoading && numberOfCourts > 1)
-                                            primaryColor.copy(alpha = 0.1f)
-                                        else
-                                            Color.Gray.copy(alpha = 0.1f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Remove,
-                                    contentDescription = "Giảm",
-                                    tint = if (!isLoading && numberOfCourts > 1)
-                                        primaryColor
-                                    else
-                                        Color.Gray,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
-                            // Hiển thị số lượng
-                            Text(
-                                text = "$numberOfCourts sân",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-
-                            // Button tăng
-                            IconButton(
-                                onClick = {
-                                    numberOfCourts++
-                                },
-                                enabled = !isLoading,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = if (!isLoading)
-                                            primaryColor.copy(alpha = 0.1f)
-                                        else
-                                            Color.Gray.copy(alpha = 0.1f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Tăng",
-                                    tint = if (!isLoading) primaryColor else Color.Gray,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        Text(
-                            "Số lượng sân con (hiển thị cho khách hàng)",
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1794,9 +1699,7 @@ private fun EditVenueDialog(
                                 ),
                                 pricePerHour = pricePerHour.trim().toLongOrNull() ?: venue.pricePerHour,
                                 openingTime = String.format("%02d:%02d:00", openingHour, openingMinute),
-                                closingTime = String.format("%02d:%02d:00", closingHour, closingMinute),
-                                courtsCount = numberOfCourts,
-                                numberOfCourt = numberOfCourts
+                                closingTime = String.format("%02d:%02d:00", closingHour, closingMinute)
                             )
                             onSave(updatedVenue)
                         },
