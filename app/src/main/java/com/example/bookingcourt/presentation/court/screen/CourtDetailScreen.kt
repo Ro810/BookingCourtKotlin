@@ -115,8 +115,22 @@ fun CourtDetailScreen(
         }
     }
 
+    // Tạo Calendar cho ngày hôm nay (đặt giờ về 00:00:00 để so sánh chính xác)
+    val today = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
+        initialSelectedDateMillis = System.currentTimeMillis(),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                // Chỉ cho phép chọn từ ngày hôm nay trở đi
+                return utcTimeMillis >= today
+            }
+        }
     )
 
     // Fetch booked slots và courts availability khi selectedDate thay đổi
