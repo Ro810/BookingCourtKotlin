@@ -271,10 +271,20 @@ fun NavigationGraph(
                 }
                 val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
                 val homeState by homeViewModel.state.collectAsState()
+
+                // Fetch venue từ API nếu chưa có trong state
+                LaunchedEffect(venueId) {
+                    venueId.toLongOrNull()?.let { id ->
+                        homeViewModel.fetchVenueById(id)
+                    }
+                }
+
                 val resolvedVenue = remember(venueId, homeState) {
                     homeState.featuredVenues.find { it.id.toString() == venueId }
                         ?: homeState.recommendedVenues.find { it.id.toString() == venueId }
                         ?: homeState.nearbyVenues.find { it.id.toString() == venueId }
+                        ?: homeState.searchResults.find { it.id.toString() == venueId }
+                        ?: homeState.selectedVenue // Venue vừa fetch từ API
                 }
 
                 // Hiển thị DetailScreen nếu tìm thấy venue
