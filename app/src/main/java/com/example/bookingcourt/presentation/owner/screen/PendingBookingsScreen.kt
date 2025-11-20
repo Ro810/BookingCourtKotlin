@@ -14,10 +14,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.BookingDetail
 import com.example.bookingcourt.presentation.owner.viewmodel.PendingBookingsViewModel
@@ -32,6 +35,20 @@ fun PendingBookingsScreen(
     viewModel: PendingBookingsViewModel = hiltViewModel()
 ) {
     val pendingBookings by viewModel.pendingBookings.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Auto-refresh khi màn hình được resumed (quay lại từ màn hình khác)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPendingBookings()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -293,11 +310,11 @@ private fun PendingBookingItem(
                 )
             }
 
-            if (booking.paymentProofUploaded) {
+            if (booking.paymentProofUploaded && !booking.paymentProofUrl.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Image,
+                        Icons.Default.CheckCircle,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = Color(0xFF4CAF50)

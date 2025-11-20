@@ -44,39 +44,55 @@ fun BookingApprovalScreen(
 
     // Handle accept state
     LaunchedEffect(acceptState) {
-        when (acceptState) {
+        when (val state = acceptState) {
             is Resource.Success -> {
+                android.util.Log.d("BookingApproval", "✅ Accept SUCCESS - navigating back")
                 snackbarHostState.showSnackbar("Đã xác nhận booking thành công!")
                 viewModel.resetAcceptState()
-                kotlinx.coroutines.delay(1000)
+                kotlinx.coroutines.delay(500)
+                android.util.Log.d("BookingApproval", "Calling onNavigateBack()")
                 onNavigateBack()
             }
             is Resource.Error -> {
+                android.util.Log.e("BookingApproval", "❌ Accept ERROR: ${state.message}")
                 snackbarHostState.showSnackbar(
-                    (acceptState as Resource.Error).message ?: "Lỗi xác nhận booking"
+                    state.message ?: "Lỗi xác nhận booking"
                 )
                 viewModel.resetAcceptState()
             }
-            else -> {}
+            is Resource.Loading -> {
+                android.util.Log.d("BookingApproval", "⏳ Accept LOADING...")
+            }
+            else -> {
+                android.util.Log.d("BookingApproval", "Accept state: null")
+            }
         }
     }
 
     // Handle reject state
     LaunchedEffect(rejectState) {
-        when (rejectState) {
+        when (val state = rejectState) {
             is Resource.Success -> {
+                android.util.Log.d("BookingApproval", "✅ Reject SUCCESS - navigating back")
                 snackbarHostState.showSnackbar("Đã từ chối booking")
                 viewModel.resetRejectState()
-                kotlinx.coroutines.delay(1000)
+                kotlinx.coroutines.delay(500)
+                android.util.Log.d("BookingApproval", "Calling onNavigateBack()")
                 onNavigateBack()
             }
             is Resource.Error -> {
+                android.util.Log.e("BookingApproval", "❌ Reject ERROR: ${state.message}")
                 snackbarHostState.showSnackbar(
-                    (rejectState as Resource.Error).message ?: "Lỗi từ chối booking"
+                    state.message ?: "Lỗi từ chối booking"
                 )
                 viewModel.resetRejectState()
             }
-            else -> {}
+            is Resource.Loading -> {
+                android.util.Log.d("BookingApproval", "⏳ Reject LOADING...")
+            }
+            else -> {
+                android.util.Log.d("BookingApproval", "Reject state: null")
+            }
         }
     }
 
@@ -323,7 +339,7 @@ private fun BookingApprovalContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Payment proof card
-        if (booking.paymentProofUrl != null) {
+        if (!booking.paymentProofUrl.isNullOrBlank()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

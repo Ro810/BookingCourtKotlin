@@ -2,6 +2,7 @@ package com.example.bookingcourt.data.repository
 
 import android.util.Log
 import com.example.bookingcourt.core.common.Resource
+import com.example.bookingcourt.core.utils.Constants
 import com.example.bookingcourt.data.remote.api.BookingApi
 import com.example.bookingcourt.data.remote.api.VenueApi
 import com.example.bookingcourt.data.remote.dto.*
@@ -274,26 +275,34 @@ class BookingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun acceptBooking(bookingId: String): Flow<Resource<BookingDetail>> = flow {
+        Log.d("BookingRepo", "🔄 acceptBooking START for ID: $bookingId")
         emit(Resource.Loading())
         try {
+            Log.d("BookingRepo", "Calling acceptBooking API...")
             val response = bookingApi.acceptBooking(bookingId)
+            Log.d("BookingRepo", "✅ API call SUCCESS, mapping response...")
             val bookingDetail = response.data.toBookingDetail(venueApi)
+            Log.d("BookingRepo", "✅ Mapped successfully, emitting Success")
             emit(Resource.Success(bookingDetail))
         } catch (e: Exception) {
-            Log.e("BookingRepo", "Error accepting booking", e)
+            Log.e("BookingRepo", "❌ Error accepting booking: ${e.message}", e)
             emit(Resource.Error(e.message ?: "Lỗi khi chấp nhận booking"))
         }
     }
 
     override suspend fun rejectBooking(bookingId: String, reason: String): Flow<Resource<BookingDetail>> = flow {
+        Log.d("BookingRepo", "🔄 rejectBooking START for ID: $bookingId")
         emit(Resource.Loading())
         try {
+            Log.d("BookingRepo", "Calling rejectBooking API...")
             val request = RejectBookingRequestDto(reason)
             val response = bookingApi.rejectBooking(bookingId, request)
+            Log.d("BookingRepo", "✅ API call SUCCESS, mapping response...")
             val bookingDetail = response.data.toBookingDetail(venueApi)
+            Log.d("BookingRepo", "✅ Mapped successfully, emitting Success")
             emit(Resource.Success(bookingDetail))
         } catch (e: Exception) {
-            Log.e("BookingRepo", "Error rejecting booking", e)
+            Log.e("BookingRepo", "❌ Error rejecting booking: ${e.message}", e)
             emit(Resource.Error(e.message ?: "Lỗi khi từ chối booking"))
         }
     }
@@ -302,7 +311,24 @@ class BookingRepositoryImpl @Inject constructor(
         emit(Resource.Loading())
         try {
             val response = bookingApi.getPendingBookings()
+            Log.d("BookingRepo", "🔍 Got ${response.data.size} pending bookings from API")
+
+            // Log thông tin userPhone và payment proof từ API response
+            response.data.forEachIndexed { index, dto ->
+                Log.d("BookingRepo", "  [$index] Booking ID: ${dto.id}")
+                Log.d("BookingRepo", "       User: ${dto.userName}")
+                Log.d("BookingRepo", "       Phone: ${dto.userPhone ?: "NULL"}")
+                Log.d("BookingRepo", "       Payment Uploaded: ${dto.paymentProofUploaded}")
+                Log.d("BookingRepo", "       Payment URL: ${dto.paymentProofUrl ?: "NULL"}")
+            }
+
             val bookings = response.data.map { it.toBookingDetail(venueApi) }
+
+            // Log sau khi map
+            bookings.forEachIndexed { index, booking ->
+                Log.d("BookingRepo", "  [$index] MAPPED - User: ${booking.user.fullname}, Phone: ${booking.user.phone ?: "NULL"}")
+            }
+
             emit(Resource.Success(bookings))
         } catch (e: Exception) {
             Log.e("BookingRepo", "Error getting pending bookings", e)
@@ -764,6 +790,18 @@ private suspend fun BookingDetailResponseDto.toBookingDetail(venueApi: VenueApi)
         else -> BookingStatus.PENDING
     }
 
+    // ✅ LOG: Debug payment proof info
+    Log.d("BookingMapper", "========== PAYMENT PROOF DEBUG ==========")
+    Log.d("BookingMapper", "Booking ID: ${this.id}")
+    Log.d("BookingMapper", "paymentProofUploaded (raw): ${this.paymentProofUploaded}")
+    Log.d("BookingMapper", "paymentProofUrl (raw): ${this.paymentProofUrl ?: "NULL"}")
+    Log.d("BookingMapper", "paymentProofUploadedAt (raw): ${this.paymentProofUploadedAt ?: "NULL"}")
+
+    // ✅ Convert relative URL to full URL
+    val fullPaymentProofUrl = toFullImageUrl(this.paymentProofUrl)
+    Log.d("BookingMapper", "paymentProofUrl (converted): ${fullPaymentProofUrl ?: "NULL"}")
+    Log.d("BookingMapper", "==========================================")
+
     return BookingDetail(
         id = this.id.toString(),
         user = BookingUserInfo(id = this.userId.toString(), fullname = this.userName ?: "Người dùng", phone = this.userPhone),
@@ -779,7 +817,7 @@ private suspend fun BookingDetailResponseDto.toBookingDetail(venueApi: VenueApi)
         totalPrice = this.totalPrice.toLong(),
         status = finalStatus,
         paymentProofUploaded = this.paymentProofUploaded,
-        paymentProofUrl = this.paymentProofUrl,
+        paymentProofUrl = fullPaymentProofUrl, // ✅ Sử dụng full URL thay vì relative URL
         paymentProofUploadedAt = this.paymentProofUploadedAt,
         rejectionReason = this.rejectionReason,
         expireTime = expire,
@@ -811,4 +849,32 @@ private fun BookingDetail.toBooking(): Booking {
         cancellationReason = this.rejectionReason,
         qrCode = null
     )
+}
+
+/**
+ * Helper function: Convert relative URL to full URL
+ * Backend trả về: /api/files/payment-proofs/booking-84-xxx.jpg
+ * Cần convert thành: https://0p1107w7-8080.asse.devtunnels.ms/api/files/payment-proofs/booking-84-xxx.jpg
+ */
+private fun toFullImageUrl(relativeUrl: String?): String? {
+    if (relativeUrl.isNullOrBlank()) return null
+
+    // Nếu đã là full URL (bắt đầu bằng http:// hoặc https://), return luôn
+    if (relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://")) {
+        return relativeUrl
+    }
+
+    // Lấy base URL và remove /api/ ở cuối nếu có
+    val baseUrl = Constants.BASE_URL.removeSuffix("/api/").removeSuffix("/")
+
+    // Nếu relative URL bắt đầu bằng /api/, thay thế bằng base URL
+    val fullUrl = if (relativeUrl.startsWith("/api/")) {
+        "$baseUrl$relativeUrl"
+    } else {
+        // Nếu không có /api/, thêm vào
+        "$baseUrl/api$relativeUrl"
+    }
+
+    Log.d("ImageUrlConverter", "Converted: $relativeUrl -> $fullUrl")
+    return fullUrl
 }
