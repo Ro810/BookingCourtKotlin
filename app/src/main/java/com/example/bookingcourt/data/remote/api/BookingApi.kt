@@ -1,7 +1,6 @@
 package com.example.bookingcourt.data.remote.api
 
 import com.example.bookingcourt.data.remote.dto.ApiResponse
-import com.example.bookingcourt.data.remote.dto.BaseResponseDto
 import com.example.bookingcourt.data.remote.dto.BookingDetailResponseDto
 import com.example.bookingcourt.data.remote.dto.BookingDto
 import com.example.bookingcourt.data.remote.dto.BookingListResponseDto
@@ -30,6 +29,22 @@ interface BookingApi {
         @Query("size") size: Int,
         @Query("status") status: String? = null,
     ): BookingListResponseDto
+
+    /**
+     * Lấy TẤT CẢ bookings của user hiện tại (không cần pagination)
+     * Endpoint: GET /bookings/my-bookings
+     */
+    @GET("bookings/my-bookings")
+    suspend fun getMyBookings(): ApiResponse<List<BookingDetailResponseDto>>
+
+    /**
+     * Lấy chi tiết booking theo ID
+     * Endpoint: GET /bookings/{id}
+     */
+    @GET("bookings/{id}")
+    suspend fun getBookingDetail(
+        @Path("id") bookingId: String
+    ): ApiResponse<BookingDetailResponseDto>
 
     @PUT("bookings/{id}/cancel")
     suspend fun cancelBooking(
@@ -93,15 +108,15 @@ interface BookingApi {
         @Query("status") status: String? = null
     ): ApiResponse<List<BookingDetailResponseDto>>
 
-    // Get booking detail with full information (for payment flow)
-    @GET("bookings/{id}")
-    suspend fun getBookingDetail(
-        @Path("id") bookingId: String
-    ): ApiResponse<BookingDetailResponseDto>
-
-    // Get my bookings list
-    @GET("bookings/my-bookings")
-    suspend fun getMyBookings(): ApiResponse<List<BookingDetailResponseDto>>
+    /**
+     * Lấy danh sách bookings đã xác nhận sắp tới theo venue ID (cho phần Lịch check-in sắp tới)
+     * @param venueId ID của venue
+     * @return Danh sách bookings đã được xác nhận (CONFIRMED) sắp tới của venue
+     */
+    @GET("bookings/venue/{venueId}/upcoming")
+    suspend fun getVenueUpcomingBookings(
+        @Path("venueId") venueId: Long
+    ): ApiResponse<List<BookingDetailResponseDto>>
 
     /**
      * Lấy các time slots đã được đặt (booked/pending) cho một venue trong ngày cụ thể

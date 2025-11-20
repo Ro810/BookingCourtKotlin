@@ -158,8 +158,9 @@ fun CourtDetailScreen(
                 // Cập nhật doanh thu theo ngày được chọn
                 viewModel.updateSelectedDateRevenue(currentDate)
 
-                // Fetch confirmed bookings for check-in schedule
-                viewModel.getConfirmedBookings()
+                // ✅ Fetch upcoming confirmed bookings for check-in schedule (using new endpoint)
+                Log.d("CourtDetailScreen", "🔍 Fetching upcoming bookings for venue ${venue.id}")
+                viewModel.getUpcomingBookings()
             } else {
                 Log.e("CourtDetailScreen", "❌ Failed to parse date: $currentDate")
             }
@@ -227,28 +228,43 @@ fun CourtDetailScreen(
         Log.d("CourtDetailScreen", "🔍 Filtering confirmed bookings:")
         Log.d("CourtDetailScreen", "  Total confirmed bookings: ${state.confirmedBookings.size}")
         Log.d("CourtDetailScreen", "  Current venue ID: ${venue?.id}")
+        Log.d("CourtDetailScreen", "  Raw state.confirmedBookings: ${state.confirmedBookings}")
 
         state.confirmedBookings.forEach { booking ->
             Log.d("CourtDetailScreen", "  Booking ${booking.id}:")
             Log.d("CourtDetailScreen", "    Venue ID: ${booking.venue.id} (current: ${venue?.id})")
             Log.d("CourtDetailScreen", "    Status: ${booking.status}")
             Log.d("CourtDetailScreen", "    Start time: ${booking.startTime}")
+            Log.d("CourtDetailScreen", "    User: ${booking.user.fullname}")
+            Log.d("CourtDetailScreen", "    Courts: ${booking.getCourtsDisplayName()}")
         }
 
+        // ⚠️ WORKAROUND: Không check venue.id vì backend đang trả về venueId=0 (bug)
+        // API endpoint /bookings/venue/{venueId}/upcoming đã filter theo venue rồi
+        // Chỉ cần check status là đủ
         val filtered = state.confirmedBookings
             .filter { booking ->
-                // Chỉ hiển thị bookings của venue hiện tại
-                // và có status COMPLETED (đã được owner chấp nhận)
-                val matchVenue = booking.venue.id == venue?.id?.toString()
-                val matchStatus = booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED
+                // ✅ Chỉ check status, không check venue.id
+                val matchStatus = booking.status == com.example.bookingcourt.domain.model.BookingStatus.COMPLETED ||
+                                booking.status == com.example.bookingcourt.domain.model.BookingStatus.CONFIRMED
 
-                Log.d("CourtDetailScreen", "  Booking ${booking.id}: venue=$matchVenue, status=$matchStatus")
+                Log.d("CourtDetailScreen", "  Booking ${booking.id}: status=$matchStatus (${booking.status})")
+                Log.d("CourtDetailScreen", "    Note: Skipping venue.id check - API already filtered by venue")
 
-                matchVenue && matchStatus
+                matchStatus
             }
             .sortedBy { it.startTime }
 
         Log.d("CourtDetailScreen", "  ✅ Filtered result: ${filtered.size} bookings")
+
+        if (filtered.isEmpty()) {
+            Log.w("CourtDetailScreen", "⚠️ No upcoming confirmed bookings found!")
+            Log.w("CourtDetailScreen", "   - Check if backend API /bookings/venue/{venueId}/upcoming is working")
+            Log.w("CourtDetailScreen", "   - Check if there are any CONFIRMED/COMPLETED bookings for venue ${venue?.id}")
+        } else {
+            Log.d("CourtDetailScreen", "   ✅ Found ${filtered.size} bookings to display in check-in schedule")
+        }
+
         filtered
     }
 

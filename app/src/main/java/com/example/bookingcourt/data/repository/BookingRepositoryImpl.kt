@@ -339,6 +339,50 @@ class BookingRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getVenueUpcomingBookings(venueId: Long): Flow<Resource<List<BookingDetail>>> = flow {
+        emit(Resource.Loading())
+        try {
+            Log.d("BookingRepo", "🔍 Getting upcoming confirmed bookings for venue: $venueId")
+
+            try {
+                // Thử gọi endpoint mới trước
+                val response = bookingApi.getVenueUpcomingBookings(venueId)
+                val bookings = response.data.map { it.toBookingDetail(venueApi) }
+
+                Log.d("BookingRepo", "✅ Got ${bookings.size} upcoming confirmed bookings from NEW endpoint for venue $venueId")
+                bookings.forEachIndexed { index, booking ->
+                    Log.d("BookingRepo", "  [$index] Booking ${booking.id}: ${booking.user.fullname} - ${booking.getCourtsDisplayName()}")
+                    Log.d("BookingRepo", "        Time: ${booking.startTime} to ${booking.endTime}")
+                    Log.d("BookingRepo", "        Status: ${booking.status}")
+                }
+
+                emit(Resource.Success(bookings))
+            } catch (e: retrofit2.HttpException) {
+                // Nếu endpoint mới lỗi (500, 404, etc.), fallback về endpoint cũ
+                Log.w("BookingRepo", "⚠️ New endpoint failed (${e.code()}), falling back to old endpoint with filter")
+
+                // Sử dụng endpoint cũ với filter COMPLETED
+                val response = bookingApi.getBookingsByVenue(venueId, "COMPLETED")
+
+                // Filter để chỉ lấy bookings chưa kết thúc (endTime >= now)
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                val bookings = response.data
+                    .map { it.toBookingDetail(venueApi) }
+                    .filter { booking ->
+                        // Chỉ lấy bookings chưa kết thúc
+                        booking.endTime >= now
+                    }
+                    .sortedBy { it.startTime }
+
+                Log.d("BookingRepo", "✅ Got ${bookings.size} upcoming confirmed bookings from FALLBACK endpoint for venue $venueId")
+                emit(Resource.Success(bookings))
+            }
+        } catch (e: Exception) {
+            Log.e("BookingRepo", "❌ Error getting venue upcoming bookings", e)
+            emit(Resource.Error(e.message ?: "Lỗi khi lấy danh sách booking sắp tới"))
+        }
+    }
+
     override suspend fun getBookingsByVenue(venueId: Long, status: String?): Flow<Resource<List<BookingDetail>>> = flow {
         emit(Resource.Loading())
         try {

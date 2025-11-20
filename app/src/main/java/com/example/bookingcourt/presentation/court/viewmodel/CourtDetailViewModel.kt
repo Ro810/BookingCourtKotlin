@@ -382,4 +382,55 @@ class CourtDetailViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Lấy danh sách bookings đã xác nhận sắp tới cho phần "Lịch check-in sắp tới"
+     * Sử dụng endpoint mới: GET /bookings/venue/{venueId}/upcoming
+     */
+    fun getUpcomingBookings() {
+        viewModelScope.launch {
+            val currentVenueId = _state.value.venue?.id
+
+            if (currentVenueId == null) {
+                android.util.Log.w("CourtDetailVM", "⚠️ Cannot get upcoming bookings - venue not loaded yet")
+                android.util.Log.w("CourtDetailVM", "   Current state.venue: ${_state.value.venue}")
+                return@launch
+            }
+
+            android.util.Log.d("CourtDetailVM", "📋 Getting upcoming bookings for venue: $currentVenueId")
+            android.util.Log.d("CourtDetailVM", "   Current confirmedBookings count: ${_state.value.confirmedBookings.size}")
+
+            bookingRepository.getVenueUpcomingBookings(currentVenueId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Upcoming bookings loaded: ${result.data?.size} bookings for venue $currentVenueId")
+                        result.data?.forEachIndexed { index, booking ->
+                            android.util.Log.d("CourtDetailVM", "  [$index] Booking ${booking.id}:")
+                            android.util.Log.d("CourtDetailVM", "       User: ${booking.user.fullname}")
+                            android.util.Log.d("CourtDetailVM", "       Status: ${booking.status}")
+                            android.util.Log.d("CourtDetailVM", "       Venue: ${booking.venue.id} (${booking.venue.name})")
+                            android.util.Log.d("CourtDetailVM", "       Time: ${booking.startTime} to ${booking.endTime}")
+                            android.util.Log.d("CourtDetailVM", "       Courts: ${booking.getCourtsDisplayName()}")
+                        }
+
+                        _state.value = _state.value.copy(
+                            confirmedBookings = result.data ?: emptyList()
+                        )
+
+                        android.util.Log.d("CourtDetailVM", "   State updated - confirmedBookings: ${_state.value.confirmedBookings.size}")
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Error loading upcoming bookings: ${result.message}")
+                        android.util.Log.e("CourtDetailVM", "   Setting confirmedBookings to empty list")
+                        _state.value = _state.value.copy(
+                            confirmedBookings = emptyList()
+                        )
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Loading upcoming bookings...")
+                    }
+                }
+            }
+        }
+    }
 }
