@@ -9,7 +9,6 @@ import com.example.bookingcourt.domain.model.BookingDetail
 import com.example.bookingcourt.domain.model.BookingStatus
 import com.example.bookingcourt.domain.repository.BookingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,66 +33,47 @@ class PaymentWaitingViewModel @Inject constructor(
     val rejectionReason: StateFlow<String?> = _rejectionReason.asStateFlow()
 
     init {
-        startPolling()
+        loadBookingDetail() // ✅ Chỉ load 1 lần khi vào màn hình
     }
 
-    private fun startPolling() {
+    private fun loadBookingDetail() {
         viewModelScope.launch {
-            Log.d("PaymentWaiting", "========== START POLLING BOOKING DETAIL ==========")
-            Log.d("PaymentWaiting", "  📋 Booking ID from navigation: $bookingId")
-            Log.d("PaymentWaiting", "====================================================")
+            Log.d("PaymentWaiting", "========== LOAD BOOKING DETAIL ==========")
+            Log.d("PaymentWaiting", "  📋 Booking ID: $bookingId")
+            Log.d("PaymentWaiting", "==========================================")
 
-            var shouldContinuePolling = true
+            try {
+                bookingRepository.getBookingDetail(bookingId).collect { resource ->
+                    _bookingDetail.value = resource
 
-            while (shouldContinuePolling) {
-                try {
-                    bookingRepository.getBookingDetail(bookingId).collect { resource ->
-                        _bookingDetail.value = resource
+                    if (resource is Resource.Success) {
+                        val detail = resource.data
 
-                        if (resource is Resource.Success) {
-                            val detail = resource.data
+                        // ✅ LOG CHI TIẾT để so sánh với thông tin lúc tạo booking
+                        Log.d("PaymentWaiting", "========== BOOKING DETAIL LOADED ==========")
+                        Log.d("PaymentWaiting", "  📋 Booking ID: ${detail?.id}")
+                        Log.d("PaymentWaiting", "  🏟️ Court ID: ${detail?.court?.id}")
+                        Log.d("PaymentWaiting", "  🏟️ Court Name: ${detail?.court?.description}")
+                        Log.d("PaymentWaiting", "  🏢 Venue ID: ${detail?.venue?.id}")
+                        Log.d("PaymentWaiting", "  🏢 Venue Name: ${detail?.venue?.name}")
+                        Log.d("PaymentWaiting", "  💰 Total Price: ${detail?.totalPrice}")
+                        Log.d("PaymentWaiting", "  🏦 Bank Name: ${detail?.ownerBankInfo?.bankName}")
+                        Log.d("PaymentWaiting", "  🏦 Account Number: ${detail?.ownerBankInfo?.bankAccountNumber}")
+                        Log.d("PaymentWaiting", "  🏦 Account Name: ${detail?.ownerBankInfo?.bankAccountName}")
+                        Log.d("PaymentWaiting", "  ⏰ Start Time: ${detail?.startTime}")
+                        Log.d("PaymentWaiting", "  ⏰ End Time: ${detail?.endTime}")
+                        Log.d("PaymentWaiting", "  📊 Status: ${detail?.status}")
+                        Log.d("PaymentWaiting", "===========================================")
 
-                            // ✅ LOG CHI TIẾT để so sánh với thông tin lúc tạo booking
-                            Log.d("PaymentWaiting", "========== BOOKING DETAIL LOADED ==========")
-                            Log.d("PaymentWaiting", "  📋 Booking ID: ${detail?.id}")
-                            Log.d("PaymentWaiting", "  🏟️ Court ID: ${detail?.court?.id}")
-                            Log.d("PaymentWaiting", "  🏟️ Court Name: ${detail?.court?.description}")
-                            Log.d("PaymentWaiting", "  🏢 Venue ID: ${detail?.venue?.id}")
-                            Log.d("PaymentWaiting", "  🏢 Venue Name: ${detail?.venue?.name}")
-                            Log.d("PaymentWaiting", "  💰 Total Price: ${detail?.totalPrice}")
-                            Log.d("PaymentWaiting", "  🏦 Bank Name: ${detail?.ownerBankInfo?.bankName}")
-                            Log.d("PaymentWaiting", "  🏦 Account Number: ${detail?.ownerBankInfo?.bankAccountNumber}")
-                            Log.d("PaymentWaiting", "  🏦 Account Name: ${detail?.ownerBankInfo?.bankAccountName}")
-                            Log.d("PaymentWaiting", "  ⏰ Start Time: ${detail?.startTime}")
-                            Log.d("PaymentWaiting", "  ⏰ End Time: ${detail?.endTime}")
-                            Log.d("PaymentWaiting", "  📊 Status: ${detail?.status}")
-                            Log.d("PaymentWaiting", "===========================================")
-
-                            val status = resource.data?.status
-                            _bookingStatus.value = status
-
-                            // Stop polling if booking is confirmed or rejected
-                            if (status == BookingStatus.CONFIRMED || status == BookingStatus.REJECTED) {
-                                _rejectionReason.value = resource.data?.rejectionReason
-                                Log.d("PaymentWaiting", "⏹️ Stopped polling - Status: $status")
-                                shouldContinuePolling = false
-                            }
-                        } else if (resource is Resource.Error) {
-                            Log.e("PaymentWaiting", "❌ Error loading booking detail: ${resource.message}")
-                        }
+                        _bookingStatus.value = resource.data?.status
+                        _rejectionReason.value = resource.data?.rejectionReason
+                    } else if (resource is Resource.Error) {
+                        Log.e("PaymentWaiting", "❌ Error loading booking detail: ${resource.message}")
                     }
-                } catch (e: Exception) {
-                    Log.e("PaymentWaiting", "❌ Exception during polling: ${e.message}")
                 }
-
-                // Only delay if we should continue polling
-                if (shouldContinuePolling) {
-                    Log.d("PaymentWaiting", "⏳ Waiting 3 seconds before next poll...")
-                    delay(3000)
-                }
+            } catch (e: Exception) {
+                Log.e("PaymentWaiting", "❌ Exception loading booking detail: ${e.message}")
             }
-
-            Log.d("PaymentWaiting", "✅ Polling stopped")
         }
     }
 

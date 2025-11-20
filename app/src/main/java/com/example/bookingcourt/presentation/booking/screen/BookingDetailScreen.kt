@@ -41,6 +41,7 @@ fun BookingDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToWaiting: ((String) -> Unit)? = null,
     onNavigateToReview: ((String, String) -> Unit)? = null,
+    onNavigateToHistory: (() -> Unit)? = null, // ✅ Thêm callback chuyển đến history
     viewModel: BookingDetailViewModel = hiltViewModel(),
     reviewViewModel: ReviewViewModel = hiltViewModel() // Thêm ReviewViewModel
 ) {
@@ -126,8 +127,8 @@ fun BookingDetailScreen(
             is Resource.Success -> {
                 snackbarHostState.showSnackbar("Đã gửi xác nhận thanh toán!")
                 viewModel.resetConfirmState()
-                // Navigate to waiting screen
-                onNavigateToWaiting?.invoke(bookingId)
+                // ✅ Navigate to booking history instead of waiting screen
+                onNavigateToHistory?.invoke() ?: onNavigateBack()
             }
             is Resource.Error -> {
                 snackbarHostState.showSnackbar(

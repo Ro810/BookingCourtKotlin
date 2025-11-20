@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,9 +21,6 @@ import com.example.bookingcourt.domain.model.Booking
 import com.example.bookingcourt.domain.model.BookingStatus
 import com.example.bookingcourt.presentation.booking.viewmodel.BookingHistoryViewModel
 import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.Clock
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -44,10 +42,17 @@ fun BookingHistoryScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
                     }
                 },
+                actions = {
+                    // ✅ Thêm nút refresh
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Làm mới")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White,
                 ),
             )
         }

@@ -89,7 +89,6 @@ class BookingDetailViewModel @Inject constructor(
                 when (resource) {
                     is Resource.Success -> {
                         _uploadState.value = Resource.Success(resource.data?.paymentProofUrl ?: "")
-                        loadBookingDetail() // Refresh booking detail
                     }
                     is Resource.Error -> {
                         _uploadState.value = Resource.Error(resource.message ?: "Lỗi upload")

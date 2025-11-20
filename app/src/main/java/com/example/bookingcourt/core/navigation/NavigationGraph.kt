@@ -404,6 +404,12 @@ fun NavigationGraph(
                 BookingDetailScreen(
                     bookingId = bookingId,
                     onNavigateBack = { navController.navigateUp() },
+                    onNavigateToHistory = {
+                        // Chuyển đến màn hình booking history
+                        navController.navigate(Screen.BookingHistory.route) {
+                            popUpTo(Screen.BookingDetail.createRoute(bookingId)) { inclusive = true }
+                        }
+                    }
                 )
             }
 
@@ -595,6 +601,11 @@ fun NavigationGraph(
                     onNavigateToWaiting = { id ->
                         navController.navigate(Screen.PaymentWaiting.createRoute(id)) {
                             popUpTo(Screen.BookingDetailPayment.createRoute(id)) { inclusive = true }
+                        } },
+                    onNavigateToHistory = {
+                        // ✅ Chuyển đến màn hình booking history
+                        navController.navigate(Screen.BookingHistory.route) {
+                            popUpTo(Screen.BookingDetailPayment.createRoute(bookingId)) { inclusive = true }
                         }
                     }
                 )
