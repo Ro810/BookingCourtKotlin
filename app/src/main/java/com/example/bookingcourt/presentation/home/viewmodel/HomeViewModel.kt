@@ -26,6 +26,7 @@ import javax.inject.Inject
 data class HomeState(
     val isLoading: Boolean = false,
     val user: User? = null,
+    val allVenues: List<Venue> = emptyList(), // ✅ Toàn bộ danh sách sân
     val featuredVenues: List<Venue> = emptyList(),
     val nearbyVenues: List<Venue> = emptyList(),
     val recommendedVenues: List<Venue> = emptyList(),
@@ -136,6 +137,7 @@ class HomeViewModel @Inject constructor(
 
                             _state.value = _state.value.copy(
                                 isLoading = false,
+                                allVenues = allVenues, // Lưu toàn bộ venues
                                 featuredVenues = featuredVenues,
                                 recommendedVenues = recommendedVenues,
                                 nearbyVenues = emptyList(),

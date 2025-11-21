@@ -243,12 +243,11 @@ fun HomeScreen(
                         }
                     } else {
                         // Hiển thị danh sách mặc định khi không search
-                        val allVenues = (state.featuredVenues + state.recommendedVenues + state.nearbyVenues)
-                            .distinctBy { it.id }
+                        val allVenues = state.allVenues // ✅ Hiển thị toàn bộ danh sách sân
                         if (allVenues.isNotEmpty()) {
                             item {
                                 Text(
-                                    text = "Sân nổi bật",
+                                    text = "Tất cả sân (${allVenues.size})",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.Black,
