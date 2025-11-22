@@ -14,10 +14,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.widget.Toast
 import coil.compose.rememberAsyncImagePainter
 import com.example.bookingcourt.core.common.Resource
 import com.example.bookingcourt.domain.model.BookingDetail
@@ -40,24 +42,24 @@ fun BookingApprovalScreen(
     var showAcceptDialog by remember { mutableStateOf(false) }
     var rejectionReason by remember { mutableStateOf("") }
 
-    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     // Handle accept state
     LaunchedEffect(acceptState) {
         when (val state = acceptState) {
             is Resource.Success -> {
                 android.util.Log.d("BookingApproval", "✅ Accept SUCCESS - navigating back")
-                snackbarHostState.showSnackbar("Đã xác nhận booking thành công!")
+                Toast.makeText(context, "Đã xác nhận booking thành công!", Toast.LENGTH_SHORT).show()
                 viewModel.resetAcceptState()
-                kotlinx.coroutines.delay(500)
-                android.util.Log.d("BookingApproval", "Calling onNavigateBack()")
                 onNavigateBack()
             }
             is Resource.Error -> {
                 android.util.Log.e("BookingApproval", "❌ Accept ERROR: ${state.message}")
-                snackbarHostState.showSnackbar(
-                    state.message ?: "Lỗi xác nhận booking"
-                )
+                Toast.makeText(
+                    context,
+                    state.message ?: "Lỗi xác nhận booking",
+                    Toast.LENGTH_SHORT
+                ).show()
                 viewModel.resetAcceptState()
             }
             is Resource.Loading -> {
@@ -74,17 +76,17 @@ fun BookingApprovalScreen(
         when (val state = rejectState) {
             is Resource.Success -> {
                 android.util.Log.d("BookingApproval", "✅ Reject SUCCESS - navigating back")
-                snackbarHostState.showSnackbar("Đã từ chối booking")
+                Toast.makeText(context, "Đã từ chối booking", Toast.LENGTH_SHORT).show()
                 viewModel.resetRejectState()
-                kotlinx.coroutines.delay(500)
-                android.util.Log.d("BookingApproval", "Calling onNavigateBack()")
                 onNavigateBack()
             }
             is Resource.Error -> {
                 android.util.Log.e("BookingApproval", "❌ Reject ERROR: ${state.message}")
-                snackbarHostState.showSnackbar(
-                    state.message ?: "Lỗi từ chối booking"
-                )
+                Toast.makeText(
+                    context,
+                    state.message ?: "Lỗi từ chối booking",
+                    Toast.LENGTH_SHORT
+                ).show()
                 viewModel.resetRejectState()
             }
             is Resource.Loading -> {
@@ -111,8 +113,7 @@ fun BookingApprovalScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        }
     ) { padding ->
         when (val state = bookingDetail) {
             is Resource.Loading -> {
