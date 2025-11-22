@@ -180,6 +180,9 @@ fun NavigationGraph(
                     onNavigateToOwnerBookingHistory = {
                         navController.navigate(Screen.OwnerBookingHistory.route)
                     },
+                    onNavigateToAnalytics = {
+                        navController.navigate(Screen.Analytics.route)
+                    },
                     onNavigateToBecomeCustomer = {
                         // Chuyển về HomeScreen (chế độ khách đặt sân)
                         navController.navigate(Screen.Home.route) {
@@ -663,6 +666,13 @@ fun NavigationGraph(
                     onNavigateToBookingDetail = { bookingId ->
                         navController.navigate(Screen.OwnerBookingDetail.createRoute(bookingId))
                     }
+                )
+            }
+
+            // Owner: Màn hình thống kê và báo cáo
+            composable(route = Screen.Analytics.route) {
+                com.example.bookingcourt.presentation.analytics.screen.AnalyticsScreen(
+                    onNavigateBack = { navController.navigateUp() }
                 )
             }
 

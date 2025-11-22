@@ -62,6 +62,7 @@ fun OwnerHomeScreen(
     onNavigateToCreateVenue: () -> Unit = {},
     onNavigateToPendingBookings: () -> Unit = {},
     onNavigateToOwnerBookingHistory: () -> Unit = {}, // Navigation cho lịch sử booking chủ sân
+    onNavigateToAnalytics: () -> Unit = {}, // Navigation cho Analytics/Thống kê
     onLogout: () -> Unit = {},
     viewModel: OwnerHomeViewModel = hiltViewModel(),
 ) {
@@ -146,6 +147,7 @@ fun OwnerHomeScreen(
                     bottomPadding = paddingValues.calculateBottomPadding(),
                     snackbarHostState = snackbarHostState,
                     onNavigateToPendingBookings = onNavigateToPendingBookings,
+                    onNavigateToAnalytics = onNavigateToAnalytics,
                     pendingBookingsCount = pendingBookingsCount // ✅ Pass count
                 )
             }
@@ -175,6 +177,7 @@ private fun OwnerHomeContent(
     bottomPadding: androidx.compose.ui.unit.Dp,
     snackbarHostState: SnackbarHostState,
     onNavigateToPendingBookings: () -> Unit, // New parameter for navigation
+    onNavigateToAnalytics: () -> Unit, // Navigation to Analytics
     pendingBookingsCount: Int = 0, // ✅ Add count parameter
     viewModel: OwnerHomeViewModel = hiltViewModel(),
 ) {
@@ -374,6 +377,98 @@ private fun OwnerHomeContent(
                                             } else {
                                                 "Xem và duyệt đặt sân"
                                             },
+                                            color = Color.White.copy(alpha = 0.95f),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(
+                                            Color.White.copy(alpha = 0.2f),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = "Xem chi tiết",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Card "Báo cáo & Thống kê"
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToAnalytics() },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Transparent
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF1976D2),
+                                            Color(0xFF2196F3),
+                                            Color(0xFF42A5F5)
+                                        )
+                                    )
+                                )
+                                .padding(20.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    // Icon
+                                    Box(
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .background(
+                                                Color.White.copy(alpha = 0.2f),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.BarChart,
+                                            contentDescription = "Báo cáo & Thống kê",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Báo cáo & Thống kê",
+                                            color = Color.White,
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Xem doanh thu và hiệu suất",
                                             color = Color.White.copy(alpha = 0.95f),
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Medium
