@@ -87,6 +87,87 @@ fun RevenueBarChart(
 }
 
 /**
+ * Bar chart hiển thị doanh thu theo giờ (cho filter Hôm nay)
+ */
+@Composable
+fun HourlyRevenueBarChart(
+    data: List<TimeSlotStats>,
+    modifier: Modifier = Modifier,
+    barColor: Color = MaterialTheme.colorScheme.primary
+) {
+    if (data.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Chưa có dữ liệu", style = MaterialTheme.typography.bodyMedium)
+        }
+        return
+    }
+
+    val sortedData = data.sortedBy { it.hour }
+    val maxRevenue = sortedData.maxOfOrNull { it.revenue } ?: 1L
+
+    val animatedProgress = remember { Animatable(0f) }
+
+    LaunchedEffect(data) {
+        animatedProgress.animateTo(1f, animationSpec = tween(1000))
+    }
+
+    Canvas(modifier = modifier.fillMaxWidth().height(280.dp).padding(16.dp)) {
+        val barWidth = size.width / (sortedData.size * 1.5f).coerceAtLeast(1f)
+        val spacing = barWidth * 0.5f
+        val chartHeight = size.height - 70.dp.toPx()
+
+        sortedData.forEachIndexed { index, hourStats ->
+            val barHeight = (hourStats.revenue.toFloat() / maxRevenue) * chartHeight * animatedProgress.value
+            val x = index * (barWidth + spacing) + spacing
+
+            // Draw bar
+            drawRoundRect(
+                color = barColor,
+                topLeft = Offset(x, size.height - 50.dp.toPx() - barHeight),
+                size = Size(barWidth, barHeight),
+                cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+            )
+
+            // Draw revenue amount label (màu đỏ phía trên cột)
+            if (hourStats.revenue > 0) {
+                val revenueText = formatShortCurrency(hourStats.revenue)
+                drawContext.canvas.nativeCanvas.apply {
+                    drawText(
+                        revenueText,
+                        x + barWidth / 2,
+                        size.height - 55.dp.toPx() - barHeight - 5.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.RED
+                            textSize = 9.sp.toPx()
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            isFakeBoldText = true
+                        }
+                    )
+                }
+            }
+
+            // Draw hour label
+            val hourText = "${hourStats.hour}h"
+            drawContext.canvas.nativeCanvas.apply {
+                drawText(
+                    hourText,
+                    x + barWidth / 2,
+                    size.height - 10.dp.toPx(),
+                    android.graphics.Paint().apply {
+                        color = android.graphics.Color.GRAY
+                        textSize = 10.sp.toPx()
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
  * Simple pie chart hiển thị phân bố booking theo status
  */
 @Composable
@@ -303,4 +384,17 @@ fun formatCurrency(amount: Long): String {
  */
 fun formatNumber(number: Int): String {
     return NumberFormat.getNumberInstance(Locale("vi", "VN")).format(number)
+}
+
+/**
+ * Format currency ngắn gọn cho label trên chart
+ * VD: 1.200.000 -> "1,2tr"
+ */
+fun formatShortCurrency(amount: Long): String {
+    return when {
+        amount >= 1_000_000_000 -> "${String.format("%.1f", amount / 1_000_000_000.0)}tỷ"
+        amount >= 1_000_000 -> "${String.format("%.1f", amount / 1_000_000.0)}tr"
+        amount >= 1_000 -> "${String.format("%.0f", amount / 1_000.0)}k"
+        else -> "${amount}đ"
+    }
 }

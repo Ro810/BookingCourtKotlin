@@ -212,27 +212,56 @@ private fun AnalyticsContent(
             )
         }
 
-        // Revenue chart
-        if (data.revenueByDate.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                SectionHeader(
-                    title = "Doanh thu theo ngày",
-                    icon = Icons.Default.TrendingUp
-                )
-            }
+        // Revenue chart - Theo giờ nếu chọn "Hôm nay", theo ngày nếu chọn filter khác
+        if (state.selectedPeriod == AnalyticsPeriod.DAY) {
+            // Hôm nay: Hiển thị doanh thu theo giờ
+            if (data.timeSlotStats.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SectionHeader(
+                        title = "Doanh thu theo giờ",
+                        icon = Icons.Default.TrendingUp
+                    )
+                }
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        RevenueBarChart(
-                            data = data.revenueByDate,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            HourlyRevenueBarChart(
+                                data = data.timeSlotStats,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            // Tuần/Tháng/Năm: Hiển thị doanh thu theo ngày
+            if (data.revenueByDate.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SectionHeader(
+                        title = "Doanh thu theo ngày",
+                        icon = Icons.Default.TrendingUp
+                    )
+                }
+
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            RevenueBarChart(
+                                data = data.revenueByDate,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
