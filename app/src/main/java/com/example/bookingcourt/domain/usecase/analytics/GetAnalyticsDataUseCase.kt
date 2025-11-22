@@ -255,28 +255,28 @@ class GetAnalyticsDataUseCase @Inject constructor(
         // Lấy ngày đầu tháng
         val startOfMonth = LocalDate(today.year, today.month, 1)
 
-        // Tìm thứ 2 đầu tiên của tháng
-        val firstMonday = if (startOfMonth.dayOfWeek == DayOfWeek.MONDAY) {
+        // Tìm Chủ nhật đầu tiên của tháng
+        val firstSunday = if (startOfMonth.dayOfWeek == DayOfWeek.SUNDAY) {
             startOfMonth
         } else {
-            // Tính số ngày cần cộng để đến thứ 2 đầu tiên
-            val daysUntilMonday = (DayOfWeek.MONDAY.value - startOfMonth.dayOfWeek.value + 7) % 7
-            if (daysUntilMonday == 0) startOfMonth
-            else startOfMonth.plus(DatePeriod(days = daysUntilMonday))
+            // Tính số ngày cần cộng để đến Chủ nhật đầu tiên
+            val daysUntilSunday = 7 - startOfMonth.dayOfWeek.value
+            startOfMonth.plus(DatePeriod(days = daysUntilSunday))
         }
 
-        // Group bookings theo tuần (T2-CN)
+        // Group bookings theo tuần
+        // Tuần 1: từ ngày 1 tháng đến Chủ nhật đầu tiên
+        // Tuần 2+: mỗi tuần là T2-CN
         val groupedByWeek = bookings.groupBy { booking ->
             val bookingDate = booking.startTime.date
 
-            // Nếu booking trước thứ 2 đầu tiên, không tính vào tuần nào
-            if (bookingDate < firstMonday) {
-                0
+            if (bookingDate <= firstSunday) {
+                // Tuần 1: từ ngày 1 tháng đến Chủ nhật đầu tiên
+                1
             } else {
-                // Tính số ngày từ thứ 2 đầu tiên
-                val daysSinceFirstMonday = bookingDate.toEpochDays() - firstMonday.toEpochDays()
-                // Chia cho 7 để lấy tuần (tuần 1, 2, 3, ...)
-                (daysSinceFirstMonday / 7).toInt() + 1
+                // Tuần 2+: mỗi tuần là T2-CN
+                val daysSinceFirstSunday = bookingDate.toEpochDays() - firstSunday.toEpochDays()
+                ((daysSinceFirstSunday - 1) / 7) + 2
             }
         }
 
