@@ -237,14 +237,50 @@ class GetAnalyticsDataUseCase @Inject constructor(
     }
 
     private fun calculateRevenueByWeek(bookings: List<BookingDetail>): List<WeeklyRevenue> {
-        // Group by week number in month
-        val groupedByWeek = bookings.groupBy { booking ->
-            val dayOfMonth = booking.startTime.dayOfMonth
-            // Tính tuần: ngày 1-7 = tuần 1, 8-14 = tuần 2, etc.
-            ((dayOfMonth - 1) / 7) + 1
+        if (bookings.isEmpty()) {
+            return (1..5).map { weekNumber ->
+                WeeklyRevenue(
+                    weekNumber = weekNumber,
+                    weekLabel = "Tuần $weekNumber",
+                    revenue = 0,
+                    bookingCount = 0
+                )
+            }
         }
 
-        // Tạo danh sách đầy đủ 5 tuần, tuần nào không có data thì revenue = 0
+        val now = Clock.System.now()
+        val timezone = TimeZone.currentSystemDefault()
+        val today = now.toLocalDateTime(timezone).date
+
+        // Lấy ngày đầu tháng
+        val startOfMonth = LocalDate(today.year, today.month, 1)
+
+        // Tìm thứ 2 đầu tiên của tháng
+        val firstMonday = if (startOfMonth.dayOfWeek == DayOfWeek.MONDAY) {
+            startOfMonth
+        } else {
+            // Tính số ngày cần cộng để đến thứ 2 đầu tiên
+            val daysUntilMonday = (DayOfWeek.MONDAY.value - startOfMonth.dayOfWeek.value + 7) % 7
+            if (daysUntilMonday == 0) startOfMonth
+            else startOfMonth.plus(DatePeriod(days = daysUntilMonday))
+        }
+
+        // Group bookings theo tuần (T2-CN)
+        val groupedByWeek = bookings.groupBy { booking ->
+            val bookingDate = booking.startTime.date
+
+            // Nếu booking trước thứ 2 đầu tiên, không tính vào tuần nào
+            if (bookingDate < firstMonday) {
+                0
+            } else {
+                // Tính số ngày từ thứ 2 đầu tiên
+                val daysSinceFirstMonday = bookingDate.toEpochDays() - firstMonday.toEpochDays()
+                // Chia cho 7 để lấy tuần (tuần 1, 2, 3, ...)
+                (daysSinceFirstMonday / 7).toInt() + 1
+            }
+        }
+
+        // Tạo danh sách đầy đủ 5 tuần
         return (1..5).map { weekNumber ->
             val weekBookings = groupedByWeek[weekNumber] ?: emptyList()
             WeeklyRevenue(
