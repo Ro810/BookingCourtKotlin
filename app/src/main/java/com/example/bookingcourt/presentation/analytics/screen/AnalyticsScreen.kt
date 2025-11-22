@@ -212,55 +212,112 @@ private fun AnalyticsContent(
             )
         }
 
-        // Revenue chart - Theo giờ nếu chọn "Hôm nay", theo ngày nếu chọn filter khác
-        if (state.selectedPeriod == AnalyticsPeriod.DAY) {
-            // Hôm nay: Hiển thị doanh thu theo giờ
-            if (data.timeSlotStats.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SectionHeader(
-                        title = "Doanh thu theo giờ",
-                        icon = Icons.Default.TrendingUp
-                    )
-                }
+        // Revenue chart - Theo giờ/tuần/tháng/ngày tùy filter
+        when (state.selectedPeriod) {
+            AnalyticsPeriod.DAY -> {
+                // Hôm nay: Hiển thị doanh thu theo giờ
+                if (data.timeSlotStats.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SectionHeader(
+                            title = "Doanh thu theo giờ",
+                            icon = Icons.Default.TrendingUp
+                        )
+                    }
 
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            HourlyRevenueLineChart(
-                                data = data.timeSlotStats,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                HourlyRevenueLineChart(
+                                    data = data.timeSlotStats,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }
             }
-        } else {
-            // Tuần/Tháng/Năm: Hiển thị doanh thu theo ngày
-            if (data.revenueByDate.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SectionHeader(
-                        title = "Doanh thu theo ngày",
-                        icon = Icons.Default.TrendingUp
-                    )
-                }
+            AnalyticsPeriod.MONTH -> {
+                // Tháng: Hiển thị doanh thu theo tuần
+                if (data.revenueByWeek.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SectionHeader(
+                            title = "Doanh thu theo tuần",
+                            icon = Icons.Default.TrendingUp
+                        )
+                    }
 
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            RevenueLineChart(
-                                data = data.revenueByDate,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                WeeklyRevenueLineChart(
+                                    data = data.revenueByWeek,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            AnalyticsPeriod.YEAR -> {
+                // Năm: Hiển thị doanh thu theo tháng
+                if (data.revenueByMonth.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SectionHeader(
+                            title = "Doanh thu theo tháng",
+                            icon = Icons.Default.TrendingUp
+                        )
+                    }
+
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                MonthlyRevenueLineChart(
+                                    data = data.revenueByMonth,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            AnalyticsPeriod.WEEK -> {
+                // Tuần: Hiển thị doanh thu theo ngày
+                if (data.revenueByDate.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SectionHeader(
+                            title = "Doanh thu theo ngày",
+                            icon = Icons.Default.TrendingUp
+                        )
+                    }
+
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                RevenueLineChart(
+                                    data = data.revenueByDate,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }
@@ -286,6 +343,7 @@ private fun AnalyticsContent(
                     BookingStatusPieChart(
                         confirmed = data.bookingStats.confirmedCount,
                         pending = data.bookingStats.pendingCount,
+                        completed = data.bookingStats.completedCount,
                         rejected = data.bookingStats.rejectedCount,
                         cancelled = data.bookingStats.cancelledCount,
                         modifier = Modifier.fillMaxWidth()

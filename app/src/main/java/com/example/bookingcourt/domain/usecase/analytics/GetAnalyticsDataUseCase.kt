@@ -50,6 +50,20 @@ class GetAnalyticsDataUseCase @Inject constructor(
         // Doanh thu theo ngày
         val revenueByDate = calculateRevenueByDate(revenueBookings, period)
 
+        // Doanh thu theo tuần (cho filter Tháng)
+        val revenueByWeek = if (period == AnalyticsPeriod.MONTH) {
+            calculateRevenueByWeek(revenueBookings)
+        } else {
+            emptyList()
+        }
+
+        // Doanh thu theo tháng (cho filter Năm)
+        val revenueByMonth = if (period == AnalyticsPeriod.YEAR) {
+            calculateRevenueByMonth(revenueBookings)
+        } else {
+            emptyList()
+        }
+
         // Hiệu suất venue
         val venuePerformance = calculateVenuePerformance(revenueBookings)
 
@@ -80,6 +94,8 @@ class GetAnalyticsDataUseCase @Inject constructor(
             averageBookingValue = averageBookingValue,
             bookingStats = bookingStats,
             revenueByDate = revenueByDate,
+            revenueByWeek = revenueByWeek,
+            revenueByMonth = revenueByMonth,
             venuePerformance = venuePerformance,
             timeSlotStats = timeSlotStats,
             paymentMethodStats = paymentMethodStats,
@@ -97,25 +113,44 @@ class GetAnalyticsDataUseCase @Inject constructor(
         val timezone = TimeZone.currentSystemDefault()
         val today = now.toLocalDateTime(timezone).date
 
-        val startDate = when (period) {
-            AnalyticsPeriod.DAY -> today
+        return when (period) {
+            AnalyticsPeriod.DAY -> {
+                // Chỉ lấy bookings trong ngày hôm nay
+                bookings.filter { booking ->
+                    booking.startTime.date == today
+                }
+            }
             AnalyticsPeriod.WEEK -> {
-                val daysToSubtract = DatePeriod(days = 7)
-                today.minus(daysToSubtract)
+                // Lấy từ thứ 2 tuần này đến chủ nhật tuần này
+                val dayOfWeek = today.dayOfWeek.value // 1=Monday, 7=Sunday
+                val startOfWeek = today.minus(DatePeriod(days = dayOfWeek - 1)) // Thứ 2
+                val endOfWeek = startOfWeek.plus(DatePeriod(days = 6)) // Chủ nhật
+
+                bookings.filter { booking ->
+                    val bookingDate = booking.startTime.date
+                    bookingDate >= startOfWeek && bookingDate <= endOfWeek
+                }
             }
             AnalyticsPeriod.MONTH -> {
-                val daysToSubtract = DatePeriod(days = 30)
-                today.minus(daysToSubtract)
+                // Lấy từ ngày 1 đến ngày cuối tháng này
+                val startOfMonth = LocalDate(today.year, today.month, 1)
+                val endOfMonth = startOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+
+                bookings.filter { booking ->
+                    val bookingDate = booking.startTime.date
+                    bookingDate >= startOfMonth && bookingDate <= endOfMonth
+                }
             }
             AnalyticsPeriod.YEAR -> {
-                val yearsToSubtract = DatePeriod(years = 1)
-                today.minus(yearsToSubtract)
-            }
-        }
+                // Lấy từ ngày 1/1 đến 31/12 năm này
+                val startOfYear = LocalDate(today.year, 1, 1)
+                val endOfYear = LocalDate(today.year, 12, 31)
 
-        return bookings.filter { booking ->
-            val bookingDate = booking.startTime.date
-            bookingDate >= startDate
+                bookings.filter { booking ->
+                    val bookingDate = booking.startTime.date
+                    bookingDate >= startOfYear && bookingDate <= endOfYear
+                }
+            }
         }
     }
 
@@ -131,9 +166,10 @@ class GetAnalyticsDataUseCase @Inject constructor(
             it.status == BookingStatus.CANCELLED || it.status == BookingStatus.NO_SHOW
         }
 
-        // Conversion rate: confirmed / (confirmed + rejected)
-        val conversionRate = if (confirmedCount + rejectedCount > 0) {
-            confirmedCount.toFloat() / (confirmedCount + rejectedCount)
+        // Conversion rate: (confirmed + completed) / (confirmed + completed + rejected)
+        val successCount = confirmedCount + completedCount
+        val conversionRate = if (successCount + rejectedCount > 0) {
+            successCount.toFloat() / (successCount + rejectedCount)
         } else 0f
 
         return BookingStats(
@@ -151,16 +187,91 @@ class GetAnalyticsDataUseCase @Inject constructor(
         bookings: List<BookingDetail>,
         period: AnalyticsPeriod
     ): List<DailyRevenue> {
-        // Group by date
+        val now = Clock.System.now()
+        val timezone = TimeZone.currentSystemDefault()
+        val today = now.toLocalDateTime(timezone).date
+
+        // Xác định khoảng ngày cần hiển thị
+        val (startDate, endDate) = when (period) {
+            AnalyticsPeriod.DAY -> {
+                today to today
+            }
+            AnalyticsPeriod.WEEK -> {
+                val dayOfWeek = today.dayOfWeek.value
+                val startOfWeek = today.minus(DatePeriod(days = dayOfWeek - 1))
+                val endOfWeek = startOfWeek.plus(DatePeriod(days = 6))
+                startOfWeek to endOfWeek
+            }
+            AnalyticsPeriod.MONTH -> {
+                val startOfMonth = LocalDate(today.year, today.month, 1)
+                val endOfMonth = startOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+                startOfMonth to endOfMonth
+            }
+            AnalyticsPeriod.YEAR -> {
+                val startOfYear = LocalDate(today.year, 1, 1)
+                val endOfYear = LocalDate(today.year, 12, 31)
+                startOfYear to endOfYear
+            }
+        }
+
+        // Group bookings by date
         val groupedByDate = bookings.groupBy { it.startTime.date }
 
-        return groupedByDate.map { (date, bookingsOnDate) ->
-            DailyRevenue(
-                date = date,
-                revenue = bookingsOnDate.sumOf { it.totalPrice },
-                bookingCount = bookingsOnDate.size
+        // Tạo danh sách đầy đủ các ngày trong khoảng
+        val allDates = mutableListOf<DailyRevenue>()
+        var currentDate = startDate
+
+        while (currentDate <= endDate) {
+            val bookingsOnDate = groupedByDate[currentDate] ?: emptyList()
+            allDates.add(
+                DailyRevenue(
+                    date = currentDate,
+                    revenue = bookingsOnDate.sumOf { it.totalPrice },
+                    bookingCount = bookingsOnDate.size
+                )
             )
-        }.sortedBy { it.date }
+            currentDate = currentDate.plus(DatePeriod(days = 1))
+        }
+
+        return allDates
+    }
+
+    private fun calculateRevenueByWeek(bookings: List<BookingDetail>): List<WeeklyRevenue> {
+        // Group by week number in month
+        val groupedByWeek = bookings.groupBy { booking ->
+            val dayOfMonth = booking.startTime.dayOfMonth
+            // Tính tuần: ngày 1-7 = tuần 1, 8-14 = tuần 2, etc.
+            ((dayOfMonth - 1) / 7) + 1
+        }
+
+        // Tạo danh sách đầy đủ 5 tuần, tuần nào không có data thì revenue = 0
+        return (1..5).map { weekNumber ->
+            val weekBookings = groupedByWeek[weekNumber] ?: emptyList()
+            WeeklyRevenue(
+                weekNumber = weekNumber,
+                weekLabel = "Tuần $weekNumber",
+                revenue = weekBookings.sumOf { it.totalPrice },
+                bookingCount = weekBookings.size
+            )
+        }
+    }
+
+    private fun calculateRevenueByMonth(bookings: List<BookingDetail>): List<MonthlyRevenue> {
+        // Group by month number
+        val groupedByMonth = bookings.groupBy { booking ->
+            booking.startTime.monthNumber
+        }
+
+        // Tạo danh sách đầy đủ 12 tháng, tháng nào không có data thì revenue = 0
+        return (1..12).map { monthNumber ->
+            val monthBookings = groupedByMonth[monthNumber] ?: emptyList()
+            MonthlyRevenue(
+                monthNumber = monthNumber,
+                monthLabel = "T$monthNumber",
+                revenue = monthBookings.sumOf { it.totalPrice },
+                bookingCount = monthBookings.size
+            )
+        }
     }
 
     private fun calculateVenuePerformance(bookings: List<BookingDetail>): List<VenuePerformance> {
