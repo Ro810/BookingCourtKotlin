@@ -24,13 +24,13 @@ import java.util.Locale
 import kotlin.math.min
 
 /**
- * Bar chart hiển thị doanh thu theo ngày
+ * Line chart hiển thị doanh thu theo ngày
  */
 @Composable
-fun RevenueBarChart(
+fun RevenueLineChart(
     data: List<DailyRevenue>,
     modifier: Modifier = Modifier,
-    barColor: Color = MaterialTheme.colorScheme.primary
+    lineColor: Color = MaterialTheme.colorScheme.primary
 ) {
     if (data.isEmpty()) {
         Box(
@@ -42,7 +42,8 @@ fun RevenueBarChart(
         return
     }
 
-    val maxRevenue = data.maxOfOrNull { it.revenue } ?: 1L
+    val sortedData = data.sortedBy { it.date }
+    val maxRevenue = sortedData.maxOfOrNull { it.revenue } ?: 1L
 
     val animatedProgress = remember { Animatable(0f) }
 
@@ -51,30 +52,80 @@ fun RevenueBarChart(
     }
 
     Canvas(modifier = modifier.fillMaxWidth().height(250.dp).padding(16.dp)) {
-        val barWidth = size.width / (data.size * 1.5f)
-        val spacing = barWidth * 0.5f
         val chartHeight = size.height - 50.dp.toPx()
+        val stepX = size.width / (sortedData.size - 1).coerceAtLeast(1)
 
-        data.forEachIndexed { index, dailyRevenue ->
-            val barHeight = (dailyRevenue.revenue.toFloat() / maxRevenue) * chartHeight * animatedProgress.value
-            val x = index * (barWidth + spacing) + spacing
-
-            // Draw bar
-            drawRoundRect(
-                color = barColor,
-                topLeft = Offset(x, size.height - 40.dp.toPx() - barHeight),
-                size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+        // Draw grid lines
+        for (i in 0..4) {
+            val y = i * chartHeight / 4
+            drawLine(
+                color = Color.LightGray.copy(alpha = 0.5f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx()
             )
+        }
+
+        // Draw line chart
+        sortedData.forEachIndexed { index, dailyRevenue ->
+            if (index < sortedData.size - 1) {
+                val nextRevenue = sortedData[index + 1]
+
+                val y1 = chartHeight - (dailyRevenue.revenue.toFloat() / maxRevenue * chartHeight * animatedProgress.value)
+                val y2 = chartHeight - (nextRevenue.revenue.toFloat() / maxRevenue * chartHeight * animatedProgress.value)
+
+                val x1 = index * stepX
+                val x2 = (index + 1) * stepX
+
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x1, y1),
+                    end = Offset(x2, y2),
+                    strokeWidth = 3.dp.toPx()
+                )
+            }
+
+            // Draw data points
+            val y = chartHeight - (dailyRevenue.revenue.toFloat() / maxRevenue * chartHeight * animatedProgress.value)
+            val x = index * stepX
+
+            drawCircle(
+                color = lineColor,
+                radius = 6.dp.toPx(),
+                center = Offset(x, y)
+            )
+
+            drawCircle(
+                color = Color.White,
+                radius = 3.dp.toPx(),
+                center = Offset(x, y)
+            )
+
+            // Draw revenue label (màu đỏ phía trên điểm)
+            if (dailyRevenue.revenue > 0) {
+                val revenueText = formatShortCurrency(dailyRevenue.revenue)
+                drawContext.canvas.nativeCanvas.apply {
+                    drawText(
+                        revenueText,
+                        x,
+                        y - 10.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.RED
+                            textSize = 9.sp.toPx()
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            isFakeBoldText = true
+                        }
+                    )
+                }
+            }
 
             // Draw date label
             val dateText = "${dailyRevenue.date.dayOfMonth}/${dailyRevenue.date.monthNumber}"
-
             drawContext.canvas.nativeCanvas.apply {
                 drawText(
                     dateText,
-                    x + barWidth / 2,
-                    size.height - 10.dp.toPx(),
+                    x,
+                    size.height - 5.dp.toPx(),
                     android.graphics.Paint().apply {
                         color = android.graphics.Color.GRAY
                         textSize = 10.sp.toPx()
@@ -87,13 +138,13 @@ fun RevenueBarChart(
 }
 
 /**
- * Bar chart hiển thị doanh thu theo giờ (cho filter Hôm nay)
+ * Line chart hiển thị doanh thu theo giờ (cho filter Hôm nay)
  */
 @Composable
-fun HourlyRevenueBarChart(
+fun HourlyRevenueLineChart(
     data: List<TimeSlotStats>,
     modifier: Modifier = Modifier,
-    barColor: Color = MaterialTheme.colorScheme.primary
+    lineColor: Color = MaterialTheme.colorScheme.primary
 ) {
     if (data.isEmpty()) {
         Box(
@@ -114,31 +165,64 @@ fun HourlyRevenueBarChart(
         animatedProgress.animateTo(1f, animationSpec = tween(1000))
     }
 
-    Canvas(modifier = modifier.fillMaxWidth().height(280.dp).padding(16.dp)) {
-        val barWidth = size.width / (sortedData.size * 1.5f).coerceAtLeast(1f)
-        val spacing = barWidth * 0.5f
-        val chartHeight = size.height - 70.dp.toPx()
+    Canvas(modifier = modifier.fillMaxWidth().height(250.dp).padding(16.dp)) {
+        val chartHeight = size.height - 50.dp.toPx()
+        val stepX = size.width / (sortedData.size - 1).coerceAtLeast(1)
 
+        // Draw grid lines
+        for (i in 0..4) {
+            val y = i * chartHeight / 4
+            drawLine(
+                color = Color.LightGray.copy(alpha = 0.5f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+
+        // Draw line chart
         sortedData.forEachIndexed { index, hourStats ->
-            val barHeight = (hourStats.revenue.toFloat() / maxRevenue) * chartHeight * animatedProgress.value
-            val x = index * (barWidth + spacing) + spacing
+            if (index < sortedData.size - 1) {
+                val nextStats = sortedData[index + 1]
 
-            // Draw bar
-            drawRoundRect(
-                color = barColor,
-                topLeft = Offset(x, size.height - 50.dp.toPx() - barHeight),
-                size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+                val y1 = chartHeight - (hourStats.revenue.toFloat() / maxRevenue * chartHeight * animatedProgress.value)
+                val y2 = chartHeight - (nextStats.revenue.toFloat() / maxRevenue * chartHeight * animatedProgress.value)
+
+                val x1 = index * stepX
+                val x2 = (index + 1) * stepX
+
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x1, y1),
+                    end = Offset(x2, y2),
+                    strokeWidth = 3.dp.toPx()
+                )
+            }
+
+            // Draw data points
+            val y = chartHeight - (hourStats.revenue.toFloat() / maxRevenue * chartHeight * animatedProgress.value)
+            val x = index * stepX
+
+            drawCircle(
+                color = lineColor,
+                radius = 6.dp.toPx(),
+                center = Offset(x, y)
             )
 
-            // Draw revenue amount label (màu đỏ phía trên cột)
+            drawCircle(
+                color = Color.White,
+                radius = 3.dp.toPx(),
+                center = Offset(x, y)
+            )
+
+            // Draw revenue label (màu đỏ phía trên điểm)
             if (hourStats.revenue > 0) {
                 val revenueText = formatShortCurrency(hourStats.revenue)
                 drawContext.canvas.nativeCanvas.apply {
                     drawText(
                         revenueText,
-                        x + barWidth / 2,
-                        size.height - 55.dp.toPx() - barHeight - 5.dp.toPx(),
+                        x,
+                        y - 10.dp.toPx(),
                         android.graphics.Paint().apply {
                             color = android.graphics.Color.RED
                             textSize = 9.sp.toPx()
@@ -154,8 +238,8 @@ fun HourlyRevenueBarChart(
             drawContext.canvas.nativeCanvas.apply {
                 drawText(
                     hourText,
-                    x + barWidth / 2,
-                    size.height - 10.dp.toPx(),
+                    x,
+                    size.height - 5.dp.toPx(),
                     android.graphics.Paint().apply {
                         color = android.graphics.Color.GRAY
                         textSize = 10.sp.toPx()

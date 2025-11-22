@@ -231,7 +231,7 @@ private fun AnalyticsContent(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            HourlyRevenueBarChart(
+                            HourlyRevenueLineChart(
                                 data = data.timeSlotStats,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -257,7 +257,7 @@ private fun AnalyticsContent(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            RevenueBarChart(
+                            RevenueLineChart(
                                 data = data.revenueByDate,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -290,54 +290,6 @@ private fun AnalyticsContent(
                         cancelled = data.bookingStats.cancelledCount,
                         modifier = Modifier.fillMaxWidth()
                     )
-                }
-            }
-        }
-
-        // Peak hours
-        if (data.timeSlotStats.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                SectionHeader(
-                    title = "Giờ đặt trong ngày",
-                    icon = Icons.Default.Schedule
-                )
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        if (data.peakHour != null) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 8.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text(
-                                        text = "Giờ vàng: ${data.peakHour}:00",
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            }
-                        }
-
-                        TimeSlotLineChart(
-                            data = data.timeSlotStats,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
                 }
             }
         }
