@@ -2,15 +2,52 @@ package com.example.bookingcourt.presentation.owner.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -26,10 +63,11 @@ import kotlinx.datetime.LocalDateTime
 
 /**
  * Màn hình lịch sử booking cho chủ sân
- * Hiển thị 3 loại booking:
- * 1. Đã xác nhận (CONFIRMED)
- * 2. Chờ xác nhận (PAYMENT_UPLOADED)
+ * Hiển thị 4 loại booking:
+ * 1. Chờ duyệt (PAYMENT_UPLOADED)
+ * 2. Đã duyệt (CONFIRMED)
  * 3. Đã từ chối (REJECTED)
+ * 4. Hoàn thành (COMPLETED)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +79,8 @@ fun OwnerBookingHistoryScreen(
     val state by viewModel.state.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    // Tabs: Đã xác nhận, Chờ xác nhận, Đã từ chối
-    val tabs = listOf("Đã xác nhận", "Chờ xác nhận", "Đã từ chối")
+    // Tabs: Chờ duyệt, Đã duyệt, Đã từ chối, Hoàn thành
+    val tabs = listOf("Chờ duyệt", "Đã duyệt", "Đã từ chối", "Hoàn thành")
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -74,7 +112,7 @@ fun OwnerBookingHistoryScreen(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF8BB1F6), // Mid Blue - đồng bộ với OwnerHomeScreen
+                            Color(0xFF8BB1F6),
                             Color.White,
                         ),
                     ),
@@ -85,70 +123,37 @@ fun OwnerBookingHistoryScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-            // Tab Row
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.White,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
-                }
-            }
-
-            // Content based on selected tab
-            when {
-                state.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                state.error != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Error,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = Color.Red
-                            )
-                            Text(
-                                text = state.error ?: "Có lỗi xảy ra",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Button(onClick = { viewModel.refresh() }) {
-                                Text("Thử lại")
+                // Tab Row
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.White,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Text(
+                                    text = title,
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                                )
                             }
-                        }
+                        )
                     }
                 }
-                else -> {
-                    val bookingsToShow = when (selectedTab) {
-                        0 -> state.confirmedBookings
-                        1 -> state.pendingBookings
-                        2 -> state.rejectedBookings
-                        else -> emptyList()
-                    }
 
-                    if (bookingsToShow.isEmpty()) {
+                // Content based on selected tab
+                when {
+                    state.isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    state.error != null -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -158,38 +163,73 @@ fun OwnerBookingHistoryScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.CheckCircle,
+                                    Icons.Default.Error,
                                     contentDescription = null,
                                     modifier = Modifier.size(64.dp),
-                                    tint = Color.Gray
+                                    tint = Color.Red
                                 )
                                 Text(
-                                    text = when (selectedTab) {
-                                        0 -> "Chưa có booking đã xác nhận"
-                                        1 -> "Chưa có booking chờ xác nhận"
-                                        2 -> "Chưa có booking đã từ chối"
-                                        else -> "Không có dữ liệu"
-                                    },
-                                    color = Color.Gray
+                                    text = state.error ?: "Có lỗi xảy ra",
+                                    color = MaterialTheme.colorScheme.error
                                 )
+                                Button(onClick = { viewModel.refresh() }) {
+                                    Text("Thử lại")
+                                }
                             }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(bookingsToShow) { booking ->
-                                OwnerBookingHistoryItem(
-                                    booking = booking,
-                                    onClick = { onNavigateToBookingDetail(booking.id) }
-                                )
+                    }
+                    else -> {
+                        val bookingsToShow = when (selectedTab) {
+                            0 -> state.pendingBookings
+                            1 -> state.confirmedBookings
+                            2 -> state.rejectedBookings
+                            3 -> state.completedBookings
+                            else -> emptyList()
+                        }
+
+                        if (bookingsToShow.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(64.dp),
+                                        tint = Color.Gray
+                                    )
+                                    Text(
+                                        text = when (selectedTab) {
+                                            0 -> "Chưa có booking chờ duyệt"
+                                            1 -> "Chưa có booking đã duyệt"
+                                            2 -> "Chưa có booking đã từ chối"
+                                            3 -> "Chưa có booking hoàn thành"
+                                            else -> "Không có dữ liệu"
+                                        },
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(bookingsToShow) { booking ->
+                                    OwnerBookingHistoryItem(
+                                        booking = booking,
+                                        onClick = { onNavigateToBookingDetail(booking.id) }
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
             }
         }
     }
@@ -372,17 +412,17 @@ private fun OwnerBookingHistoryItem(
 private fun StatusBadge(status: BookingStatus) {
     val (text, backgroundColor, textColor) = when (status) {
         BookingStatus.PAYMENT_UPLOADED -> Triple(
-            "Chờ xác nhận",
+            "Chờ duyệt",
             Color(0xFFE3F2FD),
             Color(0xFF1976D2)
         )
         BookingStatus.CONFIRMED -> Triple(
-            "Đã xác nhận",
+            "Đã duyệt",
             Color(0xFFE8F5E9),
             Color(0xFF388E3C)
         )
         BookingStatus.COMPLETED -> Triple(
-            "Đã hoàn thành",
+            "Hoàn thành",
             Color(0xFFE0F2F1),
             Color(0xFF00796B)
         )

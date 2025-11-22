@@ -15,10 +15,11 @@ import javax.inject.Inject
 
 /**
  * ViewModel cho màn hình lịch sử booking của chủ sân
- * Quản lý 3 loại booking:
- * - Đã xác nhận (CONFIRMED + COMPLETED): Bao gồm cả booking đang chờ và đã hoàn thành
- * - Chờ xác nhận (PAYMENT_UPLOADED)
+ * Quản lý 4 loại booking:
+ * - Chờ duyệt (PAYMENT_UPLOADED)
+ * - Đã duyệt (CONFIRMED)
  * - Đã từ chối (REJECTED)
+ * - Hoàn thành (COMPLETED)
  */
 @HiltViewModel
 class OwnerBookingHistoryViewModel @Inject constructor(
@@ -46,18 +47,17 @@ class OwnerBookingHistoryViewModel @Inject constructor(
                         val allBookings = resource.data ?: emptyList()
 
                         // Phân loại booking theo status
-                        // Tab "Đã xác nhận" bao gồm cả CONFIRMED và COMPLETED
-                        val confirmed = allBookings.filter {
-                            it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.COMPLETED
-                        }
                         val pending = allBookings.filter { it.status == BookingStatus.PAYMENT_UPLOADED }
+                        val confirmed = allBookings.filter { it.status == BookingStatus.CONFIRMED }
                         val rejected = allBookings.filter { it.status == BookingStatus.REJECTED }
+                        val completed = allBookings.filter { it.status == BookingStatus.COMPLETED }
 
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            confirmedBookings = confirmed,
                             pendingBookings = pending,
+                            confirmedBookings = confirmed,
                             rejectedBookings = rejected,
+                            completedBookings = completed,
                             error = null
                         )
                     }
@@ -79,8 +79,9 @@ class OwnerBookingHistoryViewModel @Inject constructor(
 
 data class OwnerBookingHistoryState(
     val isLoading: Boolean = false,
-    val confirmedBookings: List<BookingDetail> = emptyList(),
     val pendingBookings: List<BookingDetail> = emptyList(),
+    val confirmedBookings: List<BookingDetail> = emptyList(),
     val rejectedBookings: List<BookingDetail> = emptyList(),
+    val completedBookings: List<BookingDetail> = emptyList(),
     val error: String? = null
 )
