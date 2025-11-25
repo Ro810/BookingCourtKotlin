@@ -1483,8 +1483,8 @@ private fun VenueCardFromVenue(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    // Số điện thoại (ưu tiên ownerPhone, fallback về phoneNumber)
-                    val displayPhone = venue.ownerPhone ?: venue.phoneNumber
+                    // Số điện thoại (ưu tiên phoneNumber của sân, fallback về ownerPhone)
+                    val displayPhone = venue.phoneNumber ?: venue.ownerPhone
                     if (!displayPhone.isNullOrBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Phone, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(18.dp))
