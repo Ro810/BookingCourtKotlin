@@ -685,11 +685,11 @@ fun MonthlyRevenueLineChart(
 }
 
 /**
- * Format number to currency
+ * Format number to currency (VND)
  */
 fun formatCurrency(amount: Long): String {
-    val formatter = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
-    return formatter.format(amount)
+    val formatter = NumberFormat.getNumberInstance(Locale("vi", "VN"))
+    return "${formatter.format(amount)}đ"
 }
 
 /**
@@ -704,10 +704,11 @@ fun formatNumber(number: Int): String {
  * VD: 1.200.000 -> "1,2tr"
  */
 fun formatShortCurrency(amount: Long): String {
+    val vnLocale = Locale("vi", "VN")
     return when {
-        amount >= 1_000_000_000 -> "${String.format("%.1f", amount / 1_000_000_000.0)}tỷ"
-        amount >= 1_000_000 -> "${String.format("%.1f", amount / 1_000_000.0)}tr"
-        amount >= 1_000 -> "${String.format("%.0f", amount / 1_000.0)}k"
+        amount >= 1_000_000_000 -> "${String.format(vnLocale, "%.1f", amount / 1_000_000_000.0)}tỷ"
+        amount >= 1_000_000 -> "${String.format(vnLocale, "%.1f", amount / 1_000_000.0)}tr"
+        amount >= 1_000 -> "${String.format(vnLocale, "%.0f", amount / 1_000.0)}k"
         else -> "${amount}đ"
     }
 }

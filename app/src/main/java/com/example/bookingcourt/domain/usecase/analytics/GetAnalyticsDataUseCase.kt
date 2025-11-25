@@ -41,6 +41,13 @@ class GetAnalyticsDataUseCase @Inject constructor(
             it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.COMPLETED
         }
 
+        // Chỉ đếm booking đã duyệt, hoàn thành và từ chối (không tính CANCELLED, EXPIRED, NO_SHOW, PENDING)
+        val countableBookings = filteredBookings.filter {
+            it.status == BookingStatus.CONFIRMED ||
+                    it.status == BookingStatus.COMPLETED ||
+                    it.status == BookingStatus.REJECTED
+        }
+
         // Tính tổng doanh thu
         val totalRevenue = revenueBookings.sumOf { it.totalPrice }
 
@@ -90,7 +97,7 @@ class GetAnalyticsDataUseCase @Inject constructor(
         return AnalyticsData(
             period = period,
             totalRevenue = totalRevenue,
-            totalBookings = filteredBookings.size,
+            totalBookings = countableBookings.size,
             averageBookingValue = averageBookingValue,
             bookingStats = bookingStats,
             revenueByDate = revenueByDate,
@@ -311,16 +318,55 @@ class GetAnalyticsDataUseCase @Inject constructor(
     }
 
     private fun calculateVenuePerformance(bookings: List<BookingDetail>): List<VenuePerformance> {
-        // Group by venue
-        val groupedByVenue = bookings.groupBy { it.venue.id }
+        // Tạo data class tạm để lưu thông tin từng court trong booking
+        data class CourtBookingInfo(
+            val courtId: String,
+            val courtName: String,
+            val price: Long,
+            val isCompleted: Boolean
+        )
 
-        return groupedByVenue.map { (venueId, venueBookings) ->
+        // Flatten tất cả booking items từ mỗi booking
+        val allCourtBookings = bookings.flatMap { booking ->
+            val isCompleted = booking.status == BookingStatus.COMPLETED
+
+            when {
+                // Nếu có bookingItems (multi-court booking)
+                !booking.bookingItems.isNullOrEmpty() -> {
+                    booking.bookingItems.map { item ->
+                        CourtBookingInfo(
+                            courtId = item.courtId,
+                            courtName = item.courtName,
+                            price = item.price,
+                            isCompleted = isCompleted
+                        )
+                    }
+                }
+                // Nếu là legacy single court booking
+                booking.court != null -> {
+                    listOf(
+                        CourtBookingInfo(
+                            courtId = booking.court.id,
+                            courtName = booking.court.description,
+                            price = booking.totalPrice,
+                            isCompleted = isCompleted
+                        )
+                    )
+                }
+                else -> emptyList()
+            }
+        }
+
+        // Group by court
+        val groupedByCourt = allCourtBookings.groupBy { it.courtId }
+
+        return groupedByCourt.map { (courtId, courtBookings) ->
             VenuePerformance(
-                venueId = venueId,
-                venueName = venueBookings.first().venue.name,
-                bookingCount = venueBookings.size,
-                revenue = venueBookings.sumOf { it.totalPrice },
-                completedBookings = venueBookings.count { it.status == BookingStatus.COMPLETED }
+                venueId = courtId,
+                venueName = courtBookings.first().courtName,
+                bookingCount = courtBookings.size,
+                revenue = courtBookings.sumOf { it.price },
+                completedBookings = courtBookings.count { it.isCompleted }
             )
         }.sortedByDescending { it.revenue }
     }
