@@ -322,6 +322,7 @@ class GetAnalyticsDataUseCase @Inject constructor(
         data class CourtBookingInfo(
             val courtId: String,
             val courtName: String,
+            val venueName: String,
             val price: Long,
             val isCompleted: Boolean
         )
@@ -329,6 +330,7 @@ class GetAnalyticsDataUseCase @Inject constructor(
         // Flatten tất cả booking items từ mỗi booking
         val allCourtBookings = bookings.flatMap { booking ->
             val isCompleted = booking.status == BookingStatus.COMPLETED
+            val venueName = booking.venue.name
 
             when {
                 // Nếu có bookingItems (multi-court booking)
@@ -337,6 +339,7 @@ class GetAnalyticsDataUseCase @Inject constructor(
                         CourtBookingInfo(
                             courtId = item.courtId,
                             courtName = item.courtName,
+                            venueName = venueName,
                             price = item.price,
                             isCompleted = isCompleted
                         )
@@ -348,6 +351,7 @@ class GetAnalyticsDataUseCase @Inject constructor(
                         CourtBookingInfo(
                             courtId = booking.court.id,
                             courtName = booking.court.description,
+                            venueName = venueName,
                             price = booking.totalPrice,
                             isCompleted = isCompleted
                         )
@@ -361,9 +365,10 @@ class GetAnalyticsDataUseCase @Inject constructor(
         val groupedByCourt = allCourtBookings.groupBy { it.courtId }
 
         return groupedByCourt.map { (courtId, courtBookings) ->
+            val firstBooking = courtBookings.first()
             VenuePerformance(
                 venueId = courtId,
-                venueName = courtBookings.first().courtName,
+                venueName = "${firstBooking.venueName} - ${firstBooking.courtName}",
                 bookingCount = courtBookings.size,
                 revenue = courtBookings.sumOf { it.price },
                 completedBookings = courtBookings.count { it.isCompleted }
