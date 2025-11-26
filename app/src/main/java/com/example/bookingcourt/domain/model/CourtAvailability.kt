@@ -8,6 +8,7 @@ data class CourtAvailability(
     val courtId: Long,
     val courtName: String, // VD: "Sân số 1"
     val available: Boolean,
+    val isActive: Boolean = true, // Trạng thái khóa/mở sân (true = mở, false = khóa)
     val bookedSlots: List<BookedSlotInfo> = emptyList()
 )
 

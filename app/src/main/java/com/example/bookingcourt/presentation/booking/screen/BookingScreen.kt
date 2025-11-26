@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -450,21 +451,44 @@ fun BookingScreen(
 
                         // Court rows
                         for (courtNum in 1..actualNumberOfCourts) {
+                            // Kiểm tra court có bị khóa không
+                            val courtIndex = courtNum - 1
+                            val sortedCourts = realCourts.value.sortedBy { it.id }
+                            val court = sortedCourts.getOrNull(courtIndex)
+                            val isCourtLocked = court?.isActive == false
+
                             Box(
                                 modifier = Modifier
                                     .width(70.dp)
                                     .height(45.dp)
                                     .border(1.dp, Color.Gray)
-                                    .background(Color(0xFFF5F5F5)),
+                                    .background(
+                                        if (isCourtLocked) Color(0xFFFFEBEE) // Light red for locked
+                                        else Color(0xFFF5F5F5)
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "Sân $courtNum",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    textAlign = TextAlign.Center,
-                                    color = Color.Black
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    if (isCourtLocked) {
+                                        Icon(
+                                            Icons.Default.Lock,
+                                            contentDescription = "Đang khóa",
+                                            modifier = Modifier.size(10.dp),
+                                            tint = Color(0xFFFF5722)
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                    }
+                                    Text(
+                                        text = "Sân $courtNum",
+                                        fontSize = if (isCourtLocked) 11.sp else 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        textAlign = TextAlign.Center,
+                                        color = if (isCourtLocked) Color(0xFFFF5722) else Color.Black
+                                    )
+                                }
                             }
                         }
                     }
@@ -589,6 +613,11 @@ fun BookingScreen(
                                         }
                                     }
 
+                                    // Kiểm tra court có bị khóa không
+                                    val sortedCourtsForSlot = realCourts.value.sortedBy { it.id }
+                                    val courtForSlot = sortedCourtsForSlot.getOrNull(courtIndex)
+                                    val isCourtLocked = courtForSlot?.isActive == false
+
                                     Box(
                                         modifier = Modifier
                                             .width(80.dp)
@@ -597,33 +626,47 @@ fun BookingScreen(
                                             .background(
                                                 when {
                                                     isSelected -> Primary
+                                                    isCourtLocked -> Color(0xFFE0E0E0) // Màu xám cho sân khóa
                                                     isPastTime -> Color(0xFFBDBDBD) // Màu xám cho slot đã qua
                                                     isBooked -> Color(0xFFFFCDD2) // Màu đỏ nhạt cho slot đã đặt
                                                     else -> Color.White
                                                 }
                                             )
                                             .clickable {
-                                                if (!isBooked && !isPastTime) {
-                                                    selectedSlots = if (isSelected) {
-                                                        selectedSlots - slot
-                                                    } else {
-                                                        selectedSlots + slot
+                                                when {
+                                                    isCourtLocked -> {
+                                                        // Thông báo khi click vào sân đã khóa
+                                                        coroutineScope.launch {
+                                                            snackbarHostState.showSnackbar(
+                                                                message = "Sân này đang tạm khóa, không thể đặt",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
                                                     }
-                                                } else if (isPastTime) {
-                                                    // Thông báo khi click vào slot đã qua giờ
-                                                    coroutineScope.launch {
-                                                        snackbarHostState.showSnackbar(
-                                                            message = "Không thể đặt khung giờ đã qua",
-                                                            duration = SnackbarDuration.Short
-                                                        )
+                                                    isPastTime -> {
+                                                        // Thông báo khi click vào slot đã qua giờ
+                                                        coroutineScope.launch {
+                                                            snackbarHostState.showSnackbar(
+                                                                message = "Không thể đặt khung giờ đã qua",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
                                                     }
-                                                } else {
-                                                    // Thông báo khi click vào slot đã đặt
-                                                    coroutineScope.launch {
-                                                        snackbarHostState.showSnackbar(
-                                                            message = "Khung giờ này đã có người đặt",
-                                                            duration = SnackbarDuration.Short
-                                                        )
+                                                    isBooked -> {
+                                                        // Thông báo khi click vào slot đã đặt
+                                                        coroutineScope.launch {
+                                                            snackbarHostState.showSnackbar(
+                                                                message = "Khung giờ này đã có người đặt",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
+                                                    }
+                                                    else -> {
+                                                        selectedSlots = if (isSelected) {
+                                                            selectedSlots - slot
+                                                        } else {
+                                                            selectedSlots + slot
+                                                        }
                                                     }
                                                 }
                                             },
@@ -636,6 +679,15 @@ fun BookingScreen(
                                                     color = Color.White,
                                                     fontSize = 18.sp,
                                                     fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            isCourtLocked -> {
+                                                // Hiển thị icon khóa cho sân đã khóa
+                                                Icon(
+                                                    Icons.Default.Lock,
+                                                    contentDescription = "Sân khóa",
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = Color(0xFF757575)
                                                 )
                                             }
                                             isPastTime -> {

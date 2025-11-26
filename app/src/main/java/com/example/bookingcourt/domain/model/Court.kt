@@ -8,6 +8,7 @@ data class CourtDetail(
     val id: Long,
     val description: String,
     val booked: Boolean = false,
+    val isActive: Boolean = true, // Trạng thái khóa/mở sân (true = mở, false = khóa)
     val venue: CourtVenueInfo
 )
 
