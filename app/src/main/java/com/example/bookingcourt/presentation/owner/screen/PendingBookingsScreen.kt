@@ -185,9 +185,9 @@ private fun PendingBookingItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ✅ Sử dụng helper method để lấy tên sân (hỗ trợ nhiều sân)
+                // ✅ Hiển thị tên venue - tên sân
                 Text(
-                    text = booking.getCourtsDisplayName(),
+                    text = "${booking.venue.name} - ${booking.getCourtsDisplayName()}",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
