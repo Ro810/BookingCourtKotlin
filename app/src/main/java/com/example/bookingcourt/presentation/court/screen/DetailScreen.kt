@@ -57,8 +57,59 @@ fun DetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .background(Primary.copy(alpha = 0.3f))
             ) {
+                // Hình ảnh banner - hiển thị ảnh đầu tiên của sân
+                if (!venue.images.isNullOrEmpty()) {
+                    val imagePath = venue.images.first()
+                    // Ghép base URL với đường dẫn hình ảnh
+                    val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                        .removeSuffix("/api/")
+                        .removeSuffix("/")
+                    val fullImageUrl = "$baseUrl$imagePath"
+
+                    coil.compose.SubcomposeAsyncImage(
+                        model = fullImageUrl,
+                        contentDescription = "Ảnh sân ${venue.name}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Primary.copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        },
+                        error = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Primary.copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.BrokenImage,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    )
+                } else {
+                    // Placeholder khi không có ảnh
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Primary.copy(alpha = 0.3f))
+                    )
+                }
+
                 // Action buttons overlay
                 Row(
                     modifier = Modifier
