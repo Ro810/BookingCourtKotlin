@@ -74,17 +74,38 @@ data class VenueIdDto(
 data class CourtSimpleDto(
     @SerializedName("id")
     val id: Long,
-    
+
     @SerializedName("description")
     val description: String,
-    
+
     @SerializedName("isActive")
     val isActive: Boolean? = null,
-    
+
     @SerializedName("venueId")
     val venueId: Long,
-    
+
     @SerializedName("venueName")
     val venueName: String
+)
+
+/**
+ * Response DTO for toggle court status API
+ * PATCH /courts/{id}/toggle-status
+ */
+data class ToggleCourtStatusResponse(
+    @SerializedName("id")
+    val id: Long,
+
+    @SerializedName("description")
+    val description: String,
+
+    @SerializedName("isActive")
+    val isActive: Boolean,
+
+    @SerializedName("venueId")
+    val venueId: Long,
+
+    @SerializedName("message")
+    val message: String
 )
 

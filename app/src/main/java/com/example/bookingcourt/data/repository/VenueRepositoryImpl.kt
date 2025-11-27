@@ -476,6 +476,7 @@ class VenueRepositoryImpl @Inject constructor(
                             courtId = dto.id,
                             courtName = dto.description,
                             available = dto.available,
+                            isActive = dto.isActive,
                             bookedSlots = dto.bookedSlots?.map { slotDto ->
                                 com.example.bookingcourt.domain.model.BookedSlotInfo(
                                     startTime = slotDto.getStartTimeString(),

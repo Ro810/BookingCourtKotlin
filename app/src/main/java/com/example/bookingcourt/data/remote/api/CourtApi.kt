@@ -4,6 +4,7 @@ import com.example.bookingcourt.data.remote.dto.ApiResponse
 import com.example.bookingcourt.data.remote.dto.CourtDetailDto
 import com.example.bookingcourt.data.remote.dto.CreateCourtRequest
 import com.example.bookingcourt.data.remote.dto.UpdateCourtRequest
+import com.example.bookingcourt.data.remote.dto.ToggleCourtStatusResponse
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -55,5 +56,16 @@ interface CourtApi {
     suspend fun deleteCourt(
         @Path("id") courtId: Long
     ): Response<ApiResponse<Unit>>
+
+    /**
+     * Khóa/Mở khóa court
+     * PATCH /courts/{id}/toggle-status
+     * Toggle trạng thái hoạt động của court (khóa/mở khóa)
+     * Chỉ chủ sân mới được phép thực hiện
+     */
+    @PATCH("courts/{id}/toggle-status")
+    suspend fun toggleCourtStatus(
+        @Path("id") courtId: Long
+    ): Response<ToggleCourtStatusResponse>
 }
 

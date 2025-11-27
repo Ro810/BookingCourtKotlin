@@ -12,6 +12,7 @@ import com.example.bookingcourt.data.remote.dto.VenueIdDto
 import com.example.bookingcourt.domain.model.CourtDetail
 import com.example.bookingcourt.domain.model.CourtVenueInfo
 import com.example.bookingcourt.domain.repository.CourtRepository
+import com.example.bookingcourt.domain.repository.ToggleCourtResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
@@ -258,6 +259,49 @@ class CourtRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun toggleCourtStatus(courtId: Long): Flow<Resource<ToggleCourtResult>> = flow {
+        try {
+            emit(Resource.Loading())
+
+            Log.d(TAG, "========== TOGGLE COURT STATUS ==========")
+            Log.d(TAG, "  Court ID: $courtId")
+
+            val response = courtApi.toggleCourtStatus(courtId)
+
+            Log.d(TAG, "  Response Code: ${response.code()}")
+
+            if (response.isSuccessful) {
+                val toggleResponse = response.body()
+
+                if (toggleResponse != null) {
+                    val result = ToggleCourtResult(
+                        courtId = toggleResponse.id,
+                        description = toggleResponse.description,
+                        isActive = toggleResponse.isActive,
+                        venueId = toggleResponse.venueId,
+                        message = toggleResponse.message
+                    )
+                    Log.d(TAG, "  ✅ Successfully toggled court status")
+                    Log.d(TAG, "  Court: ${result.description}, isActive: ${result.isActive}")
+                    Log.d(TAG, "  Message: ${result.message}")
+                    emit(Resource.Success(result))
+                } else {
+                    Log.e(TAG, "  ⚠️ Response body is null")
+                    emit(Resource.Error("Không thể thay đổi trạng thái sân"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "  ❌ API error: ${response.code()}")
+                Log.e(TAG, "  ❌ Error body: $errorBody")
+                emit(Resource.Error("Lỗi thay đổi trạng thái sân: ${response.code()}"))
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Exception toggling court status", e)
+            emit(Resource.Error(e.message ?: "Đã xảy ra lỗi"))
+        }
+    }
+
     /**
      * Convert CourtDetailDto to CourtDetail domain model
      */
@@ -281,6 +325,7 @@ class CourtRepositoryImpl @Inject constructor(
             id = id,
             description = description,
             booked = false, // CourtSimpleDto không có thông tin booked
+            isActive = isActive ?: true, // Mặc định là true nếu không có thông tin
             venue = CourtVenueInfo(
                 id = venueId,
                 name = venueName

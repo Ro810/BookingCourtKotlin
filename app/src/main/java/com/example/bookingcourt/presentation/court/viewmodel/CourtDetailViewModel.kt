@@ -39,6 +39,7 @@ sealed interface CourtDetailIntent {
     object Refresh : CourtDetailIntent
     data class CheckIn(val bookingId: String) : CourtDetailIntent // Thêm từ bên phải
     data class UploadImage(val venueId: Long, val imageFile: java.io.File) : CourtDetailIntent
+    data class ToggleCourtStatus(val courtId: Long) : CourtDetailIntent // Khóa/Mở khóa sân
 }
 
 @HiltViewModel
@@ -75,6 +76,7 @@ class CourtDetailViewModel @Inject constructor(
             CourtDetailIntent.Refresh -> refresh()
             is CourtDetailIntent.CheckIn -> checkIn(intent.bookingId) // Thêm từ P2
             is CourtDetailIntent.UploadImage -> uploadVenueImage(intent.venueId, intent.imageFile)
+            is CourtDetailIntent.ToggleCourtStatus -> toggleCourtStatus(intent.courtId)
         }
     }
     private fun loadVenueDetail(venueId: Long) {
@@ -150,6 +152,45 @@ class CourtDetailViewModel @Inject constructor(
     private fun refresh() {
        if (venueId.isNotEmpty()) {
             handleIntent(CourtDetailIntent.LoadVenueDetail(venueId.toLongOrNull() ?: 0))
+        }
+    }
+
+    /**
+     * Khóa/Mở khóa court
+     * Toggle trạng thái hoạt động của court (isActive)
+     * @param courtId ID của court cần toggle
+     */
+    private fun toggleCourtStatus(courtId: Long) {
+        viewModelScope.launch {
+            android.util.Log.d("CourtDetailVM", "🔄 Toggling court status for courtId: $courtId")
+
+            courtRepository.toggleCourtStatus(courtId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        android.util.Log.d("CourtDetailVM", "✅ Toggle success: ${result.data?.message}")
+
+                        // Update courtsAvailability state với isActive mới
+                        val updatedCourts = _state.value.courtsAvailability.map { court ->
+                            if (court.courtId == courtId) {
+                                court.copy(isActive = result.data?.isActive ?: court.isActive)
+                            } else {
+                                court
+                            }
+                        }
+                        _state.value = _state.value.copy(courtsAvailability = updatedCourts)
+
+                        // Hiển thị message
+                        _uiEvent.emit(UiEvent.ShowSnackbar(result.data?.message ?: "Đã thay đổi trạng thái sân"))
+                    }
+                    is Resource.Error -> {
+                        android.util.Log.e("CourtDetailVM", "❌ Toggle error: ${result.message}")
+                        _uiEvent.emit(UiEvent.ShowSnackbar(result.message ?: "Lỗi thay đổi trạng thái sân"))
+                    }
+                    is Resource.Loading -> {
+                        android.util.Log.d("CourtDetailVM", "⏳ Toggling court status...")
+                    }
+                }
+            }
         }
     }
 

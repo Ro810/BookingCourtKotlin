@@ -524,6 +524,58 @@ fun CourtDetailScreen(
                 }
             }
 
+            // Courts Management Section - Khóa/Mở sân
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                    ) {
+                        Text(
+                            "Quản lý sân",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "Khóa/Mở sân để quản lý việc đặt chỗ",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        if (state.courtsAvailability.isEmpty()) {
+                            Text(
+                                text = "Đang tải thông tin sân...",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                        } else {
+                            state.courtsAvailability.forEach { court ->
+                                CourtToggleItem(
+                                    courtName = court.courtName,
+                                    isActive = court.isActive,
+                                    onToggle = {
+                                        viewModel.handleIntent(
+                                            com.example.bookingcourt.presentation.court.viewmodel.CourtDetailIntent.ToggleCourtStatus(
+                                                court.courtId
+                                            )
+                                        )
+                                    }
+                                )
+                                if (court != state.courtsAvailability.last()) {
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Booking Grid Table
             item {
                 Card(
@@ -594,17 +646,34 @@ fun CourtDetailScreen(
                                                 .width(90.dp)
                                                 .height(45.dp)
                                                 .border(1.dp, Color.Gray)
-                                                .background(Color(0xFFF5F5F5)),
+                                                .background(
+                                                    if (court.isActive) Color(0xFFF5F5F5)
+                                                    else Color(0xFFFFEBEE) // Light red for locked
+                                                ),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = court.courtName,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                textAlign = TextAlign.Center,
-                                                color = Color.Black,
-                                                maxLines = 2
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                if (!court.isActive) {
+                                                    Icon(
+                                                        Icons.Default.Lock,
+                                                        contentDescription = "Đang khóa",
+                                                        modifier = Modifier.size(12.dp),
+                                                        tint = Color(0xFFFF5722)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(2.dp))
+                                                }
+                                                Text(
+                                                    text = court.courtName,
+                                                    fontSize = if (court.isActive) 12.sp else 10.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    textAlign = TextAlign.Center,
+                                                    color = if (court.isActive) Color.Black else Color(0xFFFF5722),
+                                                    maxLines = 2
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -650,24 +719,41 @@ fun CourtDetailScreen(
                                                     )
                                                 }
 
+                                                // Kiểm tra court có bị khóa không
+                                                val isLocked = !court.isActive
+
                                                 Box(
                                                     modifier = Modifier
                                                         .width(80.dp)
                                                         .height(45.dp)
                                                         .border(1.dp, Color.Gray)
                                                         .background(
-                                                            if (isBooked) Color(0xFFFFCDD2) else Color.White
+                                                            when {
+                                                                isLocked -> Color(0xFFE0E0E0) // Gray for locked
+                                                                isBooked -> Color(0xFFFFCDD2) // Light red for booked
+                                                                else -> Color.White
+                                                            }
                                                         ),
                                                     contentAlignment = Alignment.Center
                                                 ) {
-                                                    if (isBooked) {
-                                                        Text(
-                                                            text = "Đã đặt",
-                                                            color = Color.Black,
-                                                            fontSize = 10.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            textAlign = TextAlign.Center
-                                                        )
+                                                    when {
+                                                        isLocked -> {
+                                                            Icon(
+                                                                Icons.Default.Lock,
+                                                                contentDescription = "Sân khóa",
+                                                                modifier = Modifier.size(16.dp),
+                                                                tint = Color(0xFF757575)
+                                                            )
+                                                        }
+                                                        isBooked -> {
+                                                            Text(
+                                                                text = "Đã đặt",
+                                                                color = Color.Black,
+                                                                fontSize = 10.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                textAlign = TextAlign.Center
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
@@ -969,6 +1055,73 @@ fun QuickActionButton(
     }
 }
 
+
+/**
+ * Component hiển thị một court với nút khóa/mở
+ */
+@Composable
+fun CourtToggleItem(
+    courtName: String,
+    isActive: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f),
+        ) {
+            // Icon trạng thái
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = if (isActive) Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        else Color(0xFFFF5722).copy(alpha = 0.1f),
+                        shape = CircleShape,
+                    ),
+            ) {
+                Icon(
+                    imageVector = if (isActive) Icons.Default.CheckCircle else Icons.Default.Lock,
+                    contentDescription = if (isActive) "Đang mở" else "Đang khóa",
+                    tint = if (isActive) Color(0xFF4CAF50) else Color(0xFFFF5722),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = courtName,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp,
+                )
+                Text(
+                    text = if (isActive) "Đang hoạt động" else "Đang khóa",
+                    fontSize = 13.sp,
+                    color = if (isActive) Color(0xFF4CAF50) else Color(0xFFFF5722),
+                )
+            }
+        }
+
+        // Nút Toggle
+        Switch(
+            checked = isActive,
+            onCheckedChange = { onToggle() },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF4CAF50),
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = Color(0xFFBDBDBD),
+            )
+        )
+    }
+}
 
 @Preview(showBackground = true)
 @Composable

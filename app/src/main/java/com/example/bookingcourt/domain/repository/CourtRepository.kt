@@ -40,4 +40,22 @@ interface CourtRepository {
      * Xóa court
      */
     suspend fun deleteCourt(courtId: Long): Flow<Resource<Unit>>
+
+    /**
+     * Khóa/Mở khóa court
+     * Toggle trạng thái hoạt động của court
+     * @return Flow chứa thông tin court sau khi toggle (isActive, message)
+     */
+    suspend fun toggleCourtStatus(courtId: Long): Flow<Resource<ToggleCourtResult>>
 }
+
+/**
+ * Kết quả của việc toggle trạng thái court
+ */
+data class ToggleCourtResult(
+    val courtId: Long,
+    val description: String,
+    val isActive: Boolean,
+    val venueId: Long,
+    val message: String
+)
