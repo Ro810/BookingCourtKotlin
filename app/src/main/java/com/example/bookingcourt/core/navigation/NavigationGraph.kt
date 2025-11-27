@@ -397,9 +397,11 @@ fun NavigationGraph(
             composable(route = Screen.BookingHistory.route) {
                 BookingHistoryScreen(
                     onNavigateBack = { navController.navigateUp() },
+                    // When a user taps a booking in their history, navigate to the
+                    // booking detail payment/upload screen so they can view/payment upload info.
                     onNavigateToBookingDetail = { bookingId ->
                         navController.navigate(
-                            Screen.BookingDetail.createRoute(bookingId),
+                            Screen.BookingDetailPayment.createRoute(bookingId),
                         )
                     },
                 )
@@ -481,9 +483,10 @@ fun NavigationGraph(
                     onNavigateToBecomeOwner = {
                         // Kiểm tra xem user đã có bank info chưa
                         val user = profileState.currentUser
-                        val hasBankInfo = user?.bankName != null &&
-                                         user?.bankAccountNumber != null &&
-                                         user?.bankAccountName != null
+                        // profileState.currentUser may be nullable; check safely
+                        val hasBankInfo = user?.let {
+                            it.bankName != null && it.bankAccountNumber != null && it.bankAccountName != null
+                        } == true
 
                         if (hasBankInfo) {
                             // Đã có bank info -> chỉ cần switch mode
@@ -608,7 +611,7 @@ fun NavigationGraph(
                 ),
             ) { backStackEntry ->
                 val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
-                com.example.bookingcourt.presentation.booking.screen.BookingDetailScreen(
+                BookingDetailScreen(
                     bookingId = bookingId,
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToWaiting = { id ->

@@ -10,6 +10,8 @@ data class BookingDto(
     val courtId: String,
     @SerializedName("court_name")
     val courtName: String,
+    @SerializedName("venue_name")
+    val venueName: String? = null, // ✅ Thêm venue name
     @SerializedName("user_id")
     val userId: String,
     @SerializedName("user_name")

@@ -6,6 +6,7 @@ data class Booking(
     val id: String,
     val courtId: String,
     val courtName: String,
+    val venueName: String, // ✅ Thêm field venue name
     val userId: String,
     val userName: String,
     val userPhone: String,

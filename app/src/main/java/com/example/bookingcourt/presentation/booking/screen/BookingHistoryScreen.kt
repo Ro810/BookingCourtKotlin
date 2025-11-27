@@ -138,9 +138,9 @@ fun BookingHistoryItem(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Court Name
+            // ✅ Venue Name (thay vì Court Name)
             Text(
-                text = booking.courtName,
+                text = booking.venueName,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface

@@ -692,6 +692,7 @@ private fun BookingDto.toBooking(): Booking {
         id = this.id,
         courtId = this.courtId,
         courtName = this.courtName,
+        venueName = this.venueName ?: "Chưa cập nhật", // ✅ Map venue name
         userId = this.userId,
         userName = this.userName,
         userPhone = this.userPhone,
@@ -830,6 +831,7 @@ private fun BookingDetail.toBooking(): Booking {
         id = this.id,
         courtId = this.bookingItems?.firstOrNull()?.courtId ?: this.court?.id ?: "0",
         courtName = this.bookingItems?.firstOrNull()?.courtName ?: this.court?.description ?: "Sân",
+        venueName = this.venue.name, // ✅ Map venue name từ BookingDetail
         userId = this.user.id,
         userName = this.user.fullname,
         userPhone = this.user.phone ?: "",
