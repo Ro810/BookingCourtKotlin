@@ -2,6 +2,7 @@ package com.example.bookingcourt.presentation.home.screen
 
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,13 +19,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.SubcomposeAsyncImage
 import com.example.bookingcourt.domain.model.Venue
 import com.example.bookingcourt.presentation.theme.*
 import com.example.bookingcourt.presentation.home.viewmodel.HomeViewModel
@@ -376,6 +380,12 @@ fun VenueCard(
     venue: Venue,
     onVenueClick: () -> Unit
 ) {
+    // Log để debug
+    Log.d("VenueCard", "Venue: ${venue.name}, Has images: ${!venue.images.isNullOrEmpty()}, Images count: ${venue.images?.size}")
+    venue.images?.forEachIndexed { index, url ->
+        Log.d("VenueCard", "  Image[$index]: $url")
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -386,12 +396,70 @@ fun VenueCard(
         colors = CardDefaults.cardColors(containerColor = Surface)
     ) {
         Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .background(Primary.copy(alpha = 0.2f))
-            )
+            // Hình ảnh sân
+            if (!venue.images.isNullOrEmpty()) {
+                val imagePath = venue.images.first()
+                // Ghép base URL với đường dẫn hình ảnh
+                val baseUrl = com.example.bookingcourt.core.utils.Constants.BASE_URL
+                    .removeSuffix("/api/")
+                    .removeSuffix("/")
+                val fullImageUrl = "$baseUrl$imagePath"
+
+                Log.d("VenueCard", "Loading image from: $fullImageUrl")
+
+                SubcomposeAsyncImage(
+                    model = fullImageUrl,
+                    contentDescription = venue.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(Primary.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Primary, modifier = Modifier.size(24.dp))
+                        }
+                    },
+                    error = {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(Color(0xFFFFEBEE)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.BrokenImage,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp),
+                                    tint = Color.Red.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                    text = "Không tải được ảnh",
+                                    fontSize = 10.sp,
+                                    color = Color.Red.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .background(Primary.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Place,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = Primary.copy(alpha = 0.5f)
+                    )
+                }
+            }
 
             Row(
                 modifier = Modifier
@@ -476,19 +544,6 @@ fun VenueCard(
                     }
                 }
             }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    BookingCourtTheme {
-        Surface {
-            HomeScreen(
-                onVenueClick = { },
-                onSearchClick = { }
-            )
         }
     }
 }
