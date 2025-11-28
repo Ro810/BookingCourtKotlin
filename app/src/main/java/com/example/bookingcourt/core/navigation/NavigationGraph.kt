@@ -614,10 +614,6 @@ fun NavigationGraph(
                 BookingDetailScreen(
                     bookingId = bookingId,
                     onNavigateBack = { navController.navigateUp() },
-                    onNavigateToWaiting = { id ->
-                        navController.navigate(Screen.PaymentWaiting.createRoute(id)) {
-                            popUpTo(Screen.BookingDetailPayment.createRoute(id)) { inclusive = true }
-                        } },
                     onNavigateToHistory = {
                         // ✅ Chuyển đến màn hình booking history
                         navController.navigate(Screen.BookingHistory.route) {
@@ -627,30 +623,6 @@ fun NavigationGraph(
                 )
             }
 
-            // User: Màn hình chờ owner xác nhận thanh toán
-            composable(
-                route = Screen.PaymentWaiting.route,
-                arguments = listOf(
-                    navArgument("bookingId") {
-                        type = NavType.StringType
-                    },
-                ),
-            ) { backStackEntry ->
-                val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
-                com.example.bookingcourt.presentation.booking.screen.PaymentWaitingScreen(
-                    bookingId = bookingId,
-                    onNavigateBack = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
-                    },
-                    onNavigateToHome = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
-                    }
-                )
-            }
 
             // Owner: Danh sách booking chờ xác nhận
             composable(route = Screen.PendingBookings.route) {
