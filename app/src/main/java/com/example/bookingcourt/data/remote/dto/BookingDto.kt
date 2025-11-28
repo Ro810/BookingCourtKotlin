@@ -240,7 +240,7 @@ data class BookingDetailResponseDto(
     val userId: Long,
     @SerializedName("userName")
     val userName: String?,
-    @SerializedName("userPhone")
+    @SerializedName("userPhoneNumber")
     val userPhone: String?,
 
     // ✨ NEW: Danh sách sân đã đặt (có thể nhiều sân)
