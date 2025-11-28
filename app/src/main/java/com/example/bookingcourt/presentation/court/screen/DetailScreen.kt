@@ -236,15 +236,15 @@ private fun DetailScreenContent(
             }
 
             // Số điện thoại chủ sân
-            if (!venue.ownerPhone.isNullOrBlank()) {
+            if (venue.phoneNumber != null) {
                 val context = LocalContext.current
                 InfoCardClickable(
                     icon = Icons.Default.ContactPhone,
                     title = "Số điện thoại chủ sân",
-                    value = venue.ownerPhone,
+                    value = venue.phoneNumber,
                     onClick = {
                         val intent = Intent(Intent.ACTION_DIAL).apply {
-                            data = Uri.parse("tel:${venue.ownerPhone}")
+                            data = Uri.parse("tel:${venue.phoneNumber}")
                         }
                         context.startActivity(intent)
                     }
@@ -483,7 +483,7 @@ fun DescriptionTabContent(venue: Venue) {
             )
         }
 
-        if (venue.ownerPhone != null) {
+        if (venue.phoneNumber != null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(vertical = 4.dp)

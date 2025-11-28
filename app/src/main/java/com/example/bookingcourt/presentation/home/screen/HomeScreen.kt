@@ -520,7 +520,7 @@ fun VenueCard(
                     IconButton(
                         onClick = {
                             // Gọi điện thoại đến số điện thoại chủ sân
-                            val phoneNumber = venue.ownerPhone
+                            val phoneNumber = venue.phoneNumber
                             if (!phoneNumber.isNullOrBlank()) {
                                 val intent = Intent(Intent.ACTION_DIAL).apply {
                                     data = Uri.parse("tel:$phoneNumber")

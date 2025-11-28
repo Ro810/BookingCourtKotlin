@@ -501,10 +501,7 @@ private fun BookingInfoCard(booking: BookingDetail) {
                 val itemsByCourtName = booking.bookingItems.groupBy { it.courtName }
 
                 Text(
-                    text = if (itemsByCourtName.size > 1)
-                        "Các sân đã đặt (${itemsByCourtName.size}):"
-                    else
-                        "Sân đã đặt:",
+                    text = "Các sân đã đặt:",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF424242)
