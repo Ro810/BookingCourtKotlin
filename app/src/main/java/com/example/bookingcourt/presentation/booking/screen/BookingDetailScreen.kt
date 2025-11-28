@@ -457,7 +457,7 @@ private fun BookingInfoCard(booking: BookingDetail) {
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Hiển thị tiêu đề 
+            // Hiển thị tiêu đề
             Text(
                 text ="Thông tin đặt sân",
                 fontSize = 18.sp,
