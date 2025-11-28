@@ -1,6 +1,8 @@
 package com.example.bookingcourt.presentation.owner.screen
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -168,6 +171,7 @@ fun PendingBookingsScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PendingBookingItem(
     booking: BookingDetail,
@@ -182,15 +186,25 @@ private fun PendingBookingItem(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ✅ Hiển thị tên venue - tên sân
+                // ✅ Hiển thị tên venue - tên sân với marquee effect khi text dài
                 Text(
                     text = "${booking.venue.name} - ${booking.getCourtsDisplayName()}",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .basicMarquee(
+                            iterations = Int.MAX_VALUE,
+                            repeatDelayMillis = 1000,
+                            initialDelayMillis = 2000,
+                            velocity = 50.dp
+                        )
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     color = Color(0xFFFF9800),
                     shape = MaterialTheme.shapes.small
