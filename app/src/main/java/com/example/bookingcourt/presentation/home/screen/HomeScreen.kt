@@ -501,7 +501,7 @@ fun VenueCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${venue.averageRating} (${venue.totalReviews})",
+                            text = "${String.format("%.1f", venue.averageRating)} (${venue.totalReviews})",
                             fontSize = 12.sp,
                             color = TextSecondary
                         )
