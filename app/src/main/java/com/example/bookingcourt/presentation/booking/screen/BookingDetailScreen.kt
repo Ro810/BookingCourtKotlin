@@ -457,10 +457,9 @@ private fun BookingInfoCard(booking: BookingDetail) {
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Hiển thị tiêu đề với số lượng sân
-            val courtsCount = booking.getCourtsCount()
+            // Hiển thị tiêu đề 
             Text(
-                text = if (courtsCount > 1) "Thông tin đặt sân ($courtsCount sân)" else "Thông tin đặt sân",
+                text ="Thông tin đặt sân",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF212121)
