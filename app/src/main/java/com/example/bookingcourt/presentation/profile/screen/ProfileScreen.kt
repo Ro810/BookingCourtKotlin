@@ -49,23 +49,18 @@ fun ProfileScreen(
     showBackButton: Boolean = true,
     showTopBar: Boolean = true,
     bottomPadding: Dp = 0.dp,
-    isOwnerMode: Boolean = false, // THÊM: Parameter để biết đang ở chế độ nào
+    isOwnerMode: Boolean = false,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // Lấy user từ state - không dùng fallback nữa
     val user = state.currentUser
-
-    // QUAN TRỌNG: Dùng isOwnerMode từ parameter để xác định role hiện tại
-    // Nếu isOwnerMode = true -> đang ở chế độ OWNER
-    // Nếu isOwnerMode = false -> đang ở chế độ USER
     val currentUserRole = if (isOwnerMode) UserRole.OWNER else UserRole.USER
 
-    if (showTopBar) {
-        Scaffold(
-            topBar = {
+    Scaffold(
+        topBar = if (showTopBar) {
+            {
                 TopAppBar(
                     title = { Text("Tài khoản") },
                     navigationIcon = {
@@ -81,70 +76,70 @@ fun ProfileScreen(
                         navigationIconContentColor = Color.White,
                     ),
                 )
-            },
-        ) { paddingValues ->
-            when {
-                state.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                user != null -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .background(Color(0xFFF5F5F5)),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        ProfileContent(
-                            user = user,
-                            currentUserRole = currentUserRole, // Dùng effectiveRole từ state
-                            bookingsCount = state.bookingsCount, // ✅ Dùng dữ liệu thực
-                            reviewsCount = state.reviewsCount,   // ✅ Dùng dữ liệu thực
-                            onNavigateToEditProfile = onNavigateToEditProfile,
-                            onNavigateToChangePassword = onNavigateToChangePassword,
-                            onNavigateToBecomeOwner = onNavigateToBecomeOwner,
-                            onNavigateToBecomeCustomer = onNavigateToBecomeCustomer,
-                            onNavigateToBookingHistory = onNavigateToBookingHistory,
-                            onNavigateToMyReviews = onNavigateToMyReviews,
-                            onShowLogoutDialog = { showLogoutDialog = true },
-                        )
-                    }
-                }
-                else -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Không thể tải thông tin người dùng")
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { viewModel.refresh() }) {
-                                Text("Thử lại")
-                            }
-                        }
-                    }
-                }
             }
-        }
-    } else {
-        // No top bar - background gradient like home screen
+        } else {
+            {}
+        },
+        bottomBar = {
+            // ✅ Thêm bottom navigation bar giống như HomeScreen
+            NavigationBar(
+                containerColor = Color.White,
+                tonalElevation = 8.dp,
+            ) {
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Home,
+                            contentDescription = "Trang chủ",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    },
+                    label = { Text("Trang chủ") },
+                    selected = false,
+                    onClick = onNavigateBack,
+                    colors = NavigationBarItemDefaults.colors(
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                    ),
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Tài khoản",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    },
+                    label = { Text("Tài khoản") },
+                    selected = true,
+                    onClick = { },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF123E62),
+                        selectedTextColor = Color(0xFF123E62),
+                        indicatorColor = Color.Transparent,
+                    ),
+                )
+            }
+        },
+        containerColor = if (showTopBar) Color(0xFFF5F5F5) else Color.Transparent
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF8BB1F6), // Mid Blue - same as home
-                            Color.White,
-                        ),
-                    ),
-                ),
+                .then(
+                    if (!showTopBar) {
+                        Modifier.background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF8BB1F6),
+                                    Color.White,
+                                ),
+                            ),
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             when {
                 state.isLoading -> {
@@ -152,25 +147,22 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color.White)
+                        CircularProgressIndicator(color = if (showTopBar) MaterialTheme.colorScheme.primary else Color.White)
                     }
                 }
                 user != null -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 48.dp, // Extra padding for status bar/notch
-                            bottom = bottomPadding + 16.dp,
-                        ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         ProfileContent(
                             user = user,
-                            currentUserRole = currentUserRole, // Dùng effectiveRole từ state
-                            bookingsCount = state.bookingsCount, // ✅ Dùng dữ liệu thực
-                            reviewsCount = state.reviewsCount,   // ✅ Dùng dữ liệu thực
+                            currentUserRole = currentUserRole,
+                            bookingsCount = state.bookingsCount,
+                            reviewsCount = state.reviewsCount,
                             onNavigateToEditProfile = onNavigateToEditProfile,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToBecomeOwner = onNavigateToBecomeOwner,
@@ -192,7 +184,7 @@ fun ProfileScreen(
                         ) {
                             Text(
                                 "Không thể tải thông tin người dùng",
-                                color = Color.White,
+                                color = if (showTopBar) Color.Black else Color.White,
                                 fontSize = 16.sp
                             )
                             Spacer(modifier = Modifier.height(8.dp))
