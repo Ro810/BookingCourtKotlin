@@ -255,17 +255,16 @@ fun HourlyRevenueLineChart(
 
 /**
  * Simple pie chart hiển thị phân bố booking theo status
+ * Chỉ hiển thị 3 trạng thái: Đã duyệt, Hoàn thành, Từ chối
  */
 @Composable
 fun BookingStatusPieChart(
     confirmed: Int,
-    pending: Int,
     completed: Int,
     rejected: Int,
-    cancelled: Int,
     modifier: Modifier = Modifier
 ) {
-    val total = confirmed + pending + completed + rejected + cancelled
+    val total = confirmed + completed + rejected
 
     if (total == 0) {
         Box(
@@ -279,16 +278,12 @@ fun BookingStatusPieChart(
 
     val confirmedColor = Color(0xFF4CAF50) // Green
     val completedColor = Color(0xFF2196F3) // Blue
-    val pendingColor = Color(0xFFFFC107) // Amber
     val rejectedColor = Color(0xFFF44336) // Red
-    val cancelledColor = Color(0xFF9E9E9E) // Gray
 
     val data = listOf(
         "Đã duyệt" to Pair(confirmed, confirmedColor),
         "Hoàn thành" to Pair(completed, completedColor),
-        "Chờ duyệt" to Pair(pending, pendingColor),
-        "Từ chối" to Pair(rejected, rejectedColor),
-        "Đã hủy" to Pair(cancelled, cancelledColor)
+        "Từ chối" to Pair(rejected, rejectedColor)
     ).filter { it.second.first > 0 }
 
     val animatedProgress = remember { Animatable(0f) }

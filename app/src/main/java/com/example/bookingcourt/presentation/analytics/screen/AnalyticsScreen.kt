@@ -342,10 +342,8 @@ private fun AnalyticsContent(
                 Column(modifier = Modifier.padding(16.dp)) {
                     BookingStatusPieChart(
                         confirmed = data.bookingStats.confirmedCount,
-                        pending = data.bookingStats.pendingCount,
                         completed = data.bookingStats.completedCount,
                         rejected = data.bookingStats.rejectedCount,
-                        cancelled = data.bookingStats.cancelledCount,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
